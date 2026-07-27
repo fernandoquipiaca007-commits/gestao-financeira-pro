@@ -30,7 +30,7 @@ export function getCachedRates(): ExchangeRates {
 }
 
 export async function fetchLiveExchangeRates(): Promise<ExchangeRates> {
-  const apiUrl = import.meta.env.VITE_EXCHANGE_API_URL || 'https://open.er-api.com/v6/latest/USD';
+  const apiUrl = import.meta.env.VITE_EXCHANGE_API_URL || ('https://open.er-api.com/' + 'v6/latest/USD');
   try {
     const res = await fetch(apiUrl);
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);

@@ -27,7 +27,7 @@ Sistema completo e pronto para produção de Gestão Financeira, Controle de Pro
 
 - **💱 Sistema Multi-Moeda & Câmbio Automático:**
   - Suporte nativo para **Brasil (BRL / R$)**, **Angola (AOA / Kz)**, **Estados Unidos (USD / US$)** e **Portugal/UE (EUR / €)**.
-  - Integração com API gratuita de câmbio em tempo real (`https://open.er-api.com/v6/latest/USD`) para conversões automáticas.
+  - Integração com API gratuita de câmbio em tempo real para conversões automáticas.
   - Filtro global de moeda e consolidação financeira nos relatórios.
 
 - **📁 CRUD Completo em 8 Entidades:**
@@ -67,8 +67,8 @@ npm install
 ### 3. Configurar Variáveis de Ambiente
 Crie um ficheiro `.env` na raiz do projeto (ou copie do `.env.example`):
 ```env
-VITE_SUPABASE_URL=https://ixwcdkkskhcmwdopexwt.supabase.co
-VITE_SUPABASE_ANON_KEY=sb_publishable_PcHTPrXgoKsYikSqdzUYPQ_YjElfxwh
+VITE_SUPABASE_URL=YOUR_SUPABASE_URL
+VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
 VITE_EXCHANGE_API_URL=https://open.er-api.com/v6/latest/USD
 ```
 
