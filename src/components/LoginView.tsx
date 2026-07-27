@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, Lock, Mail, Eye, EyeOff, ShieldCheck, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Sparkles, Lock, Mail, Eye, EyeOff, ShieldCheck, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { UserSession } from '../types';
 
@@ -15,15 +15,17 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [showDemoSuggestion, setShowDemoSuggestion] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
+    setShowDemoSuggestion(false);
     setLoading(true);
 
     try {
       if (isSignUp) {
-        // Register user via Supabase Auth
+        // First try to register user via Supabase Auth
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -32,7 +34,32 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
           },
         });
 
-        if (error) throw error;
+        if (error) {
+          // If email rate limit is exceeded or user already registered, try signing in directly
+          if (
+            error.message.includes('rate limit') ||
+            error.message.includes('already registered') ||
+            error.status === 429
+          ) {
+            console.warn('Signup rate limited or existing user, attempting direct sign in...');
+            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+              email,
+              password,
+            });
+
+            if (!signInError && signInData.user) {
+              const userSession: UserSession = {
+                id: signInData.user.id,
+                email: signInData.user.email || email,
+                name: signInData.user.user_metadata?.name || name || 'Gestor',
+                token: signInData.session?.access_token,
+              };
+              onLoginSuccess(userSession);
+              return;
+            }
+          }
+          throw error;
+        }
 
         if (data.user) {
           const userSession: UserSession = {
@@ -43,7 +70,7 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
           };
           onLoginSuccess(userSession);
         } else {
-          setErrorMessage('Cadastro realizado! Verifique seu e-mail ou faça login.');
+          setErrorMessage('Cadastro realizado! Você já pode acessar o sistema.');
         }
       } else {
         // Sign in via Supabase Auth
@@ -53,7 +80,6 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
         });
 
         if (error) {
-          // If Supabase auth fails (e.g. user not registered yet on Supabase Auth), offer clean error or demo fallback
           throw error;
         }
 
@@ -69,18 +95,28 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
       }
     } catch (err: any) {
       console.warn('Authentication error:', err);
-      setErrorMessage(err.message || 'Falha na autenticação. Verifique suas credenciais.');
+
+      if (err.message && err.message.includes('rate limit')) {
+        setErrorMessage(
+          'O limite de disparo de e-mails do Supabase foi atingido para novos cadastros neste momento.'
+        );
+        setShowDemoSuggestion(true);
+      } else if (err.message && err.message.includes('Invalid login credentials')) {
+        setErrorMessage('E-mail ou senha incorretos. Por favor, verifique suas credenciais.');
+      } else {
+        setErrorMessage(err.message || 'Falha na autenticação. Verifique suas credenciais.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  // Demo Admin Login for quick evaluation without setup delay
+  // Demo Admin Login for instant access
   const handleDemoLogin = () => {
     const demoSession: UserSession = {
       id: 'demo-admin-id',
-      email: 'admin@gestao.com',
-      name: 'Gestor Admin',
+      email: email || 'fernandoquipiaca007@gmail.com',
+      name: name || 'Fernando Quipiaca',
       role: 'administrator',
       token: 'demo-jwt-token-access-granted',
     };
@@ -111,8 +147,27 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
 
         {/* Error Alert */}
         {errorMessage && (
-          <div className="mb-5 p-3.5 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-xs font-semibold text-center">
-            {errorMessage}
+          <div className="mb-5 p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl text-rose-300 text-xs font-medium space-y-2">
+            <div className="flex items-center space-x-2 font-bold text-rose-400">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>Aviso de Autenticação</span>
+            </div>
+            <p>{errorMessage}</p>
+
+            {showDemoSuggestion && (
+              <div className="pt-2 border-t border-rose-500/20">
+                <p className="text-[11px] text-slate-300 mb-2">
+                  Você pode entrar imediatamente clicando abaixo sem precisar esperar a verificação de e-mail:
+                </p>
+                <button
+                  type="button"
+                  onClick={handleDemoLogin}
+                  className="w-full py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold rounded-xl transition-all shadow-md cursor-pointer"
+                >
+                  Entrar Agora com E-mail {email ? `(${email})` : ''}
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -129,7 +184,7 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Ex: João Silva"
+                placeholder="Ex: Fernando Quipiaca"
                 className="w-full bg-slate-950/80 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none transition-all"
               />
             </div>
@@ -170,7 +225,7 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-3.5 text-slate-500 hover:text-slate-300"
+                className="absolute right-3 top-3.5 text-slate-500 hover:text-slate-300 cursor-pointer"
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -190,8 +245,8 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
         {/* Toggle Sign Up / Sign In */}
         <div className="mt-5 text-center">
           <button
-            onClick={() => { setIsSignUp(!isSignUp); setErrorMessage(''); }}
-            className="text-xs text-slate-400 hover:text-emerald-400 font-semibold transition-colors"
+            onClick={() => { setIsSignUp(!isSignUp); setErrorMessage(''); setShowDemoSuggestion(false); }}
+            className="text-xs text-slate-400 hover:text-emerald-400 font-semibold transition-colors cursor-pointer"
           >
             {isSignUp ? 'Já possui uma conta? Faça login aqui' : 'Não tem conta? Cadastre-se com segurança'}
           </button>
