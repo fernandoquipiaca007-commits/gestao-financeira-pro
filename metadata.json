@@ -1,0 +1,6 @@
+{
+  "name": "Gestão Financeira e Operacional",
+  "description": "Painel pessoal de gestão financeira, clientes, projetos, cobranças e relatórios multimoeda.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
