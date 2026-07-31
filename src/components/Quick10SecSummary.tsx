@@ -12,7 +12,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { Client, Project, Income, Expense, CurrencyCode, AppSettings } from '../types';
-import { formatCurrency, getDaysDiff, isToday, convertCurrency } from '../lib/formatters';
+import { formatCurrency, getDaysDiff, convertCurrency } from '../lib/formatters';
 
 interface Quick10SecSummaryProps {
   clients: Client[];
@@ -35,9 +35,6 @@ export const Quick10SecSummary: React.FC<Quick10SecSummaryProps> = ({
   onNavigateToTab,
   onOpenWhatsAppCharge,
 }) => {
-  const clientMap = new Map<string, Client>(clients.map((c) => [c.id, c]));
-
-  // Current year-month YYYY-MM
   const now = new Date();
   const currentYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
@@ -52,22 +49,48 @@ export const Quick10SecSummary: React.FC<Quick10SecSummaryProps> = ({
     currencyFilter === 'ALL' ? true : p.currency === currencyFilter
   );
 
-  // 1. Quanto tenho para receber (Pending & Overdue total)
-  // For 'ALL', we sum grouped by currency or convert to default currency
-  const pendingIncomes = filteredIncomes.filter((i) => i.status !== 'Recebido');
-  
-  // Calculate grouped amounts if ALL, or simple sum if single
-  const calculateTotal = (items: { amount: number; currency: CurrencyCode }[]) => {
-    if (currencyFilter !== 'ALL') {
-      return items.reduce((sum, item) => sum + item.amount, 0);
+  // Helper for smart sum calculations and formatting
+  const calculateTotalSmart = (items: { amount: number; currency: CurrencyCode }[]) => {
+    if (items.length === 0) {
+      const cur = currencyFilter === 'ALL' ? settings.defaultCurrency : currencyFilter;
+      return { formatted: formatCurrency(0, cur), raw: 0 };
     }
-    // Consolidated estimation in default currency (e.g. BRL)
-    return items.reduce((sum, item) => {
-      return sum + convertCurrency(item.amount, item.currency, settings.defaultCurrency, settings.exchangeRates);
+    if (currencyFilter !== 'ALL') {
+      const sum = items.reduce((s, i) => s + i.amount, 0);
+      return { formatted: formatCurrency(sum, currencyFilter), raw: sum };
+    }
+
+    const firstCurrency = items[0].currency;
+    const allSameCurrency = items.every((i) => i.currency === firstCurrency);
+
+    if (allSameCurrency) {
+      const sum = items.reduce((s, i) => s + i.amount, 0);
+      return { formatted: formatCurrency(sum, firstCurrency), raw: sum };
+    }
+
+    const sum = items.reduce((s, item) => {
+      return s + convertCurrency(item.amount, item.currency, settings.defaultCurrency, settings.exchangeRates);
     }, 0);
+    return { formatted: formatCurrency(sum, settings.defaultCurrency), raw: sum };
   };
 
-  const totalToReceive = calculateTotal(pendingIncomes);
+  // 1. Quanto tenho para receber (Pending incomes + Unbilled project balances)
+  const pendingIncomeItems: { amount: number; currency: CurrencyCode }[] = [
+    ...filteredIncomes.filter((i) => i.status !== 'Recebido').map((i) => ({ amount: i.amount, currency: i.currency })),
+  ];
+
+  // Include project unpaid balances if no pending income entry exists for that project
+  filteredProjects.forEach((proj) => {
+    const unbilled = proj.totalAmount - proj.paidAmount;
+    if (unbilled > 0) {
+      const hasIncome = filteredIncomes.some((i) => i.projectId === proj.id && i.status !== 'Recebido');
+      if (!hasIncome) {
+        pendingIncomeItems.push({ amount: unbilled, currency: proj.currency });
+      }
+    }
+  });
+
+  const totalToReceive = calculateTotalSmart(pendingIncomeItems);
 
   // 2. Quem ainda não pagou (Clients with pending / overdue incomes)
   const unpaidIncomes = filteredIncomes.filter((i) => i.status === 'Atrasado' || (i.status === 'Pendente' && getDaysDiff(i.dueDate) < 0));
@@ -80,19 +103,27 @@ export const Quick10SecSummary: React.FC<Quick10SecSummaryProps> = ({
   );
 
   // 4. Quanto já faturei este mês (Received incomes in current month)
-  const monthlyReceivedIncomes = filteredIncomes.filter((i) => {
-    if (i.status !== 'Recebido') return false;
-    const recDate = i.receivedDate || i.dueDate;
-    return recDate.startsWith(currentYM);
-  });
-  const totalBilledThisMonth = calculateTotal(monthlyReceivedIncomes);
+  const monthlyReceivedItems = filteredIncomes
+    .filter((i) => {
+      if (i.status !== 'Recebido') return false;
+      const recDate = i.receivedDate || i.dueDate;
+      return recDate.startsWith(currentYM);
+    })
+    .map((i) => ({ amount: i.amount, currency: i.currency }));
+
+  const totalBilledThisMonth = calculateTotalSmart(monthlyReceivedItems);
 
   // 5. Quanto gastei (Paid expenses in current month)
-  const monthlyExpenses = filteredExpenses.filter((e) => e.date.startsWith(currentYM));
-  const totalSpentThisMonth = calculateTotal(monthlyExpenses);
+  const monthlyExpenseItems = filteredExpenses
+    .filter((e) => e.date.startsWith(currentYM))
+    .map((e) => ({ amount: e.amount, currency: e.currency }));
+
+  const totalSpentThisMonth = calculateTotalSmart(monthlyExpenseItems);
 
   // 6. Qual é o meu lucro (Profit = Received - Spent)
-  const netProfitThisMonth = totalBilledThisMonth - totalSpentThisMonth;
+  const profitRaw = totalBilledThisMonth.raw - totalSpentThisMonth.raw;
+  const dominantCurrency = currencyFilter !== 'ALL' ? currencyFilter : (monthlyReceivedItems[0]?.currency || settings.defaultCurrency);
+  const netProfitThisMonthFormatted = formatCurrency(profitRaw, dominantCurrency);
 
   // 7. Quantos projetos estão ativos (Em andamento + Aguardando cliente)
   const activeProjects = filteredProjects.filter(
@@ -105,8 +136,6 @@ export const Quick10SecSummary: React.FC<Quick10SecSummaryProps> = ({
     const days = getDaysDiff(p.dueDate);
     return days <= 1 || p.status === 'Aguardando cliente';
   });
-
-  const mainCurrency = currencyFilter === 'ALL' ? settings.defaultCurrency : currencyFilter;
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 md:p-6 mb-8 shadow-xl relative overflow-hidden">
@@ -132,7 +161,7 @@ export const Quick10SecSummary: React.FC<Quick10SecSummaryProps> = ({
 
         {currencyFilter === 'ALL' && (
           <span className="text-[11px] font-medium px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 self-start sm:self-auto">
-            🌐 Valores consolidados em <strong className="text-emerald-400">{mainCurrency}</strong>
+            🌐 Filtro ativo: <strong className="text-emerald-400">Todas as Moedas</strong>
           </span>
         )}
       </div>
@@ -147,13 +176,13 @@ export const Quick10SecSummary: React.FC<Quick10SecSummaryProps> = ({
             <DollarSign className="w-4 h-4 text-emerald-400" />
           </div>
           <div className="text-xl font-extrabold text-emerald-400 tracking-tight">
-            {formatCurrency(totalToReceive, mainCurrency)}
+            {totalToReceive.formatted}
           </div>
           <p className="text-[11px] text-slate-400 mt-1 flex items-center justify-between">
-            <span>{pendingIncomes.length} cobrança(s) pendente(s)</span>
+            <span>{pendingIncomeItems.length} cobrança(s) pendente(s)</span>
             <button
               onClick={() => onNavigateToTab('financial', 'receitas-pendentes')}
-              className="text-emerald-400 hover:underline text-[10px] font-medium inline-flex items-center gap-0.5"
+              className="text-emerald-400 hover:underline text-[10px] font-medium inline-flex items-center gap-0.5 cursor-pointer"
             >
               Ver <ArrowRight className="w-3 h-3" />
             </button>
@@ -173,7 +202,7 @@ export const Quick10SecSummary: React.FC<Quick10SecSummaryProps> = ({
             <span>{unpaidIncomes.length} fatura(s) vencida(s)</span>
             <button
               onClick={() => onNavigateToTab('financial', 'receitas-atrasadas')}
-              className="text-rose-400 hover:underline text-[10px] font-medium inline-flex items-center gap-0.5"
+              className="text-rose-400 hover:underline text-[10px] font-medium inline-flex items-center gap-0.5 cursor-pointer"
             >
               Cobrar <ArrowRight className="w-3 h-3" />
             </button>
@@ -193,7 +222,7 @@ export const Quick10SecSummary: React.FC<Quick10SecSummaryProps> = ({
             <span>Vencimento hoje ou vencidos</span>
             <button
               onClick={() => onNavigateToTab('financial', 'cobrar-hoje')}
-              className="text-amber-400 hover:underline text-[10px] font-medium inline-flex items-center gap-0.5"
+              className="text-amber-400 hover:underline text-[10px] font-medium inline-flex items-center gap-0.5 cursor-pointer"
             >
               Ação <ArrowRight className="w-3 h-3" />
             </button>
@@ -204,13 +233,13 @@ export const Quick10SecSummary: React.FC<Quick10SecSummaryProps> = ({
         <div className="bg-slate-800/80 hover:bg-slate-800 p-4 rounded-xl border border-slate-700/80 transition-all group">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-xs font-semibold text-slate-400">4. Faturado este mês</span>
-            <TrendingUp className="w-4 h-4 text-teal-400" />
+            <TrendingUp className="w-4 h-4 text-emerald-400" />
           </div>
-          <div className="text-xl font-extrabold text-teal-400 tracking-tight">
-            {formatCurrency(totalBilledThisMonth, mainCurrency)}
+          <div className="text-xl font-extrabold text-emerald-400 tracking-tight">
+            {totalBilledThisMonth.formatted}
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">
-            {monthlyReceivedIncomes.length} receita(s) recebida(s)
+          <p className="text-[11px] text-slate-400 mt-1 flex items-center justify-between">
+            <span>{monthlyReceivedItems.length} receita(s) recebida(s)</span>
           </p>
         </div>
 
@@ -221,10 +250,10 @@ export const Quick10SecSummary: React.FC<Quick10SecSummaryProps> = ({
             <Receipt className="w-4 h-4 text-slate-400" />
           </div>
           <div className="text-xl font-extrabold text-slate-200 tracking-tight">
-            {formatCurrency(totalSpentThisMonth, mainCurrency)}
+            {totalSpentThisMonth.formatted}
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">
-            {monthlyExpenses.length} custo(s) lançados
+          <p className="text-[11px] text-slate-400 mt-1 flex items-center justify-between">
+            <span>{monthlyExpenseItems.length} custo(s) lançados</span>
           </p>
         </div>
 
@@ -232,13 +261,13 @@ export const Quick10SecSummary: React.FC<Quick10SecSummaryProps> = ({
         <div className="bg-slate-800/80 hover:bg-slate-800 p-4 rounded-xl border border-slate-700/80 transition-all group">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-xs font-semibold text-slate-400">6. Lucro líquido no mês</span>
-            <CheckCircle2 className={`w-4 h-4 ${netProfitThisMonth >= 0 ? 'text-emerald-400' : 'text-rose-400'}`} />
+            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
           </div>
-          <div className={`text-xl font-extrabold tracking-tight ${netProfitThisMonth >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-            {formatCurrency(netProfitThisMonth, mainCurrency)}
+          <div className={`text-xl font-extrabold tracking-tight ${profitRaw >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+            {netProfitThisMonthFormatted}
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">
-            {netProfitThisMonth >= 0 ? 'Margem positiva' : 'Atenção ao caixa'}
+          <p className="text-[11px] text-slate-400 mt-1 flex items-center justify-between">
+            <span>{profitRaw >= 0 ? 'Margem positiva' : 'Atenção aos custos'}</span>
           </p>
         </div>
 
@@ -254,8 +283,8 @@ export const Quick10SecSummary: React.FC<Quick10SecSummaryProps> = ({
           <p className="text-[11px] text-slate-400 mt-1 flex items-center justify-between">
             <span>Operação ativa</span>
             <button
-              onClick={() => onNavigateToTab('projects', 'ativos')}
-              className="text-blue-400 hover:underline text-[10px] font-medium inline-flex items-center gap-0.5"
+              onClick={() => onNavigateToTab('projects', 'Em andamento')}
+              className="text-blue-400 hover:underline text-[10px] font-medium inline-flex items-center gap-0.5 cursor-pointer"
             >
               Ver <ArrowRight className="w-3 h-3" />
             </button>
@@ -274,8 +303,8 @@ export const Quick10SecSummary: React.FC<Quick10SecSummaryProps> = ({
           <p className="text-[11px] text-slate-400 mt-1 flex items-center justify-between">
             <span>Entrega/Aguardando cliente</span>
             <button
-              onClick={() => onNavigateToTab('projects', 'atencao')}
-              className="text-purple-400 hover:underline text-[10px] font-medium inline-flex items-center gap-0.5"
+              onClick={() => onNavigateToTab('projects')}
+              className="text-purple-400 hover:underline text-[10px] font-medium inline-flex items-center gap-0.5 cursor-pointer"
             >
               Ver <ArrowRight className="w-3 h-3" />
             </button>
@@ -283,39 +312,6 @@ export const Quick10SecSummary: React.FC<Quick10SecSummaryProps> = ({
         </div>
 
       </div>
-
-      {/* Quick Action bar for immediate collection / cobranca via WhatsApp */}
-      {incomesToChargeToday.length > 0 && (
-        <div className="mt-4 pt-4 border-t border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 bg-amber-500/10 p-3.5 rounded-xl border border-amber-500/20">
-          <div className="flex items-center space-x-2 text-xs text-amber-200">
-            <MessageCircle className="w-4 h-4 text-amber-400 shrink-0" />
-            <span>
-              <strong>Cobrança Prioritária Hoje:</strong> Existem {incomesToChargeToday.length} cliente(s) aguardando cobrança. Clique abaixo para abrir o WhatsApp diretamente com a mensagem formatada.
-            </span>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            {incomesToChargeToday.slice(0, 3).map((inc) => {
-              const client = clientMap.get(inc.clientId);
-              if (!client) return null;
-              const phone = client.whatsapp;
-              const text = `Olá, ${client.name}! Tudo bem? Passando para lembrar sobre a fatura de "${inc.description}" (${formatCurrency(inc.amount, inc.currency)}) que vence em ${inc.dueDate}. Abs!`;
-
-              return (
-                <button
-                  key={inc.id}
-                  onClick={() => onOpenWhatsAppCharge(phone, text)}
-                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all shadow-sm"
-                >
-                  <MessageCircle className="w-3.5 h-3.5" />
-                  <span>Cobrar {client.name.split(' ')[0]}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
     </div>
   );
 };

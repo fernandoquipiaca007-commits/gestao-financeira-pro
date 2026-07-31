@@ -87,35 +87,72 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const mainCurrency = currencyFilter === 'ALL' ? settings.defaultCurrency : currencyFilter;
 
   // Helper for sum calculations
-  const calculateTotal = (items: { amount: number; currency: CurrencyCode }[]) => {
-    if (currencyFilter !== 'ALL') {
-      return items.reduce((sum, item) => sum + item.amount, 0);
+  // Helper for smart sum calculations and formatting
+  const calculateTotalSmart = (items: { amount: number; currency: CurrencyCode }[]) => {
+    if (items.length === 0) {
+      const cur = currencyFilter === 'ALL' ? settings.defaultCurrency : currencyFilter;
+      return { formatted: formatCurrency(0, cur), raw: 0 };
     }
-    return items.reduce((sum, item) => {
-      return sum + convertCurrency(item.amount, item.currency, settings.defaultCurrency, settings.exchangeRates);
+    if (currencyFilter !== 'ALL') {
+      const sum = items.reduce((s, i) => s + i.amount, 0);
+      return { formatted: formatCurrency(sum, currencyFilter), raw: sum };
+    }
+
+    const firstCurrency = items[0].currency;
+    const allSameCurrency = items.every((i) => i.currency === firstCurrency);
+
+    if (allSameCurrency) {
+      const sum = items.reduce((s, i) => s + i.amount, 0);
+      return { formatted: formatCurrency(sum, firstCurrency), raw: sum };
+    }
+
+    const sum = items.reduce((s, item) => {
+      return s + convertCurrency(item.amount, item.currency, settings.defaultCurrency, settings.exchangeRates);
     }, 0);
+    return { formatted: formatCurrency(sum, settings.defaultCurrency), raw: sum };
   };
 
-  // 1. Total a receber
-  const pendingIncomes = filteredIncomes.filter((i) => i.status !== 'Recebido');
-  const totalToReceive = calculateTotal(pendingIncomes);
+  // 1. Total a receber (Pending incomes + Unbilled project balances)
+  const pendingIncomeItems: { amount: number; currency: CurrencyCode }[] = [
+    ...filteredIncomes.filter((i) => i.status !== 'Recebido').map((i) => ({ amount: i.amount, currency: i.currency })),
+  ];
+
+  filteredProjects.forEach((proj) => {
+    const unbilled = proj.totalAmount - proj.paidAmount;
+    if (unbilled > 0) {
+      const hasIncome = filteredIncomes.some((i) => i.projectId === proj.id && i.status !== 'Recebido');
+      if (!hasIncome) {
+        pendingIncomeItems.push({ amount: unbilled, currency: proj.currency });
+      }
+    }
+  });
+
+  const totalToReceive = calculateTotalSmart(pendingIncomeItems);
 
   // 2. Total recebido no mês
-  const monthlyReceivedIncomes = filteredIncomes.filter((i) => {
-    if (i.status !== 'Recebido') return false;
-    const recDate = i.receivedDate || i.dueDate;
-    return recDate.startsWith(currentYM);
-  });
-  const totalReceivedThisMonth = calculateTotal(monthlyReceivedIncomes);
+  const monthlyReceivedItems = filteredIncomes
+    .filter((i) => {
+      if (i.status !== 'Recebido') return false;
+      const recDate = i.receivedDate || i.dueDate;
+      return recDate.startsWith(currentYM);
+    })
+    .map((i) => ({ amount: i.amount, currency: i.currency }));
+
+  const totalReceivedThisMonth = calculateTotalSmart(monthlyReceivedItems);
 
   // 3. Total de despesas
-  const monthlyExpenses = filteredExpenses.filter((e) => e.date.startsWith(currentYM));
-  const totalExpensesThisMonth = calculateTotal(monthlyExpenses);
+  const monthlyExpenseItems = filteredExpenses
+    .filter((e) => e.date.startsWith(currentYM))
+    .map((e) => ({ amount: e.amount, currency: e.currency }));
+
+  const totalExpensesThisMonth = calculateTotalSmart(monthlyExpenseItems);
 
   // 4. Lucro líquido
-  const netProfitThisMonth = totalReceivedThisMonth - totalExpensesThisMonth;
+  const profitRaw = totalReceivedThisMonth.raw - totalExpensesThisMonth.raw;
+  const dominantCurrency = currencyFilter !== 'ALL' ? currencyFilter : (monthlyReceivedItems[0]?.currency || settings.defaultCurrency);
+  const netProfitThisMonthFormatted = formatCurrency(profitRaw, dominantCurrency);
 
-  // 5. Clientes ativos (clients with at least 1 active project or created recently)
+  // 5. Clientes ativos
   const activeClientsCount = filteredClients.length;
 
   // 6. Projetos em andamento
@@ -206,10 +243,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             </div>
             <div className="text-2xl font-extrabold text-white mt-3 tracking-tight">
-              {formatCurrency(totalToReceive, mainCurrency)}
+              {totalToReceive.formatted}
             </div>
             <div className="mt-2 text-xs text-slate-400 flex items-center justify-between">
-              <span>{pendingIncomes.length} faturas a faturar</span>
+              <span>{pendingIncomeItems.length} faturas a faturar</span>
               <ChevronRight className="w-4 h-4 text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
           </div>
@@ -226,10 +263,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             </div>
             <div className="text-2xl font-extrabold text-white mt-3 tracking-tight">
-              {formatCurrency(totalReceivedThisMonth, mainCurrency)}
+              {totalReceivedThisMonth.formatted}
             </div>
             <div className="mt-2 text-xs text-slate-400 flex items-center justify-between">
-              <span>{monthlyReceivedIncomes.length} pagamentos liquidados</span>
+              <span>{monthlyReceivedItems.length} pagamentos liquidados</span>
               <ChevronRight className="w-4 h-4 text-teal-400 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
           </div>
@@ -246,10 +283,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             </div>
             <div className="text-2xl font-extrabold text-white mt-3 tracking-tight">
-              {formatCurrency(totalExpensesThisMonth, mainCurrency)}
+              {totalExpensesThisMonth.formatted}
             </div>
             <div className="mt-2 text-xs text-slate-400 flex items-center justify-between">
-              <span>{monthlyExpenses.length} custos cadastrados</span>
+              <span>{monthlyExpenseItems.length} custos cadastrados</span>
               <ChevronRight className="w-4 h-4 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
           </div>
@@ -258,12 +295,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-sm">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Lucro Líquido (Mês)</span>
-              <div className={`p-2 rounded-xl ${netProfitThisMonth >= 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
+              <div className={`p-2 rounded-xl ${profitRaw >= 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
                 <CheckCircle2 className="w-5 h-5" />
               </div>
             </div>
-            <div className={`text-2xl font-extrabold mt-3 tracking-tight ${netProfitThisMonth >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-              {formatCurrency(netProfitThisMonth, mainCurrency)}
+            <div className={`text-2xl font-extrabold mt-3 tracking-tight ${profitRaw >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+              {netProfitThisMonthFormatted}
             </div>
             <div className="mt-2 text-xs text-slate-400">
               {netProfitThisMonth >= 0 ? 'Resultado operacional positivo' : 'Atenção às margens'}

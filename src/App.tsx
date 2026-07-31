@@ -293,23 +293,51 @@ export default function App() {
     await upsertProjectToDb(newProj);
     setProjects((prev) => [newProj, ...prev.filter((p) => p.id !== targetId)]);
 
-    // Automatically create initial Income entries if paidAmount > 0
-    if (!projectData.id && newProj.paidAmount > 0) {
-      const newInc: Income = {
-        id: `inc-${Date.now()}`,
-        clientId: newProj.clientId,
-        projectId: newProj.id,
-        description: `Pagamento Inicial - ${newProj.name}`,
-        amount: newProj.paidAmount,
-        currency: newProj.currency,
-        dueDate: newProj.startDate,
-        receivedDate: newProj.startDate,
-        paymentMethod: 'PIX',
-        status: 'Recebido',
-        createdAt: new Date().toISOString().split('T')[0],
-      };
-      await upsertIncomeToDb(newInc);
-      setIncomes((prev) => [newInc, ...prev]);
+    // Automatically create/sync Income entries for Project
+    if (!projectData.id) {
+      const createdIncomes: Income[] = [];
+
+      // 1. Paid portion (if any)
+      if (newProj.paidAmount > 0) {
+        const paidInc: Income = {
+          id: `inc-paid-${Date.now()}`,
+          clientId: newProj.clientId,
+          projectId: newProj.id,
+          description: `Pagamento Inicial - ${newProj.name}`,
+          amount: newProj.paidAmount,
+          currency: newProj.currency,
+          dueDate: newProj.startDate || new Date().toISOString().split('T')[0],
+          receivedDate: newProj.startDate || new Date().toISOString().split('T')[0],
+          paymentMethod: 'PIX',
+          status: 'Recebido',
+          createdAt: new Date().toISOString().split('T')[0],
+        };
+        await upsertIncomeToDb(paidInc);
+        createdIncomes.push(paidInc);
+      }
+
+      // 2. Remaining unpaid balance (if any)
+      const remainingAmount = newProj.totalAmount - newProj.paidAmount;
+      if (remainingAmount > 0) {
+        const pendingInc: Income = {
+          id: `inc-pend-${Date.now()}`,
+          clientId: newProj.clientId,
+          projectId: newProj.id,
+          description: `Saldo Restante - ${newProj.name}`,
+          amount: remainingAmount,
+          currency: newProj.currency,
+          dueDate: newProj.nextPaymentDate || newProj.dueDate || newProj.startDate || new Date().toISOString().split('T')[0],
+          paymentMethod: 'PIX',
+          status: 'Pendente',
+          createdAt: new Date().toISOString().split('T')[0],
+        };
+        await upsertIncomeToDb(pendingInc);
+        createdIncomes.push(pendingInc);
+      }
+
+      if (createdIncomes.length > 0) {
+        setIncomes((prev) => [...createdIncomes, ...prev]);
+      }
     }
   };
 
