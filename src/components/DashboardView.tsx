@@ -187,8 +187,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       const exps = filteredExpenses.filter((e) => e.date.startsWith(ym));
 
-      const recVal = calculateTotal(incs);
-      const expVal = calculateTotal(exps);
+      const recVal = calculateTotalSmart(incs.map((i) => ({ amount: i.amount, currency: i.currency }))).raw;
+      const expVal = calculateTotalSmart(exps.map((e) => ({ amount: e.amount, currency: e.currency }))).raw;
 
       monthsData.push({
         monthKey: ym,
