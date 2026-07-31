@@ -8,6 +8,7 @@ import {
   AgendaEvent,
   AppSettings,
   NotificationItem,
+  Partner,
 } from '../types';
 import {
   getStoredClients,
@@ -20,6 +21,8 @@ import {
   saveExpenses,
   getStoredSettings,
   saveSettings,
+  getStoredPartners,
+  savePartners,
 } from './storage';
 
 const CATEGORIES_KEY = 'gfo_categories_v1';
@@ -133,6 +136,12 @@ export async function fetchProjectsFromDb(): Promise<Project[]> {
       nextPaymentDate: item.next_payment_date || undefined,
       status: item.status || 'Em andamento',
       notes: item.notes || '',
+      partnerId: item.partner_id || undefined,
+      partnerName: item.partner_name || undefined,
+      commissionType: item.commission_type || 'percent',
+      commissionValue: Number(item.commission_value) || 0,
+      commissionAmount: Number(item.commission_amount) || 0,
+      commissionPaid: item.commission_paid || false,
       createdAt: item.created_at ? item.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
     }));
     saveProjects(formatted);
@@ -159,6 +168,12 @@ export async function upsertProjectToDb(project: Project): Promise<void> {
       next_payment_date: project.nextPaymentDate,
       status: project.status,
       notes: project.notes,
+      partner_id: project.partnerId,
+      partner_name: project.partnerName,
+      commission_type: project.commissionType,
+      commission_value: project.commissionValue,
+      commission_amount: project.commissionAmount,
+      commission_paid: project.commissionPaid,
     });
   } catch (err) {
     console.warn('Failed to sync project to Supabase:', err);
@@ -190,6 +205,10 @@ export async function fetchIncomesFromDb(): Promise<Income[]> {
       paymentMethod: item.payment_method || 'PIX',
       status: item.status || 'Pendente',
       notes: item.notes || '',
+      partnerId: item.partner_id || undefined,
+      partnerName: item.partner_name || undefined,
+      commissionAmount: Number(item.commission_amount) || 0,
+      commissionPaid: item.commission_paid || false,
       createdAt: item.created_at ? item.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
     }));
     saveIncomes(formatted);
@@ -215,6 +234,10 @@ export async function upsertIncomeToDb(income: Income): Promise<void> {
       payment_method: income.paymentMethod,
       status: income.status,
       notes: income.notes,
+      partner_id: income.partnerId,
+      partner_name: income.partnerName,
+      commission_amount: income.commissionAmount,
+      commission_paid: income.commissionPaid,
     });
   } catch (err) {
     console.warn('Failed to sync income to Supabase:', err);
@@ -242,6 +265,7 @@ export async function fetchExpensesFromDb(): Promise<Expense[]> {
       currency: item.currency || 'BRL',
       date: item.date,
       paid: item.paid || false,
+      partnerId: item.partner_id || undefined,
       createdAt: item.created_at ? item.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
     }));
     saveExpenses(formatted);
@@ -263,9 +287,60 @@ export async function upsertExpenseToDb(expense: Expense): Promise<void> {
       currency: expense.currency,
       date: expense.date,
       paid: expense.paid,
+      partner_id: expense.partnerId,
     });
   } catch (err) {
     console.warn('Failed to sync expense to Supabase:', err);
+  }
+}
+
+// ----------------------------------------------------
+// PARTNER DB OPERATIONS
+// ----------------------------------------------------
+
+export async function fetchPartnersFromDb(): Promise<Partner[]> {
+  try {
+    const { data, error } = await supabase.from('partners').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    const formatted: Partner[] = (data || []).map((item) => ({
+      id: item.id,
+      name: item.name,
+      whatsapp: item.whatsapp || '',
+      email: item.email || '',
+      defaultCommissionPercent: Number(item.default_commission_percent) || 10,
+      notes: item.notes || '',
+      createdAt: item.created_at ? item.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
+    }));
+    savePartners(formatted);
+    return formatted;
+  } catch (err) {
+    console.warn('Supabase fetch partners failed, using local cache:', err);
+    return getStoredPartners();
+  }
+}
+
+export async function upsertPartnerToDb(partner: Partner): Promise<void> {
+  savePartners([partner, ...getStoredPartners().filter(p => p.id !== partner.id)]);
+  try {
+    await supabase.from('partners').upsert({
+      id: partner.id,
+      name: partner.name,
+      whatsapp: partner.whatsapp,
+      email: partner.email,
+      default_commission_percent: partner.defaultCommissionPercent,
+      notes: partner.notes,
+    });
+  } catch (err) {
+    console.warn('Failed to sync partner to Supabase:', err);
+  }
+}
+
+export async function deletePartnerFromDb(partnerId: string): Promise<void> {
+  savePartners(getStoredPartners().filter(p => p.id !== partnerId));
+  try {
+    await supabase.from('partners').delete().eq('id', partnerId);
+  } catch (err) {
+    console.warn('Failed to delete partner from Supabase:', err);
   }
 }
 

@@ -40,6 +40,19 @@ export interface Client {
   createdAt: string;
 }
 
+// ----------------------------------------------------
+// PARTNER / PARCERIAS & COMISSÕES
+// ----------------------------------------------------
+export interface Partner {
+  id: string;
+  name: string;
+  whatsapp?: string;
+  email?: string;
+  defaultCommissionPercent?: number; // e.g. 10 (%)
+  notes?: string;
+  createdAt: string;
+}
+
 export type ProjectCategory = 'Tráfego Pago' | 'Website' | 'Landing Page' | 'Loja Virtual' | 'Automação' | 'Outro';
 
 export type ProjectStatus = 'Em andamento' | 'Aguardando cliente' | 'Concluído' | 'Cancelado';
@@ -58,6 +71,13 @@ export interface Project {
   status: ProjectStatus;
   notes?: string;
   createdAt: string;
+  // Partner & Commission fields
+  partnerId?: string;
+  partnerName?: string;
+  commissionType?: 'percent' | 'fixed';
+  commissionValue?: number; // e.g. 10 for 10% or 5000 for fixed amount
+  commissionAmount?: number; // calculated total commission amount
+  commissionPaid?: boolean; // whether commission was paid out to partner
 }
 
 export type IncomeStatus = 'Pendente' | 'Recebido' | 'Atrasado';
@@ -77,9 +97,14 @@ export interface Income {
   status: IncomeStatus;
   notes?: string;
   createdAt: string;
+  // Partner & Commission fields
+  partnerId?: string;
+  partnerName?: string;
+  commissionAmount?: number;
+  commissionPaid?: boolean;
 }
 
-export type ExpenseCategory = 'Internet' | 'Hospedagem' | 'Domínio' | 'Publicidade' | 'Ferramentas' | 'Salário' | 'Outros';
+export type ExpenseCategory = 'Internet' | 'Hospedagem' | 'Domínio' | 'Publicidade' | 'Ferramentas' | 'Salário' | 'Retirada Própria' | 'Comissão Parceiro' | 'Outros';
 
 export interface Expense {
   id: string;
@@ -89,6 +114,7 @@ export interface Expense {
   currency: CurrencyCode;
   date: string;
   paid: boolean;
+  partnerId?: string;
   createdAt: string;
 }
 
@@ -101,7 +127,7 @@ export interface CategoryItem {
   createdAt: string;
 }
 
-export type AgendaEventType = 'cobranca' | 'pagamento' | 'entrega' | 'compromisso' | 'alarme';
+export type AgendaEventType = 'cobranca' | 'pagamento' | 'entrega' | 'compromisso' | 'alarme' | 'comissao';
 
 export interface AgendaEvent {
   id: string;
@@ -111,6 +137,7 @@ export interface AgendaEvent {
   time?: string; // HH:mm
   clientId?: string;
   projectId?: string;
+  partnerId?: string;
   description?: string;
   status: 'pending' | 'completed';
   notifyPush?: boolean;
@@ -131,7 +158,7 @@ export interface AppSettings {
 
 export interface NotificationItem {
   id: string;
-  type: 'due_today' | 'overdue' | 'project_due' | 'expense_due' | 'agenda_alarm';
+  type: 'due_today' | 'overdue' | 'project_due' | 'expense_due' | 'agenda_alarm' | 'partner_commission';
   title: string;
   message: string;
   date: string;
@@ -140,6 +167,7 @@ export interface NotificationItem {
   incomeId?: string;
   expenseId?: string;
   agendaEventId?: string;
+  partnerId?: string;
   whatsappMessage?: string;
   whatsappPhone?: string;
   severity: 'high' | 'medium' | 'info';

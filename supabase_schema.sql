@@ -34,6 +34,12 @@ CREATE TABLE IF NOT EXISTS public.projects (
   next_payment_date DATE,
   status VARCHAR(50) DEFAULT 'Em andamento',
   notes TEXT,
+  partner_id VARCHAR(64),
+  partner_name VARCHAR(255),
+  commission_type VARCHAR(20) DEFAULT 'percent',
+  commission_value NUMERIC(15,2) DEFAULT 0,
+  commission_amount NUMERIC(15,2) DEFAULT 0,
+  commission_paid BOOLEAN DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -50,6 +56,10 @@ CREATE TABLE IF NOT EXISTS public.incomes (
   payment_method VARCHAR(50) DEFAULT 'PIX',
   status VARCHAR(20) DEFAULT 'Pendente',
   notes TEXT,
+  partner_id VARCHAR(64),
+  partner_name VARCHAR(255),
+  commission_amount NUMERIC(15,2) DEFAULT 0,
+  commission_paid BOOLEAN DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -62,6 +72,7 @@ CREATE TABLE IF NOT EXISTS public.expenses (
   currency VARCHAR(10) DEFAULT 'BRL',
   date DATE NOT NULL,
   paid BOOLEAN DEFAULT false,
+  partner_id VARCHAR(64),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -79,11 +90,12 @@ CREATE TABLE IF NOT EXISTS public.categories (
 CREATE TABLE IF NOT EXISTS public.agenda_events (
   id VARCHAR(64) PRIMARY KEY,
   title VARCHAR(255) NOT NULL,
-  type VARCHAR(50) NOT NULL CHECK (type IN ('cobranca', 'pagamento', 'entrega', 'compromisso', 'alarme')),
+  type VARCHAR(50) NOT NULL CHECK (type IN ('cobranca', 'pagamento', 'entrega', 'compromisso', 'alarme', 'comissao')),
   date DATE NOT NULL,
   time VARCHAR(10),
   client_id VARCHAR(64) REFERENCES public.clients(id) ON DELETE SET NULL,
   project_id VARCHAR(64) REFERENCES public.projects(id) ON DELETE SET NULL,
+  partner_id VARCHAR(64),
   description TEXT,
   status VARCHAR(20) DEFAULT 'pending',
   notify_push BOOLEAN DEFAULT true,
@@ -101,6 +113,7 @@ CREATE TABLE IF NOT EXISTS public.notifications (
   project_id VARCHAR(64),
   income_id VARCHAR(64),
   expense_id VARCHAR(64),
+  partner_id VARCHAR(64),
   whatsapp_message TEXT,
   whatsapp_phone VARCHAR(50),
   severity VARCHAR(20) DEFAULT 'info',
@@ -116,6 +129,17 @@ CREATE TABLE IF NOT EXISTS public.app_settings (
   business_name VARCHAR(255) DEFAULT 'Studio Digital',
   exchange_rates JSONB DEFAULT '{"BRL": 1, "AOA": 165, "USD": 0.18, "EUR": 0.16}'::jsonb,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 9. TABELA DE PARCEIROS & COMISSÕES
+CREATE TABLE IF NOT EXISTS public.partners (
+  id VARCHAR(64) PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  whatsapp VARCHAR(50),
+  email VARCHAR(255),
+  default_commission_percent NUMERIC(5,2) DEFAULT 10.00,
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- INSERIR CONFIGURAÇÃO INICIAL
@@ -158,3 +182,7 @@ CREATE POLICY "Permitir tudo em notifications" ON public.notifications FOR ALL U
 ALTER TABLE public.app_settings ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Permitir tudo em app_settings" ON public.app_settings;
 CREATE POLICY "Permitir tudo em app_settings" ON public.app_settings FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE public.partners ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Permitir tudo em partners" ON public.partners;
+CREATE POLICY "Permitir tudo em partners" ON public.partners FOR ALL USING (true) WITH CHECK (true);

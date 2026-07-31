@@ -1,10 +1,11 @@
-import { Client, Project, Income, Expense, AppSettings } from '../types';
+import { Client, Project, Income, Expense, AppSettings, Partner } from '../types';
 
 const CLIENTS_KEY = 'gfo_clients_v1';
 const PROJECTS_KEY = 'gfo_projects_v1';
 const INCOMES_KEY = 'gfo_incomes_v1';
 const EXPENSES_KEY = 'gfo_expenses_v1';
 const SETTINGS_KEY = 'gfo_settings_v1';
+const PARTNERS_KEY = 'gfo_partners_v1';
 
 // Get today's ISO date string YYYY-MM-DD
 export function getTodayIso(): string {
@@ -100,11 +101,24 @@ export function saveSettings(settings: AppSettings): void {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
 }
 
+export function getStoredPartners(): Partner[] {
+  try {
+    const item = localStorage.getItem(PARTNERS_KEY);
+    if (item) return JSON.parse(item);
+  } catch {}
+  return [];
+}
+
+export function savePartners(partners: Partner[]): void {
+  localStorage.setItem(PARTNERS_KEY, JSON.stringify(partners));
+}
+
 export function clearAllData(): void {
   localStorage.removeItem(CLIENTS_KEY);
   localStorage.removeItem(PROJECTS_KEY);
   localStorage.removeItem(INCOMES_KEY);
   localStorage.removeItem(EXPENSES_KEY);
+  localStorage.removeItem(PARTNERS_KEY);
 }
 
 export function exportBackupData(): string {

@@ -11,6 +11,7 @@ import {
   LogOut,
   Sparkles,
   X,
+  Handshake,
 } from 'lucide-react';
 import {
   Client,
@@ -23,6 +24,7 @@ import {
   CurrencyCode,
   NotificationItem,
   UserSession,
+  Partner,
 } from './types';
 import {
   getStoredClients,
@@ -30,6 +32,7 @@ import {
   getStoredIncomes,
   getStoredExpenses,
   getStoredSettings,
+  getStoredPartners,
   clearAllData,
   exportBackupData,
   importBackupData,
@@ -53,6 +56,9 @@ import {
   fetchAgendaEventsFromDb,
   upsertAgendaEventToDb,
   deleteAgendaEventFromDb,
+  fetchPartnersFromDb,
+  upsertPartnerToDb,
+  deletePartnerFromDb,
 } from './lib/db';
 import { fetchLiveExchangeRates } from './lib/exchange';
 import {
@@ -73,6 +79,7 @@ import { FinancialView } from './components/FinancialView';
 import { CategoriesView } from './components/CategoriesView';
 import { ReportsView } from './components/ReportsView';
 import { SettingsView } from './components/SettingsView';
+import { PartnersView } from './components/PartnersView';
 import { NotificationsModal } from './components/NotificationsModal';
 import { GlobalSearchModal } from './components/GlobalSearchModal';
 
@@ -82,6 +89,7 @@ import { IncomeModal } from './components/modals/IncomeModal';
 import { ExpenseModal } from './components/modals/ExpenseModal';
 import { CategoryModal } from './components/modals/CategoryModal';
 import { AgendaModal } from './components/modals/AgendaModal';
+import { PartnerModal } from './components/modals/PartnerModal';
 
 export default function App() {
   // Authentication State
@@ -144,6 +152,7 @@ export default function App() {
   const [expenses, setExpenses] = useState<Expense[]>(getStoredExpenses);
   const [categories, setCategories] = useState<CategoryItem[]>(getStoredCategories);
   const [agendaEvents, setAgendaEvents] = useState<AgendaEvent[]>([]);
+  const [partners, setPartners] = useState<Partner[]>(getStoredPartners);
   const [settings, setSettings] = useState<AppSettings>(getStoredSettings);
 
   // Modals & Drawers State
@@ -168,17 +177,21 @@ export default function App() {
   const [isAgendaModalOpen, setIsAgendaModalOpen] = useState(false);
   const [agendaEventToEdit, setAgendaEventToEdit] = useState<AgendaEvent | null>(null);
 
+  const [isPartnerModalOpen, setIsPartnerModalOpen] = useState(false);
+  const [partnerToEdit, setPartnerToEdit] = useState<Partner | null>(null);
+
   // Fetch initial data from DB and Exchange Rates
   useEffect(() => {
     registerServiceWorker();
 
     async function loadDbData() {
-      const [fetchedClients, fetchedProjects, fetchedIncomes, fetchedExpenses, fetchedEvents, rates] = await Promise.all([
+      const [fetchedClients, fetchedProjects, fetchedIncomes, fetchedExpenses, fetchedEvents, fetchedPartners, rates] = await Promise.all([
         fetchClientsFromDb(),
         fetchProjectsFromDb(),
         fetchIncomesFromDb(),
         fetchExpensesFromDb(),
         fetchAgendaEventsFromDb(),
+        fetchPartnersFromDb(),
         fetchLiveExchangeRates(),
       ]);
 
@@ -188,6 +201,7 @@ export default function App() {
       setIncomes(fetchedIncomes);
       setExpenses(fetchedExpenses);
       setAgendaEvents(fetchedEvents);
+      setPartners(fetchedPartners);
 
       if (rates) {
         setSettings((prev) => {
@@ -501,6 +515,27 @@ export default function App() {
     }
   };
 
+  // PARTNER CRUD
+  const handleSavePartner = async (partnerData: Omit<Partner, 'id' | 'createdAt'> & { id?: string }) => {
+    const targetId = partnerData.id || `part-${Date.now()}`;
+    const newPartner: Partner = {
+      ...partnerData,
+      id: targetId,
+      createdAt: new Date().toISOString().split('T')[0],
+    };
+    await upsertPartnerToDb(newPartner);
+    setPartners((prev) => [newPartner, ...prev.filter((p) => p.id !== targetId)]);
+  };
+
+  const handleDeletePartner = async (partnerId: string) => {
+    const partner = partners.find((p) => p.id === partnerId);
+    if (!partner) return;
+    if (window.confirm(`Tem certeza que deseja excluir o parceiro "${partner.name}"?`)) {
+      await deletePartnerFromDb(partnerId);
+      setPartners((prev) => prev.filter((p) => p.id !== partnerId));
+    }
+  };
+
   // ROUTE GUARD: Wait for auth check, then redirect if unauthenticated
   if (authLoading) {
     return (
@@ -523,6 +558,7 @@ export default function App() {
     { id: 'projects', label: 'Projetos', icon: FolderKanban, badge: projects.filter((p) => p.status === 'Em andamento').length },
     { id: 'clients', label: 'Clientes', icon: Users, badge: clients.length },
     { id: 'financial', label: 'Financeiro', icon: DollarSign, badge: incomes.filter((i) => i.status === 'Pendente').length },
+    { id: 'partners', label: 'Parceiros', icon: Handshake, badge: partners.length },
     { id: 'categories', label: 'Categorias', icon: Tag },
     { id: 'reports', label: 'Relatórios', icon: PieChart },
     { id: 'settings', label: 'Configurações', icon: Settings },
@@ -542,6 +578,7 @@ export default function App() {
         onOpenNewProjectModal={() => { setProjectToEdit(null); setIsProjectModalOpen(true); }}
         onOpenNewIncomeModal={() => { setIncomeToEdit(null); setIsIncomeModalOpen(true); }}
         onOpenNewExpenseModal={() => { setExpenseToEdit(null); setIsExpenseModalOpen(true); }}
+        onOpenNewPartnerModal={() => { setPartnerToEdit(null); setIsPartnerModalOpen(true); }}
         activeTab={activeTab}
         setActiveTab={handleNavigateTab}
         toggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -740,6 +777,19 @@ export default function App() {
             />
           )}
 
+          {activeTab === 'partners' && (
+            <PartnersView
+              partners={partners}
+              projects={projects}
+              settings={settings}
+              currencyFilter={currencyFilter}
+              onOpenNewPartnerModal={() => { setPartnerToEdit(null); setIsPartnerModalOpen(true); }}
+              onEditPartner={(partner) => { setPartnerToEdit(partner); setIsPartnerModalOpen(true); }}
+              onDeletePartner={handleDeletePartner}
+              onOpenWhatsAppCharge={handleOpenWhatsAppCharge}
+            />
+          )}
+
           {activeTab === 'reports' && (
             <ReportsView
               clients={clients}
@@ -797,6 +847,7 @@ export default function App() {
         onSave={handleSaveProject}
         projectToEdit={projectToEdit}
         clients={clients}
+        partners={partners}
         defaultCurrency={settings.defaultCurrency}
       />
 
@@ -832,6 +883,13 @@ export default function App() {
         eventToEdit={agendaEventToEdit}
         clients={clients}
         projects={projects}
+      />
+
+      <PartnerModal
+        isOpen={isPartnerModalOpen}
+        onClose={() => setIsPartnerModalOpen(false)}
+        onSave={handleSavePartner}
+        partnerToEdit={partnerToEdit}
       />
 
     </div>

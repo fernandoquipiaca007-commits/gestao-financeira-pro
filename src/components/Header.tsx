@@ -12,6 +12,7 @@ import {
   Sparkles,
   LogOut,
   User as UserIcon,
+  Handshake,
 } from 'lucide-react';
 import { CurrencyCode, CURRENCIES, UserSession } from '../types';
 
@@ -25,6 +26,7 @@ interface HeaderProps {
   onOpenNewProjectModal: () => void;
   onOpenNewIncomeModal: () => void;
   onOpenNewExpenseModal: () => void;
+  onOpenNewPartnerModal?: () => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
   toggleMobileMenu: () => void;
@@ -42,6 +44,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenNewProjectModal,
   onOpenNewIncomeModal,
   onOpenNewExpenseModal,
+  onOpenNewPartnerModal,
   activeTab,
   setActiveTab,
   toggleMobileMenu,
@@ -209,6 +212,18 @@ export const Header: React.FC<HeaderProps> = ({
                       <Receipt className="w-4 h-4 text-rose-400" />
                       <span>Nova Despesa</span>
                     </button>
+                    {onOpenNewPartnerModal && (
+                      <button
+                        onClick={() => {
+                          setShowQuickAddDropdown(false);
+                          onOpenNewPartnerModal();
+                        }}
+                        className="w-full px-4 py-2.5 text-left hover:bg-slate-700/70 flex items-center space-x-2.5 transition-colors cursor-pointer"
+                      >
+                        <Handshake className="w-4 h-4 text-purple-400" />
+                        <span>Novo Parceiro</span>
+                      </button>
+                    )}
                   </div>
                 </>
               )}

@@ -10,6 +10,8 @@ import {
   FolderKanban,
   Zap,
   ArrowRight,
+  Wallet,
+  Handshake,
 } from 'lucide-react';
 import { Client, Project, Income, Expense, CurrencyCode, AppSettings } from '../types';
 import { formatCurrency, getDaysDiff, convertCurrency } from '../lib/formatters';
@@ -129,6 +131,35 @@ export const Quick10SecSummary: React.FC<Quick10SecSummaryProps> = ({
   const activeProjects = filteredProjects.filter(
     (p) => p.status === 'Em andamento' || p.status === 'Aguardando cliente'
   );
+
+  // 8. Faturamento Total Contratado em Projetos (Pipeline Geral)
+  const projectTotalItems = filteredProjects.map((p) => ({ amount: p.totalAmount, currency: p.currency }));
+  const totalPipelineContracted = calculateTotalSmart(projectTotalItems);
+
+  // 9. Saldo Real Disponível em Caixa (Liquidez Atual = Total Recebido Histórico - Despesas Pagas - Comissões Pagas)
+  const allReceivedItems = filteredIncomes
+    .filter((i) => i.status === 'Recebido')
+    .map((i) => ({ amount: i.amount, currency: i.currency }));
+  const allPaidExpensesItems = filteredExpenses
+    .filter((e) => e.paid)
+    .map((e) => ({ amount: e.amount, currency: e.currency }));
+  
+  // Total commissions paid out
+  const allPaidCommissionsItems = filteredProjects
+    .filter((p) => p.commissionPaid && (p.commissionAmount || 0) > 0)
+    .map((p) => ({ amount: p.commissionAmount || 0, currency: p.currency }));
+
+  const totalReceivedAllTime = calculateTotalSmart(allReceivedItems).raw;
+  const totalPaidExpensesAllTime = calculateTotalSmart(allPaidExpensesItems).raw;
+  const totalPaidCommissionsAllTime = calculateTotalSmart(allPaidCommissionsItems).raw;
+  const realCashBalanceRaw = totalReceivedAllTime - totalPaidExpensesAllTime - totalPaidCommissionsAllTime;
+  const realCashBalanceFormatted = formatCurrency(realCashBalanceRaw, dominantCurrency);
+
+  // 10. Comissões a Pagar para Parceiros (Pendentes)
+  const pendingCommissionsItems = filteredProjects
+    .filter((p) => !p.commissionPaid && (p.commissionAmount || 0) > 0)
+    .map((p) => ({ amount: p.commissionAmount || 0, currency: p.currency }));
+  const totalPendingCommissions = calculateTotalSmart(pendingCommissionsItems);
 
   // 8. Quais projetos precisam da minha atenção hoje (Due today, due tomorrow, or status 'Aguardando cliente')
   const projectsNeedingAttention = filteredProjects.filter((p) => {
@@ -307,6 +338,54 @@ export const Quick10SecSummary: React.FC<Quick10SecSummaryProps> = ({
               className="text-purple-400 hover:underline text-[10px] font-medium inline-flex items-center gap-0.5 cursor-pointer"
             >
               Ver <ArrowRight className="w-3 h-3" />
+            </button>
+          </p>
+        </div>
+
+        {/* Q9: Saldo Real Disponível em Conta */}
+        <div className="bg-slate-800/80 hover:bg-slate-800 p-4 rounded-xl border border-teal-500/40 transition-all group">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-semibold text-teal-300">9. Saldo Real em Caixa</span>
+            <Wallet className="w-4 h-4 text-teal-400" />
+          </div>
+          <div className={`text-xl font-extrabold tracking-tight ${realCashBalanceRaw >= 0 ? 'text-teal-400' : 'text-rose-400'}`}>
+            {realCashBalanceFormatted}
+          </div>
+          <p className="text-[11px] text-slate-400 mt-1 flex items-center justify-between">
+            <span>Disponível em conta hoje</span>
+          </p>
+        </div>
+
+        {/* Q10: Faturamento Geral Contratado */}
+        <div className="bg-slate-800/80 hover:bg-slate-800 p-4 rounded-xl border border-emerald-500/40 transition-all group">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-semibold text-emerald-300">10. Faturamento Total Geral</span>
+            <TrendingUp className="w-4 h-4 text-emerald-400" />
+          </div>
+          <div className="text-xl font-extrabold text-emerald-400 tracking-tight">
+            {totalPipelineContracted.formatted}
+          </div>
+          <p className="text-[11px] text-slate-400 mt-1 flex items-center justify-between">
+            <span>Soma contratada (Projetos)</span>
+          </p>
+        </div>
+
+        {/* Q11: Comissões Pendentes a Pagar */}
+        <div className="bg-slate-800/80 hover:bg-slate-800 p-4 rounded-xl border border-purple-500/40 transition-all group">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-semibold text-purple-300">11. Comissões a Pagar</span>
+            <Handshake className="w-4 h-4 text-purple-400" />
+          </div>
+          <div className="text-xl font-extrabold text-purple-400 tracking-tight">
+            {totalPendingCommissions.formatted}
+          </div>
+          <p className="text-[11px] text-slate-400 mt-1 flex items-center justify-between">
+            <span>Repasse a parceiros</span>
+            <button
+              onClick={() => onNavigateToTab('partners')}
+              className="text-purple-400 hover:underline text-[10px] font-medium inline-flex items-center gap-0.5 cursor-pointer"
+            >
+              Parceiros <ArrowRight className="w-3 h-3" />
             </button>
           </p>
         </div>

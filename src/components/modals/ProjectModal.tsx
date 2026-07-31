@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, FolderKanban, Save, DollarSign, Calendar } from 'lucide-react';
-import { Project, Client, ProjectCategory, ProjectStatus, CurrencyCode, CURRENCIES } from '../../types';
+import { X, FolderKanban, Save, DollarSign, Calendar, Handshake, Percent, UserCheck } from 'lucide-react';
+import { Project, Client, ProjectCategory, ProjectStatus, CurrencyCode, CURRENCIES, Partner } from '../../types';
 import { getTodayIso, addDaysIso } from '../../lib/storage';
+import { formatCurrency } from '../../lib/formatters';
 
 interface ProjectModalProps {
   isOpen: boolean;
@@ -9,6 +10,7 @@ interface ProjectModalProps {
   onSave: (projectData: Omit<Project, 'id' | 'createdAt'> & { id?: string }) => void;
   projectToEdit?: Project | null;
   clients: Client[];
+  partners?: Partner[];
   defaultCurrency: CurrencyCode;
 }
 
@@ -18,6 +20,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   onSave,
   projectToEdit,
   clients,
+  partners = [],
   defaultCurrency,
 }) => {
   const [name, setName] = useState('');
@@ -32,6 +35,13 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   const [status, setStatus] = useState<ProjectStatus>('Em andamento');
   const [notes, setNotes] = useState('');
 
+  // Partner & Commission State
+  const [hasPartner, setHasPartner] = useState(false);
+  const [partnerId, setPartnerId] = useState('');
+  const [commissionType, setCommissionType] = useState<'percent' | 'fixed'>('percent');
+  const [commissionValue, setCommissionValue] = useState<number>(10);
+  const [commissionPaid, setCommissionPaid] = useState(false);
+
   useEffect(() => {
     if (projectToEdit) {
       setName(projectToEdit.name);
@@ -45,6 +55,11 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       setNextPaymentDate(projectToEdit.nextPaymentDate || '');
       setStatus(projectToEdit.status);
       setNotes(projectToEdit.notes || '');
+      setHasPartner(!!projectToEdit.partnerId);
+      setPartnerId(projectToEdit.partnerId || '');
+      setCommissionType(projectToEdit.commissionType || 'percent');
+      setCommissionValue(projectToEdit.commissionValue ?? 10);
+      setCommissionPaid(projectToEdit.commissionPaid || false);
     } else {
       setName('');
       const firstClient = clients[0];
@@ -63,10 +78,14 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       setNextPaymentDate(addDaysIso(0));
       setStatus('Em andamento');
       setNotes('');
+      setHasPartner(false);
+      setPartnerId('');
+      setCommissionType('percent');
+      setCommissionValue(10);
+      setCommissionPaid(false);
     }
   }, [projectToEdit, isOpen, clients, defaultCurrency]);
 
-  // When client selection changes, inherit client's default currency
   const handleClientChange = (cId: string) => {
     setClientId(cId);
     const client = clients.find((c) => c.id === cId);
@@ -75,105 +94,136 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
     }
   };
 
+  const handlePartnerChange = (pId: string) => {
+    setPartnerId(pId);
+    const partner = partners.find((p) => p.id === pId);
+    if (partner && partner.defaultCommissionPercent !== undefined) {
+      setCommissionType('percent');
+      setCommissionValue(partner.defaultCommissionPercent);
+    }
+  };
+
   if (!isOpen) return null;
 
-  const remainingAmount = Math.max(0, (Number(totalAmount) || 0) - (Number(paidAmount) || 0));
+  const numTotal = Number(totalAmount) || 0;
+  const numPaid = Number(paidAmount) || 0;
+  const remainingAmount = Math.max(0, numTotal - numPaid);
+
+  // Commission Calculation
+  let calculatedCommission = 0;
+  if (hasPartner && partnerId) {
+    if (commissionType === 'percent') {
+      calculatedCommission = (numTotal * (Number(commissionValue) || 0)) / 100;
+    } else {
+      calculatedCommission = Number(commissionValue) || 0;
+    }
+  }
+  const netStudioAmount = Math.max(0, numTotal - calculatedCommission);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !clientId) return;
+
+    const selectedPartner = partners.find((p) => p.id === partnerId);
 
     onSave({
       id: projectToEdit?.id,
       name: name.trim(),
       clientId,
       category,
-      totalAmount: Number(totalAmount) || 0,
-      paidAmount: Number(paidAmount) || 0,
+      totalAmount: numTotal,
+      paidAmount: numPaid,
       currency,
       startDate,
       dueDate,
       nextPaymentDate: nextPaymentDate ? nextPaymentDate : undefined,
       status,
       notes: notes.trim(),
+      partnerId: hasPartner ? partnerId : undefined,
+      partnerName: hasPartner ? selectedPartner?.name : undefined,
+      commissionType: hasPartner ? commissionType : undefined,
+      commissionValue: hasPartner ? Number(commissionValue) || 0 : undefined,
+      commissionAmount: hasPartner ? calculatedCommission : undefined,
+      commissionPaid: hasPartner ? commissionPaid : undefined,
     });
 
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
         
         {/* Header */}
-        <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/80">
-          <div className="flex items-center space-x-2">
-            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-800 bg-slate-900/50 shrink-0">
+          <div className="flex items-center space-x-3">
+            <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
               <FolderKanban className="w-5 h-5" />
             </div>
-            <h3 className="font-bold text-white text-base">
-              {projectToEdit ? 'Editar Projeto' : 'Cadastrar Novo Projeto'}
-            </h3>
+            <div>
+              <h3 className="text-base font-bold text-white">
+                {projectToEdit ? 'Editar Projeto' : 'Novo Projeto'}
+              </h3>
+              <p className="text-xs text-slate-400">
+                Cadastre o valor, prazos e comissão do parceiro
+              </p>
+            </div>
           </div>
-
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+            className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1">
+        {/* Form Body */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
           
-          {/* Nome do Projeto */}
-          <div>
-            <label className="text-xs font-semibold text-slate-300 block mb-1">
-              Nome do Projeto *
-            </label>
-            <input
-              type="text"
-              required
-              placeholder="Ex: Landing Page de Vendas"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-200 text-sm focus:outline-none focus:border-emerald-500"
-            />
-          </div>
-
-          {/* Cliente & Categoria */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-1">
+              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                Nome do Projeto *
+              </label>
+              <input
+                type="text"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Ex: Website Institucional"
+                className="w-full bg-slate-950/80 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none transition-all"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
                 Cliente *
               </label>
               <select
                 required
                 value={clientId}
                 onChange={(e) => handleClientChange(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-200 text-sm focus:outline-none focus:border-emerald-500"
+                className="w-full bg-slate-950/80 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all"
               >
-                {clients.length === 0 ? (
-                  <option value="">Nenhum cliente cadastrado</option>
-                ) : (
-                  clients.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.company || c.currency})
-                    </option>
-                  ))
-                )}
+                <option value="">Selecione um cliente...</option>
+                {clients.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} {c.company ? `(${c.company})` : ''} - [{c.currency}]
+                  </option>
+                ))}
               </select>
             </div>
+          </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-1">
+              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
                 Categoria
               </label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value as ProjectCategory)}
-                className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-200 text-sm focus:outline-none focus:border-emerald-500"
+                className="w-full bg-slate-950/80 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all"
               >
                 <option value="Website">Website</option>
                 <option value="Landing Page">Landing Page</option>
@@ -183,67 +233,83 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                 <option value="Outro">Outro</option>
               </select>
             </div>
-          </div>
 
-          {/* Financeiro: Valor Total, Pago & Moeda */}
-          <div className="bg-slate-950/70 p-4 rounded-xl border border-slate-800/80 space-y-3">
-            <div className="flex items-center justify-between text-xs text-slate-300 font-bold border-b border-slate-800 pb-2">
-              <span className="flex items-center gap-1">
-                <DollarSign className="w-4 h-4 text-emerald-400" /> Valores do Projeto
-              </span>
+            <div>
+              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                Moeda
+              </label>
               <select
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
-                className="px-2 py-1 bg-slate-800 border border-slate-700 rounded text-xs font-bold text-emerald-400"
+                className="w-full bg-slate-950/80 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all font-bold text-emerald-400"
               >
-                <option value="AOA">AOA (Kz)</option>
-                <option value="BRL">BRL (R$)</option>
-                <option value="USD">USD ($)</option>
-                <option value="EUR">EUR (€)</option>
+                {Object.values(CURRENCIES).map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.flag} {c.code} ({c.symbol})
+                  </option>
+                ))}
               </select>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-[11px] font-semibold text-slate-400 block mb-1">
-                  Valor Total ({CURRENCIES[currency]?.symbol})
-                </label>
-                <input
-                  type="number"
-                  step="any"
-                  required
-                  value={totalAmount}
-                  onChange={(e) => setTotalAmount(Number(e.target.value))}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white font-bold text-sm focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div>
-                <label className="text-[11px] font-semibold text-slate-400 block mb-1">
-                  Valor Já Pago ({CURRENCIES[currency]?.symbol})
-                </label>
-                <input
-                  type="number"
-                  step="any"
-                  value={paidAmount}
-                  onChange={(e) => setPaidAmount(Number(e.target.value))}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-emerald-400 font-bold text-sm focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between text-xs pt-1">
-              <span className="text-slate-400 font-medium">Falta Pagar (Calculado):</span>
-              <strong className="text-amber-400 font-bold text-sm">
-                {CURRENCIES[currency]?.symbol} {remainingAmount.toLocaleString()}
-              </strong>
+            <div>
+              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                Status
+              </label>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value as ProjectStatus)}
+                className="w-full bg-slate-950/80 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all"
+              >
+                <option value="Em andamento">Em andamento</option>
+                <option value="Aguardando cliente">Aguardando cliente</option>
+                <option value="Concluído">Concluído</option>
+                <option value="Cancelado">Cancelado</option>
+              </select>
             </div>
           </div>
 
-          {/* Dates: Start, Due, Next Payment */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-slate-950/50 border border-slate-800 rounded-2xl">
             <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-1">
+              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                Valor Total do Projeto ({CURRENCIES[currency]?.symbol})
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="any"
+                required
+                value={totalAmount}
+                onChange={(e) => setTotalAmount(parseFloat(e.target.value) || 0)}
+                className="w-full bg-slate-900 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-3 text-base font-bold text-white placeholder-slate-500 focus:outline-none transition-all"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                Valor Já Pago / Entrada ({CURRENCIES[currency]?.symbol})
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="any"
+                value={paidAmount}
+                onChange={(e) => setPaidAmount(parseFloat(e.target.value) || 0)}
+                className="w-full bg-slate-900 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-3 text-base font-bold text-emerald-400 placeholder-slate-500 focus:outline-none transition-all"
+              />
+            </div>
+
+            <div className="sm:col-span-2 flex items-center justify-between pt-2 border-t border-slate-800 text-xs font-semibold">
+              <span className="text-slate-400">Saldo Restante a Receber:</span>
+              <span className="text-amber-400 font-extrabold text-sm">
+                {formatCurrency(remainingAmount, currency)}
+              </span>
+            </div>
+          </div>
+
+          {/* Dates */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
                 Data de Início
               </label>
               <input
@@ -251,85 +317,144 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                 required
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-200 text-xs focus:outline-none focus:border-emerald-500"
+                className="w-full bg-slate-950/80 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all"
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-1">
-                Data Entrega
+              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                Previsão de Entrega
               </label>
               <input
                 type="date"
                 required
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-200 text-xs focus:outline-none focus:border-emerald-500"
+                className="w-full bg-slate-950/80 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all"
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-1">
-                Próximo Pgt
+              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                Próximo Pagamento
               </label>
               <input
                 type="date"
                 value={nextPaymentDate}
                 onChange={(e) => setNextPaymentDate(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-200 text-xs focus:outline-none focus:border-emerald-500"
+                className="w-full bg-slate-950/80 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all"
               />
             </div>
           </div>
 
-          {/* Status */}
-          <div>
-            <label className="text-xs font-semibold text-slate-300 block mb-1">
-              Status do Projeto
-            </label>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value as ProjectStatus)}
-              className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-200 text-sm focus:outline-none focus:border-emerald-500 font-semibold"
-            >
-              <option value="Em andamento">Em andamento</option>
-              <option value="Aguardando cliente">Aguardando cliente</option>
-              <option value="Concluído">Concluído</option>
-              <option value="Cancelado">Cancelado</option>
-            </select>
+          {/* Partner & Commission Section */}
+          <div className="p-4 bg-purple-950/20 border border-purple-900/40 rounded-2xl space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="flex items-center space-x-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={hasPartner}
+                  onChange={(e) => setHasPartner(e.target.checked)}
+                  className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 bg-slate-950 border-slate-800"
+                />
+                <span className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
+                  <Handshake className="w-4 h-4 text-purple-400" />
+                  Projeto em Parceria / Indicação (Comissão)
+                </span>
+              </label>
+            </div>
+
+            {hasPartner && (
+              <div className="space-y-3 pt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-300 uppercase mb-1">
+                      Parceiro *
+                    </label>
+                    <select
+                      required={hasPartner}
+                      value={partnerId}
+                      onChange={(e) => handlePartnerChange(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 focus:border-purple-500 rounded-xl px-3 py-2 text-xs text-white"
+                    >
+                      <option value="">Selecione o parceiro...</option>
+                      {partners.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} ({p.defaultCommissionPercent}% comissão)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-300 uppercase mb-1">
+                        Tipo
+                      </label>
+                      <select
+                        value={commissionType}
+                        onChange={(e) => setCommissionType(e.target.value as 'percent' | 'fixed')}
+                        className="w-full bg-slate-950 border border-slate-800 focus:border-purple-500 rounded-xl px-2 py-2 text-xs text-white"
+                      >
+                        <option value="percent">Porcentagem (%)</option>
+                        <option value="fixed">Valor Fixo ({CURRENCIES[currency]?.symbol})</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-300 uppercase mb-1">
+                        Comissão
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="any"
+                        value={commissionValue}
+                        onChange={(e) => setCommissionValue(parseFloat(e.target.value) || 0)}
+                        placeholder="10"
+                        className="w-full bg-slate-950 border border-slate-800 focus:border-purple-500 rounded-xl px-3 py-2 text-xs text-white font-bold"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Partner Live Breakdown Box */}
+                {partnerId && (
+                  <div className="p-3 bg-slate-900 border border-purple-800/40 rounded-xl text-xs space-y-1.5">
+                    <div className="flex justify-between text-slate-300">
+                      <span>💰 Valor Total do Projeto:</span>
+                      <strong className="text-white">{formatCurrency(numTotal, currency)}</strong>
+                    </div>
+                    <div className="flex justify-between text-purple-300">
+                      <span>🤝 Comissão do Parceiro ({commissionType === 'percent' ? `${commissionValue}%` : 'Fixo'}):</span>
+                      <strong className="text-purple-400">{formatCurrency(calculatedCommission, currency)}</strong>
+                    </div>
+                    <div className="flex justify-between text-emerald-400 font-bold border-t border-slate-800 pt-1.5">
+                      <span>✨ Seu Valor Líquido (Studio):</span>
+                      <span>{formatCurrency(netStudioAmount, currency)}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
-          {/* Observações */}
-          <div>
-            <label className="text-xs font-semibold text-slate-300 block mb-1">
-              Observações
-            </label>
-            <textarea
-              rows={2}
-              placeholder="Anotações sobre escopo, links, detalhes..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="w-full px-3.5 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-200 text-sm focus:outline-none focus:border-emerald-500"
-            />
-          </div>
-
-          {/* Footer Controls */}
-          <div className="pt-3 border-t border-slate-800 flex items-center justify-end space-x-3">
+          <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-800">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl bg-slate-800 text-slate-300 hover:text-white text-sm font-semibold"
+              className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm rounded-xl flex items-center space-x-2 transition-all shadow-md active:scale-95"
+              className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all flex items-center space-x-2 cursor-pointer"
             >
               <Save className="w-4 h-4" />
-              <span>Salvar Projeto</span>
+              <span>{projectToEdit ? 'Salvar Alterações' : 'Criar Projeto'}</span>
             </button>
           </div>
-
         </form>
 
       </div>
