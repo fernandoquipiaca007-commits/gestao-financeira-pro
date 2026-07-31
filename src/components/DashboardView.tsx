@@ -303,7 +303,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               {netProfitThisMonthFormatted}
             </div>
             <div className="mt-2 text-xs text-slate-400">
-              {netProfitThisMonth >= 0 ? 'Resultado operacional positivo' : 'Atenção às margens'}
+              {profitRaw >= 0 ? 'Resultado operacional positivo' : 'Atenção às margens'}
             </div>
           </div>
 
