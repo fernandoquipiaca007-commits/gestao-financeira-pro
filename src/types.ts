@@ -115,6 +115,8 @@ export interface Expense {
   date: string;
   paid: boolean;
   partnerId?: string;
+  partnerName?: string;
+  receiptUrl?: string;
   createdAt: string;
 }
 

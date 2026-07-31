@@ -871,6 +871,7 @@ export default function App() {
         onSave={handleSaveExpense}
         expenseToEdit={expenseToEdit}
         defaultCurrency={settings.defaultCurrency}
+        partners={partners}
       />
 
       <CategoryModal

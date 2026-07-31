@@ -266,6 +266,8 @@ export async function fetchExpensesFromDb(): Promise<Expense[]> {
       date: item.date,
       paid: item.paid || false,
       partnerId: item.partner_id || undefined,
+      partnerName: item.partner_name || undefined,
+      receiptUrl: item.receipt_url || undefined,
       createdAt: item.created_at ? item.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
     }));
     saveExpenses(formatted);
@@ -288,6 +290,8 @@ export async function upsertExpenseToDb(expense: Expense): Promise<void> {
       date: expense.date,
       paid: expense.paid,
       partner_id: expense.partnerId,
+      partner_name: expense.partnerName,
+      receipt_url: expense.receiptUrl,
     });
   } catch (err) {
     console.warn('Failed to sync expense to Supabase:', err);
