@@ -30,6 +30,7 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
           password,
           options: {
             data: { name: name || 'Gestor' },
+            emailRedirectTo: window.location.origin,
           },
         });
 
