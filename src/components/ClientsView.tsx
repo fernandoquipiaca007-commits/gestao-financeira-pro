@@ -70,18 +70,18 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-            <Users className="w-7 h-7 text-blue-400" />
-            Clientes
+          <h2 className="text-lg font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+            <Users className="w-5 h-5 text-blue-600" />
+            Base de Clientes
           </h2>
-          <p className="text-sm text-slate-400">
-            Base de clientes, associados aos respetivos países, moedas e histórico financeiro
+          <p className="text-xs text-slate-500 font-medium mt-0.5">
+            Clientes cadastrados com histórico financeiro, projetos e contatos
           </p>
         </div>
 
         <button
           onClick={onOpenNewClientModal}
-          className="px-4 py-2.5 bg-blue-500 hover:bg-blue-400 text-slate-950 font-bold text-sm rounded-xl flex items-center justify-center space-x-2 transition-all shadow-md shadow-blue-500/10 active:scale-95"
+          className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95"
         >
           <Plus className="w-4 h-4 stroke-[3]" />
           <span>Cadastrar Cliente</span>
@@ -89,7 +89,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-lg">
+      <div className="bg-white border border-slate-200/90 p-4 rounded-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
         
         {/* Search */}
         <div className="relative flex-1">
@@ -99,7 +99,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
             placeholder="Pesquisar por nome, empresa, e-mail, WhatsApp..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700/80 rounded-xl text-slate-200 text-sm focus:outline-none focus:border-blue-500 transition-colors"
+            className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-colors"
           />
         </div>
 
@@ -107,7 +107,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
         <select
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value)}
-          className="px-3 py-2 bg-slate-800 border border-slate-700/80 rounded-xl text-slate-200 text-xs font-medium focus:outline-none focus:border-blue-500"
+          className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 text-xs font-semibold focus:outline-none focus:border-blue-500"
         >
           <option value="ALL">Todos os Tipos</option>
           <option value="Tráfego Pago">Tráfego Pago</option>
@@ -119,15 +119,15 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
 
       {/* Clients Grid */}
       {filteredClients.length === 0 ? (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center text-slate-400 space-y-3">
-          <Users className="w-12 h-12 text-slate-600 mx-auto" />
-          <h3 className="text-base font-semibold text-slate-300">Nenhum cliente encontrado</h3>
+        <div className="bg-white border border-slate-200/90 rounded-2xl p-12 text-center space-y-3">
+          <Users className="w-10 h-10 text-slate-300 mx-auto" />
+          <h3 className="text-sm font-bold text-slate-700">Nenhum cliente encontrado</h3>
           <p className="text-xs text-slate-500 max-w-sm mx-auto">
             Não existem clientes cadastrados para os critérios selecionados.
           </p>
           <button
             onClick={onOpenNewClientModal}
-            className="px-4 py-2 bg-blue-500 text-slate-950 font-bold text-xs rounded-xl inline-flex items-center gap-1.5"
+            className="px-4 py-2 bg-blue-600 text-white font-bold text-xs rounded-xl inline-flex items-center gap-1.5 hover:bg-blue-700 transition-colors"
           >
             <Plus className="w-4 h-4" /> Cadastrar Novo Cliente
           </button>
@@ -136,77 +136,66 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredClients.map((c) => {
             // Compute Client Stats:
-            // Projects count
             const clientProjects = projects.filter((p) => p.clientId === c.id);
             const projectsCount = clientProjects.length;
-
-            // Incomes for this client
             const clientIncomes = incomes.filter((i) => i.clientId === c.id);
-
-            // Total paid
             const totalPaid = clientIncomes
               .filter((i) => i.status === 'Recebido')
               .reduce((sum, i) => sum + i.amount, 0);
-
-            // Total owed
             const totalOwed = clientIncomes
               .filter((i) => i.status !== 'Recebido')
               .reduce((sum, i) => sum + i.amount, 0);
-
-            // Last payment date
             const receivedIncomes = clientIncomes
               .filter((i) => i.status === 'Recebido')
               .sort((a, b) => (b.receivedDate || b.dueDate).localeCompare(a.receivedDate || a.dueDate));
-
             const lastPaymentDate = receivedIncomes.length > 0
               ? (receivedIncomes[0].receivedDate || receivedIncomes[0].dueDate)
               : null;
-
             const countryInfo = COUNTRIES[c.country] || COUNTRIES.OTHER;
             const currencyInfo = CURRENCIES[c.currency] || CURRENCIES.BRL;
 
             return (
               <div
                 key={c.id}
-                className="bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-2xl p-5 shadow-lg flex flex-col justify-between transition-all group"
+                className="bg-white border border-slate-200/90 hover:border-slate-300 hover:shadow-sm rounded-2xl p-5 flex flex-col justify-between transition-all group"
               >
                 <div>
                   {/* Top Header: Flag, Currency badge & Type pill */}
                   <div className="flex items-center justify-between gap-2 mb-3">
-                    <span className="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-200 text-xs font-semibold border border-slate-700 flex items-center gap-1.5">
+                    <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-[11px] font-bold border border-slate-200 flex items-center gap-1.5">
                       <span>{countryInfo.flag}</span>
                       <span>{c.type}</span>
                     </span>
 
-                    <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[11px] font-bold border border-emerald-500/20">
-                      Moeda: {currencyInfo.symbol} ({c.currency})
+                    <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-700 text-[11px] font-bold border border-emerald-200">
+                      {currencyInfo.symbol} {c.currency}
                     </span>
                   </div>
 
                   {/* Client Name & Company */}
-                  <h3 className="text-lg font-bold text-white tracking-tight group-hover:text-blue-400 transition-colors">
+                  <h3 className="text-base font-extrabold text-slate-900 tracking-tight group-hover:text-blue-700 transition-colors">
                     {c.name}
                   </h3>
 
                   {c.company && (
-                    <div className="flex items-center space-x-1.5 text-xs text-slate-400 mt-0.5 mb-3">
-                      <Building2 className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                    <div className="flex items-center space-x-1.5 text-xs text-slate-500 font-medium mt-0.5 mb-3">
+                      <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                       <span>{c.company}</span>
                     </div>
                   )}
 
                   {/* Contacts */}
-                  <div className="space-y-1.5 text-xs mb-4 pt-2 border-t border-slate-800/80">
+                  <div className="space-y-1.5 text-xs mb-4 pt-2 border-t border-slate-100">
                     {c.whatsapp && (
-                      <div className="flex items-center justify-between text-slate-300">
-                        <span className="flex items-center gap-1.5 text-slate-400">
-                          <MessageCircle className="w-3.5 h-3.5 text-emerald-400" /> WhatsApp:
+                      <div className="flex items-center justify-between text-slate-700">
+                        <span className="flex items-center gap-1.5 text-slate-500 font-medium">
+                          <MessageCircle className="w-3.5 h-3.5 text-emerald-600" /> WhatsApp:
                         </span>
                         <a
                           href={generateWhatsAppLink(c.whatsapp, `Olá, ${c.name}!`)}
                           target="_blank"
                           rel="noreferrer"
-                          className="font-medium hover:text-emerald-400 hover:underline flex items-center gap-1"
+                          className="font-bold text-slate-800 hover:text-emerald-700 hover:underline flex items-center gap-1"
                         >
                           {c.whatsapp} <ExternalLink className="w-3 h-3" />
                         </a>
@@ -214,13 +203,13 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     )}
 
                     {c.email && (
-                      <div className="flex items-center justify-between text-slate-300">
-                        <span className="flex items-center gap-1.5 text-slate-400">
-                          <Mail className="w-3.5 h-3.5 text-blue-400" /> E-mail:
+                      <div className="flex items-center justify-between text-slate-700">
+                        <span className="flex items-center gap-1.5 text-slate-500 font-medium">
+                          <Mail className="w-3.5 h-3.5 text-blue-500" /> E-mail:
                         </span>
                         <a
                           href={`mailto:${c.email}`}
-                          className="font-medium hover:text-blue-400 hover:underline truncate max-w-[160px]"
+                          className="font-bold text-slate-800 hover:text-blue-700 hover:underline truncate max-w-[160px]"
                         >
                           {c.email}
                         </a>
@@ -229,38 +218,38 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                   </div>
 
                   {/* Client Financial Metrics */}
-                  <div className="bg-slate-950/70 p-3.5 rounded-xl border border-slate-800/80 space-y-2 text-xs mb-4">
+                  <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 space-y-2 text-xs mb-4">
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-400 flex items-center gap-1">
-                        <FolderKanban className="w-3.5 h-3.5 text-indigo-400" /> Projetos:
+                      <span className="text-slate-500 font-medium flex items-center gap-1">
+                        <FolderKanban className="w-3.5 h-3.5 text-indigo-500" /> Projetos:
                       </span>
-                      <strong className="text-white">{projectsCount} projeto(s)</strong>
+                      <strong className="text-slate-900 font-bold">{projectsCount} projeto(s)</strong>
                     </div>
 
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-400 flex items-center gap-1">
-                        <DollarSign className="w-3.5 h-3.5 text-emerald-400" /> Quanto já pagou:
+                      <span className="text-slate-500 font-medium flex items-center gap-1">
+                        <DollarSign className="w-3.5 h-3.5 text-emerald-600" /> Já pagou:
                       </span>
-                      <strong className="text-emerald-400">
+                      <strong className="text-emerald-700 font-bold">
                         {formatCurrency(totalPaid, c.currency)}
                       </strong>
                     </div>
 
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-400 flex items-center gap-1">
-                        <DollarSign className="w-3.5 h-3.5 text-rose-400" /> Quanto ainda deve:
+                      <span className="text-slate-500 font-medium flex items-center gap-1">
+                        <DollarSign className="w-3.5 h-3.5 text-rose-500" /> Ainda deve:
                       </span>
-                      <strong className={totalOwed > 0 ? 'text-rose-400 font-bold' : 'text-slate-400'}>
+                      <strong className={totalOwed > 0 ? 'text-rose-700 font-bold' : 'text-slate-400'}>
                         {formatCurrency(totalOwed, c.currency)}
                       </strong>
                     </div>
 
-                    <div className="flex items-center justify-between pt-1 border-t border-slate-800/80">
-                      <span className="text-slate-400 flex items-center gap-1">
-                        <Calendar className="w-3.5 h-3.5 text-slate-500" /> Último pagamento:
+                    <div className="flex items-center justify-between pt-1.5 border-t border-slate-200">
+                      <span className="text-slate-500 font-medium flex items-center gap-1">
+                        <Calendar className="w-3.5 h-3.5 text-slate-400" /> Último pagamento:
                       </span>
-                      <span className="text-slate-300 font-medium">
-                        {lastPaymentDate ? formatDate(lastPaymentDate) : 'Nenhum'}
+                      <span className="text-slate-700 font-bold">
+                        {lastPaymentDate ? formatDate(lastPaymentDate) : '—'}
                       </span>
                     </div>
                   </div>
@@ -268,18 +257,18 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                 </div>
 
                 {/* Footer Controls */}
-                <div className="pt-3 border-t border-slate-800 flex items-center justify-between">
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
                   <div className="flex items-center space-x-1">
                     <button
                       onClick={() => onEditClient(c)}
-                      className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+                      className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
                       title="Editar Cliente"
                     >
                       <Edit3 className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => onDeleteClient(c.id)}
-                      className="p-2 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors"
+                      className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
                       title="Excluir Cliente"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -292,10 +281,10 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                         const text = `Olá, ${c.name}! Tudo bem?`;
                         onOpenWhatsAppCharge(c.whatsapp, text);
                       }}
-                      className="px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all"
+                      className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all"
                     >
                       <MessageCircle className="w-3.5 h-3.5" />
-                      <span>Mensagem WhatsApp</span>
+                      <span>Mensagem WA</span>
                     </button>
                   )}
                 </div>

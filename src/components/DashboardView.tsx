@@ -221,200 +221,200 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         onOpenNewExpenseModal={onOpenNewExpenseModal}
       />
 
-      {/* 2. Resumo Geral KPI Grid */}
+      {/* 2. Indicadores Financeiros KPI Grid */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-base font-bold text-slate-200 tracking-tight flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-emerald-400" />
-            Resumo Geral dos Indicadores
+          <h3 className="text-sm font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-emerald-600" />
+            Indicadores Financeiros
           </h3>
-          <span className="text-xs text-slate-400">
-            Filtro ativo: <strong className="text-white">{currencyFilter === 'ALL' ? 'Todas as Moedas' : currencyFilter}</strong>
+          <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
+            Filtro: <strong className="text-slate-900">{currencyFilter === 'ALL' ? 'Todas as Moedas' : currencyFilter}</strong>
           </span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           
-          {/* Card 1: Total a receber */}
+          {/* Card 1: Contas a Receber */}
           <div
             onClick={() => onNavigateTab('financial', 'receitas-pendentes')}
-            className="bg-slate-900 border border-slate-800 hover:border-emerald-500/50 p-5 rounded-2xl transition-all cursor-pointer group shadow-sm"
+            className="bg-white border border-slate-200 hover:border-emerald-400 hover:shadow-sm p-5 rounded-2xl transition-all cursor-pointer group"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Total a receber</span>
-              <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500 group-hover:text-slate-950 transition-colors">
-                <DollarSign className="w-5 h-5" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Contas a Receber</span>
+              <div className="p-2 rounded-xl bg-emerald-100/70 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                <DollarSign className="w-4 h-4" />
               </div>
             </div>
-            <div className="text-2xl font-extrabold text-white mt-3 tracking-tight">
+            <div className="text-2xl font-extrabold text-slate-900 mt-3 tracking-tight">
               {totalToReceive.formatted}
             </div>
-            <div className="mt-2 text-xs text-slate-400 flex items-center justify-between">
-              <span>{pendingIncomeItems.length} faturas a faturar</span>
-              <ChevronRight className="w-4 h-4 text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="mt-2 text-[11px] text-slate-500 font-medium flex items-center justify-between border-t border-slate-100 pt-2">
+              <span>{pendingIncomeItems.length} fatura(s) pendente(s)</span>
+              <ChevronRight className="w-4 h-4 text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
           </div>
 
-          {/* Card 2: Total recebido no mês */}
+          {/* Card 2: Receita Recebida no mês */}
           <div
             onClick={() => onNavigateTab('financial', 'receitas-recebidas')}
-            className="bg-slate-900 border border-slate-800 hover:border-teal-500/50 p-5 rounded-2xl transition-all cursor-pointer group shadow-sm"
+            className="bg-white border border-slate-200 hover:border-teal-400 hover:shadow-sm p-5 rounded-2xl transition-all cursor-pointer group"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Recebido no Mês</span>
-              <div className="p-2 rounded-xl bg-teal-500/10 text-teal-400 group-hover:bg-teal-500 group-hover:text-slate-950 transition-colors">
-                <TrendingUp className="w-5 h-5" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Receita Recebida</span>
+              <div className="p-2 rounded-xl bg-teal-100/70 text-teal-600 group-hover:bg-teal-600 group-hover:text-white transition-colors">
+                <TrendingUp className="w-4 h-4" />
               </div>
             </div>
-            <div className="text-2xl font-extrabold text-white mt-3 tracking-tight">
+            <div className="text-2xl font-extrabold text-slate-900 mt-3 tracking-tight">
               {totalReceivedThisMonth.formatted}
             </div>
-            <div className="mt-2 text-xs text-slate-400 flex items-center justify-between">
-              <span>{monthlyReceivedItems.length} pagamentos liquidados</span>
-              <ChevronRight className="w-4 h-4 text-teal-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="mt-2 text-[11px] text-slate-500 font-medium flex items-center justify-between border-t border-slate-100 pt-2">
+              <span>{monthlyReceivedItems.length} pagamento(s) liquidado(s)</span>
+              <ChevronRight className="w-4 h-4 text-teal-600 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
           </div>
 
-          {/* Card 3: Total de despesas */}
+          {/* Card 3: Custos Operacionais */}
           <div
             onClick={() => onNavigateTab('financial', 'despesas')}
-            className="bg-slate-900 border border-slate-800 hover:border-slate-700 p-5 rounded-2xl transition-all cursor-pointer group shadow-sm"
+            className="bg-white border border-slate-200 hover:border-slate-400 hover:shadow-sm p-5 rounded-2xl transition-all cursor-pointer group"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Despesas no Mês</span>
-              <div className="p-2 rounded-xl bg-slate-800 text-slate-300 group-hover:bg-slate-700 transition-colors">
-                <Receipt className="w-5 h-5" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Custos Operacionais</span>
+              <div className="p-2 rounded-xl bg-slate-100/80 text-slate-700 group-hover:bg-slate-700 group-hover:text-white transition-colors">
+                <Receipt className="w-4 h-4" />
               </div>
             </div>
-            <div className="text-2xl font-extrabold text-white mt-3 tracking-tight">
+            <div className="text-2xl font-extrabold text-slate-900 mt-3 tracking-tight">
               {totalExpensesThisMonth.formatted}
             </div>
-            <div className="mt-2 text-xs text-slate-400 flex items-center justify-between">
-              <span>{monthlyExpenseItems.length} custos cadastrados</span>
-              <ChevronRight className="w-4 h-4 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="mt-2 text-[11px] text-slate-500 font-medium flex items-center justify-between border-t border-slate-100 pt-2">
+              <span>{monthlyExpenseItems.length} custo(s) lançado(s)</span>
+              <ChevronRight className="w-4 h-4 text-slate-700 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
           </div>
 
-          {/* Card 4: Lucro líquido */}
-          <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-sm">
+          {/* Card 4: Resultado Líquido Mensal */}
+          <div className="bg-white border border-slate-200 p-5 rounded-2xl">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Lucro Líquido (Mês)</span>
-              <div className={`p-2 rounded-xl ${profitRaw >= 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
-                <CheckCircle2 className="w-5 h-5" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Resultado Líquido Mensal</span>
+              <div className={`p-2 rounded-xl ${profitRaw >= 0 ? 'bg-emerald-100/70 text-emerald-600' : 'bg-rose-100/70 text-rose-600'}`}>
+                <CheckCircle2 className="w-4 h-4" />
               </div>
             </div>
-            <div className={`text-2xl font-extrabold mt-3 tracking-tight ${profitRaw >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+            <div className={`text-2xl font-extrabold mt-3 tracking-tight ${profitRaw >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
               {netProfitThisMonthFormatted}
             </div>
-            <div className="mt-2 text-xs text-slate-400">
-              {profitRaw >= 0 ? 'Resultado operacional positivo' : 'Atenção às margens'}
+            <div className="mt-2 text-[11px] text-slate-500 font-medium border-t border-slate-100 pt-2">
+              {profitRaw >= 0 ? '✓ Margem operacional positiva' : '⚠ Atenção às margens'}
             </div>
           </div>
 
-          {/* Card 5: Clientes ativos */}
+          {/* Card 5: Clientes & Contas */}
           <div
             onClick={() => onNavigateTab('clients')}
-            className="bg-slate-900 border border-slate-800 hover:border-blue-500/50 p-5 rounded-2xl transition-all cursor-pointer group shadow-sm"
+            className="bg-white border border-slate-200 hover:border-blue-400 hover:shadow-sm p-5 rounded-2xl transition-all cursor-pointer group"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Clientes Ativos</span>
-              <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400 group-hover:bg-blue-500 group-hover:text-slate-950 transition-colors">
-                <Users className="w-5 h-5" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Clientes Ativos</span>
+              <div className="p-2 rounded-xl bg-blue-100/70 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                <Users className="w-4 h-4" />
               </div>
             </div>
-            <div className="text-2xl font-extrabold text-white mt-3 tracking-tight">
+            <div className="text-2xl font-extrabold text-slate-900 mt-3 tracking-tight">
               {activeClientsCount}
             </div>
-            <div className="mt-2 text-xs text-slate-400 flex items-center justify-between">
+            <div className="mt-2 text-[11px] text-slate-500 font-medium flex items-center justify-between border-t border-slate-100 pt-2">
               <span>Cadastrados no sistema</span>
-              <ChevronRight className="w-4 h-4 text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <ChevronRight className="w-4 h-4 text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
           </div>
 
-          {/* Card 6: Projetos em andamento */}
+          {/* Card 6: Projetos em Andamento */}
           <div
             onClick={() => onNavigateTab('projects', 'em_andamento')}
-            className="bg-slate-900 border border-slate-800 hover:border-indigo-500/50 p-5 rounded-2xl transition-all cursor-pointer group shadow-sm"
+            className="bg-white border border-slate-200 hover:border-indigo-400 hover:shadow-sm p-5 rounded-2xl transition-all cursor-pointer group"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Projetos em Andamento</span>
-              <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 group-hover:bg-indigo-500 group-hover:text-slate-950 transition-colors">
-                <FolderKanban className="w-5 h-5" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Projetos Ativos</span>
+              <div className="p-2 rounded-xl bg-indigo-100/70 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                <FolderKanban className="w-4 h-4" />
               </div>
             </div>
-            <div className="text-2xl font-extrabold text-white mt-3 tracking-tight">
+            <div className="text-2xl font-extrabold text-slate-900 mt-3 tracking-tight">
               {inProgressProjects.length}
             </div>
-            <div className="mt-2 text-xs text-slate-400 flex items-center justify-between">
+            <div className="mt-2 text-[11px] text-slate-500 font-medium flex items-center justify-between border-t border-slate-100 pt-2">
               <span>Em produção ativa</span>
-              <ChevronRight className="w-4 h-4 text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <ChevronRight className="w-4 h-4 text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
           </div>
 
-          {/* Card 7: Projetos concluídos */}
+          {/* Card 7: Entregas Concluídas */}
           <div
             onClick={() => onNavigateTab('projects', 'concluidos')}
-            className="bg-slate-900 border border-slate-800 hover:border-purple-500/50 p-5 rounded-2xl transition-all cursor-pointer group shadow-sm"
+            className="bg-white border border-slate-200 hover:border-purple-400 hover:shadow-sm p-5 rounded-2xl transition-all cursor-pointer group"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Projetos Concluídos</span>
-              <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400 group-hover:bg-purple-500 group-hover:text-slate-950 transition-colors">
-                <CheckCircle2 className="w-5 h-5" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Entregas Concluídas</span>
+              <div className="p-2 rounded-xl bg-purple-100/70 text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                <CheckCircle2 className="w-4 h-4" />
               </div>
             </div>
-            <div className="text-2xl font-extrabold text-white mt-3 tracking-tight">
+            <div className="text-2xl font-extrabold text-slate-900 mt-3 tracking-tight">
               {completedProjects.length}
             </div>
-            <div className="mt-2 text-xs text-slate-400 flex items-center justify-between">
+            <div className="mt-2 text-[11px] text-slate-500 font-medium flex items-center justify-between border-t border-slate-100 pt-2">
               <span>Entregues com sucesso</span>
-              <ChevronRight className="w-4 h-4 text-purple-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <ChevronRight className="w-4 h-4 text-purple-600 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
           </div>
 
-          {/* Card 8: Pagamentos atrasados */}
+          {/* Card 8: Inadimplência */}
           <div
             onClick={() => onNavigateTab('financial', 'receitas-atrasadas')}
-            className="bg-slate-900 border border-slate-800 hover:border-rose-500/50 p-5 rounded-2xl transition-all cursor-pointer group shadow-sm"
+            className="bg-white border border-slate-200 hover:border-rose-400 hover:shadow-sm p-5 rounded-2xl transition-all cursor-pointer group"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Pagamentos Atrasados</span>
-              <div className="p-2 rounded-xl bg-rose-500/10 text-rose-400 group-hover:bg-rose-500 group-hover:text-slate-950 transition-colors">
-                <AlertTriangle className="w-5 h-5" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Inadimplência</span>
+              <div className="p-2 rounded-xl bg-rose-100/70 text-rose-600 group-hover:bg-rose-600 group-hover:text-white transition-colors">
+                <AlertTriangle className="w-4 h-4" />
               </div>
             </div>
-            <div className="text-2xl font-extrabold text-rose-400 mt-3 tracking-tight">
+            <div className="text-2xl font-extrabold text-rose-600 mt-3 tracking-tight">
               {overdueIncomes.length}
             </div>
-            <div className="mt-2 text-xs text-slate-400 flex items-center justify-between">
-              <span>Aguardando cobrança</span>
-              <ChevronRight className="w-4 h-4 text-rose-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="mt-2 text-[11px] text-slate-500 font-medium flex items-center justify-between border-t border-slate-100 pt-2">
+              <span>Cobrança(s) em atraso</span>
+              <ChevronRight className="w-4 h-4 text-rose-600 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
           </div>
 
         </div>
       </div>
 
-      {/* 3. Monthly Comparative Chart (Receitas x Despesas x Lucro) */}
-      <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl">
+      {/* 3. Evolução Financeira Mensal */}
+      <div className="bg-white border border-slate-200/90 p-6 rounded-2xl shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-6">
           <div>
-            <h3 className="text-lg font-bold text-white tracking-tight">
-              Evolução Financeira Mensal (Últimos 6 Meses)
+            <h3 className="text-sm font-extrabold text-slate-900 tracking-tight">
+              Evolução Financeira Mensal
             </h3>
-            <p className="text-xs text-slate-400">
-              Comparativo visual entre Receitas x Despesas x Lucro em {mainCurrency}
+            <p className="text-xs text-slate-500 font-medium">
+              Receitas vs. Custos vs. Resultado Líquido — últimos 6 meses em {mainCurrency}
             </p>
           </div>
 
-          <div className="flex items-center space-x-4 text-xs font-medium text-slate-400">
+          <div className="flex items-center space-x-4 text-xs font-semibold text-slate-500">
             <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block" /> Receitas
+              <span className="w-3 h-3 rounded bg-emerald-500 inline-block" /> Receitas
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-sm bg-slate-500 inline-block" /> Despesas
+              <span className="w-3 h-3 rounded bg-slate-300 inline-block" /> Custos
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-sm bg-teal-400 inline-block" /> Lucro
+              <span className="w-3 h-3 rounded bg-teal-500 inline-block" /> Resultado
             </span>
           </div>
         </div>
@@ -422,28 +422,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="h-72 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-              <XAxis dataKey="monthLabel" stroke="#94a3b8" fontSize={12} tickLine={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+              <XAxis dataKey="monthLabel" stroke="#94a3b8" fontSize={11} tickLine={false} fontWeight={600} />
               <YAxis
                 stroke="#94a3b8"
-                fontSize={12}
+                fontSize={11}
                 tickLine={false}
                 tickFormatter={(value) => `${value.toLocaleString()}`}
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: '#0f172a',
-                  borderColor: '#334155',
+                  backgroundColor: '#fff',
+                  borderColor: '#e2e8f0',
                   borderRadius: '0.75rem',
-                  color: '#fff',
+                  color: '#0f172a',
                   fontSize: '12px',
+                  boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
                 }}
                 formatter={(value: any) => [formatCurrency(Number(value) || 0, mainCurrency), '']}
               />
               <Legend wrapperStyle={{ display: 'none' }} />
-              <Bar dataKey="Receitas" fill="#10b981" radius={[4, 4, 0, 0]} barSize={16} />
-              <Bar dataKey="Despesas" fill="#64748b" radius={[4, 4, 0, 0]} barSize={16} />
-              <Bar dataKey="Lucro" fill="#2dd4bf" radius={[4, 4, 0, 0]} barSize={16} />
+              <Bar dataKey="Receitas" fill="#10b981" radius={[4, 4, 0, 0]} barSize={14} />
+              <Bar dataKey="Despesas" fill="#cbd5e1" radius={[4, 4, 0, 0]} barSize={14} />
+              <Bar dataKey="Lucro" fill="#14b8a6" radius={[4, 4, 0, 0]} barSize={14} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -453,27 +454,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {/* List A: Cobranças Pendentes & Atrasadas */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg">
-          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800">
+        <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
+          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
             <div className="flex items-center space-x-2">
-              <AlertTriangle className="w-5 h-5 text-amber-400" />
-              <h3 className="text-base font-bold text-white">Cobranças & Faturas Pendentes</h3>
+              <div className="p-1.5 rounded-lg bg-amber-100 text-amber-600">
+                <AlertTriangle className="w-4 h-4" />
+              </div>
+              <h3 className="text-sm font-extrabold text-slate-900">Cobranças & Faturas Pendentes</h3>
             </div>
             <button
               onClick={() => onNavigateTab('financial', 'receitas')}
-              className="text-xs text-emerald-400 hover:underline font-medium"
+              className="text-xs font-bold text-emerald-600 hover:text-emerald-700 hover:underline"
             >
-              Ver todas
+              Ver todas →
             </button>
           </div>
 
           {pendingIncomes.length === 0 ? (
-            <div className="text-center py-8 text-slate-500 text-sm">
-              <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-emerald-500/50" />
-              Nenhuma cobrança pendente! Tudo em dia.
+            <div className="text-center py-10 text-slate-400 text-sm">
+              <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-emerald-500" />
+              <p className="font-semibold text-slate-700">Tudo em dia!</p>
+              <p className="text-xs text-slate-400">Nenhuma cobrança pendente no momento.</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {pendingIncomes.slice(0, 4).map((inc) => {
                 const client = clientMap.get(inc.clientId);
                 const diff = getDaysDiff(inc.dueDate);
@@ -485,37 +489,37 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 return (
                   <div
                     key={inc.id}
-                    className="p-3.5 rounded-xl bg-slate-800/60 border border-slate-700/60 flex items-center justify-between gap-3 hover:bg-slate-800 transition-colors"
+                    className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3 hover:bg-slate-100/80 transition-colors"
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center space-x-2">
-                        <span className="font-semibold text-slate-200 text-sm truncate">
+                        <span className="font-bold text-slate-900 text-sm truncate">
                           {client?.name || 'Cliente'}
                         </span>
                         {isOverdue && (
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200">
                             Atrasado {Math.abs(diff)}d
                           </span>
                         )}
                         {isDueToday && (
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200">
                             Vence Hoje
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-slate-400 truncate mt-0.5">
+                      <p className="text-xs text-slate-500 truncate mt-0.5 font-medium">
                         {inc.description}
                       </p>
                     </div>
 
                     <div className="text-right shrink-0">
-                      <div className="text-sm font-bold text-emerald-400">
+                      <div className="text-sm font-extrabold text-emerald-700">
                         {formatCurrency(inc.amount, inc.currency)}
                       </div>
                       {client?.whatsapp && (
                         <button
                           onClick={() => onOpenWhatsAppCharge(client.whatsapp, text)}
-                          className="mt-1 text-[11px] font-medium text-amber-400 hover:text-amber-300 flex items-center gap-1 justify-end"
+                          className="mt-1 text-[10px] font-bold text-amber-600 hover:text-amber-800 flex items-center gap-1 justify-end"
                         >
                           <MessageCircle className="w-3 h-3" /> Cobrar
                         </button>
@@ -528,27 +532,31 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           )}
         </div>
 
-        {/* List B: Próximas Entregas de Projetos */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg">
-          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800">
+        {/* List B: Próximos Prazos de Projetos */}
+        <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
+          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
             <div className="flex items-center space-x-2">
-              <Clock className="w-5 h-5 text-blue-400" />
-              <h3 className="text-base font-bold text-white">Próximos Prazos de Projetos</h3>
+              <div className="p-1.5 rounded-lg bg-indigo-100 text-indigo-600">
+                <Clock className="w-4 h-4" />
+              </div>
+              <h3 className="text-sm font-extrabold text-slate-900">Próximos Prazos de Entrega</h3>
             </div>
             <button
               onClick={() => onNavigateTab('projects')}
-              className="text-xs text-blue-400 hover:underline font-medium"
+              className="text-xs font-bold text-indigo-600 hover:text-indigo-700 hover:underline"
             >
-              Ver todos
+              Ver todos →
             </button>
           </div>
 
           {inProgressProjects.length === 0 ? (
-            <div className="text-center py-8 text-slate-500 text-sm">
-              Nenhum projeto em andamento.
+            <div className="text-center py-10 text-slate-400 text-sm">
+              <FolderKanban className="w-8 h-8 mx-auto mb-2 text-indigo-400" />
+              <p className="font-semibold text-slate-700">Nenhum projeto ativo</p>
+              <p className="text-xs text-slate-400">Crie um novo projeto para acompanhar os prazos.</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {inProgressProjects.slice(0, 4).map((proj) => {
                 const client = clientMap.get(proj.clientId);
                 const diff = getDaysDiff(proj.dueDate);
@@ -557,31 +565,36 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 return (
                   <div
                     key={proj.id}
-                    className="p-3.5 rounded-xl bg-slate-800/60 border border-slate-700/60 hover:bg-slate-800 transition-colors"
+                    className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100/80 transition-colors"
                   >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-semibold text-slate-200 text-sm truncate">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="font-bold text-slate-900 text-sm truncate">
                         {proj.name}
                       </span>
-                      <span className="text-xs font-medium text-slate-400">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
+                        diff < 0 ? 'bg-rose-100 text-rose-700 border-rose-200' :
+                        diff <= 3 ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                        'bg-slate-100 text-slate-600 border-slate-200'
+                      }`}>
                         {formatDate(proj.dueDate)}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
-                      <span>Cliente: <strong className="text-slate-300">{client?.name || '-'}</strong></span>
-                      <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 text-[10px] font-semibold">
+                    <div className="flex items-center justify-between text-xs text-slate-500 font-medium mb-2.5">
+                      <span>{client?.name || '-'}</span>
+                      <span className="px-2 py-0.5 rounded-md bg-indigo-100/80 text-indigo-700 text-[10px] font-bold border border-indigo-200">
                         {proj.category}
                       </span>
                     </div>
 
                     {/* Progress bar */}
-                    <div className="w-full bg-slate-700 h-1.5 rounded-full overflow-hidden flex">
+                    <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
                       <div
-                        className="bg-emerald-500 h-full transition-all duration-300"
+                        className="bg-emerald-500 h-full rounded-full transition-all duration-300"
                         style={{ width: `${progressPct}%` }}
                       />
                     </div>
+                    <div className="text-[10px] text-slate-400 mt-1 text-right font-medium">{progressPct}% pago</div>
                   </div>
                 );
               })}

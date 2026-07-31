@@ -202,50 +202,50 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-            <DollarSign className="w-7 h-7 text-teal-400" />
+          <h2 className="text-lg font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+            <DollarSign className="w-5 h-5 text-emerald-600" />
             Módulo Financeiro
           </h2>
-          <p className="text-sm text-slate-400">
+          <p className="text-xs text-slate-500 font-medium mt-0.5">
             Gestão de receitas, despesas operacionais e agenda financeira unificada
           </p>
         </div>
 
-        {/* Action button based on tab */}
-        <div className="flex items-center space-x-2">
+        {/* Action buttons */}
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={onOpenNewIncomeModal}
-            className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl flex items-center space-x-1.5 transition-all shadow-md active:scale-95 cursor-pointer"
+            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer"
           >
             <Plus className="w-4 h-4 stroke-[3]" />
             <span>Nova Receita</span>
           </button>
           <button
             onClick={onOpenNewExpenseModal}
-            className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs rounded-xl flex items-center space-x-1.5 transition-all active:scale-95 cursor-pointer"
+            className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Nova Despesa</span>
           </button>
           <button
             onClick={onOpenNewExpenseModal}
-            className="px-3.5 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold text-xs rounded-xl flex items-center space-x-1.5 transition-all active:scale-95 cursor-pointer"
+            className="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer"
             title="Registrar retirada própria ou saída de caixa do saldo real"
           >
-            <Receipt className="w-4 h-4 text-amber-400" />
-            <span>💸 Registrar Retirada / Saída</span>
+            <Receipt className="w-4 h-4 text-amber-600" />
+            <span>Registrar Saída / Retirada</span>
           </button>
         </div>
       </div>
 
       {/* Sub-Tab Navigation Bar */}
-      <div className="flex items-center space-x-1 bg-slate-900 border border-slate-800 p-1.5 rounded-2xl w-fit">
+      <div className="flex items-center gap-1 bg-slate-100 border border-slate-200/80 p-1 rounded-xl w-fit">
         <button
           onClick={() => setSubTab('receitas')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+          className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
             subTab === 'receitas'
-              ? 'bg-emerald-500 text-slate-950 shadow-md'
-              : 'text-slate-400 hover:text-white'
+              ? 'bg-white text-emerald-700 shadow-sm border border-slate-200/80'
+              : 'text-slate-500 hover:text-slate-900'
           }`}
         >
           <ArrowUpRight className="w-4 h-4" /> Receitas ({filteredIncomes.length})
@@ -253,10 +253,10 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
 
         <button
           onClick={() => setSubTab('despesas')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+          className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
             subTab === 'despesas'
-              ? 'bg-emerald-500 text-slate-950 shadow-md'
-              : 'text-slate-400 hover:text-white'
+              ? 'bg-white text-emerald-700 shadow-sm border border-slate-200/80'
+              : 'text-slate-500 hover:text-slate-900'
           }`}
         >
           <ArrowDownRight className="w-4 h-4" /> Despesas ({filteredExpenses.length})
@@ -264,10 +264,10 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
 
         <button
           onClick={() => setSubTab('agenda')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+          className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
             subTab === 'agenda'
-              ? 'bg-emerald-500 text-slate-950 shadow-md'
-              : 'text-slate-400 hover:text-white'
+              ? 'bg-white text-emerald-700 shadow-sm border border-slate-200/80'
+              : 'text-slate-500 hover:text-slate-900'
           }`}
         >
           <CalendarIcon className="w-4 h-4" /> Agenda Financeira
@@ -279,7 +279,7 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
         <div className="space-y-4">
           
           {/* Filters */}
-          <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-lg">
+          <div className="bg-white border border-slate-200/90 p-4 rounded-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
             <div className="relative flex-1">
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
@@ -287,14 +287,14 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
                 placeholder="Pesquisar por cliente ou descrição..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700/80 rounded-xl text-slate-200 text-sm focus:outline-none focus:border-emerald-500"
+                className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30"
               />
             </div>
 
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 bg-slate-800 border border-slate-700/80 rounded-xl text-slate-200 text-xs font-medium focus:outline-none focus:border-emerald-500"
+              className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 text-xs font-semibold focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30"
             >
               <option value="ALL">Todos os Status</option>
               <option value="Pendente">Pendente</option>
@@ -306,23 +306,23 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
 
           {/* Receitas List */}
           {filteredIncomes.length === 0 ? (
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center text-slate-400 space-y-3">
-              <DollarSign className="w-12 h-12 text-slate-600 mx-auto" />
-              <h3 className="text-base font-semibold text-slate-300">Nenhuma receita encontrada</h3>
+            <div className="bg-white border border-slate-200/90 rounded-2xl p-12 text-center space-y-3">
+              <DollarSign className="w-10 h-10 text-slate-300 mx-auto" />
+              <h3 className="text-sm font-bold text-slate-700">Nenhuma receita encontrada</h3>
               <button
                 onClick={onOpenNewIncomeModal}
-                className="px-4 py-2 bg-emerald-500 text-slate-950 font-bold text-xs rounded-xl inline-flex items-center gap-1.5"
+                className="px-4 py-2 bg-emerald-600 text-white font-bold text-xs rounded-xl inline-flex items-center gap-1.5 hover:bg-emerald-700 transition-colors"
               >
                 <Plus className="w-4 h-4" /> Cadastrar Nova Receita
               </button>
             </div>
           ) : (
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+            <div className="bg-white border border-slate-200/90 rounded-2xl overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-slate-300">
-                  <thead className="bg-slate-950 text-slate-400 font-semibold border-b border-slate-800">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-500 font-extrabold uppercase tracking-wider text-[10px] border-b border-slate-200">
                     <tr>
-                      <th className="px-4 py-3.5">Cliente & Projeto</th>
+                      <th className="px-4 py-3.5">Cliente &amp; Projeto</th>
                       <th className="px-4 py-3.5">Descrição</th>
                       <th className="px-4 py-3.5">Valor</th>
                       <th className="px-4 py-3.5">Data Prevista</th>
@@ -331,7 +331,7 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
                       <th className="px-4 py-3.5 text-right">Ações</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/80">
+                  <tbody className="divide-y divide-slate-100">
                     {filteredIncomes.map((inc) => {
                       const client = clientMap.get(inc.clientId);
                       const project = inc.projectId ? projectMap.get(inc.projectId) : null;
@@ -339,34 +339,34 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
                       const isOverdue = inc.status !== 'Recebido' && diffDays < 0;
 
                       return (
-                        <tr key={inc.id} className="hover:bg-slate-800/50 transition-colors">
+                        <tr key={inc.id} className="hover:bg-slate-50/80 transition-colors">
                           <td className="px-4 py-3.5">
-                            <div className="font-bold text-white text-sm">
+                            <div className="font-bold text-slate-900 text-sm">
                               {client ? client.name : 'Cliente'}
                             </div>
                             {project && (
-                              <div className="text-[11px] text-slate-400">
+                              <div className="text-[11px] text-slate-500 font-medium">
                                 {project.name}
                               </div>
                             )}
                           </td>
 
-                          <td className="px-4 py-3.5 font-medium text-slate-200">
+                          <td className="px-4 py-3.5 font-medium text-slate-700">
                             {inc.description}
                           </td>
 
-                          <td className="px-4 py-3.5 font-bold text-emerald-400 text-sm">
+                          <td className="px-4 py-3.5 font-extrabold text-emerald-700 text-sm">
                             {formatCurrency(inc.amount, inc.currency)}
                           </td>
 
                           <td className="px-4 py-3.5">
-                            <span className={isOverdue ? 'text-rose-400 font-bold' : 'text-slate-300'}>
+                            <span className={isOverdue ? 'text-rose-600 font-bold' : 'text-slate-600 font-medium'}>
                               {formatDate(inc.dueDate)}
                             </span>
                           </td>
 
                           <td className="px-4 py-3.5">
-                            <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-medium">
+                            <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold border border-slate-200 text-[11px]">
                               {inc.paymentMethod || 'PIX'}
                             </span>
                           </td>
@@ -374,12 +374,12 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
                           <td className="px-4 py-3.5">
                             <button
                               onClick={() => onToggleIncomeStatus(inc)}
-                              className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all flex items-center gap-1 ${
+                              className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all flex items-center gap-1 border ${
                                 inc.status === 'Recebido'
-                                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                  ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
                                   : isOverdue
-                                  ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                                  : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                                  ? 'bg-rose-100 text-rose-700 border-rose-200'
+                                  : 'bg-amber-100 text-amber-700 border-amber-200'
                               }`}
                               title="Clique para alterar status"
                             >
@@ -400,7 +400,7 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
                                     const text = `Olá, ${client.name}! Tudo bem? Passando para lembrar do valor referentes a "${inc.description}" (${formatCurrency(inc.amount, inc.currency)}) com vencimento em ${formatDate(inc.dueDate)}. Obrigado!`;
                                     onOpenWhatsAppCharge(client.whatsapp, text);
                                   }}
-                                  className="p-1.5 text-amber-400 hover:bg-slate-800 rounded-lg transition-colors"
+                                  className="p-1.5 text-amber-500 hover:bg-amber-50 rounded-lg transition-colors border border-amber-200"
                                   title="Cobrar via WhatsApp"
                                 >
                                   <MessageCircle className="w-4 h-4" />
@@ -408,14 +408,14 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
                               )}
                               <button
                                 onClick={() => onEditIncome(inc)}
-                                className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+                                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
                                 title="Editar"
                               >
                                 <Edit3 className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={() => onDeleteIncome(inc.id)}
-                                className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors"
+                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
                                 title="Excluir"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -438,7 +438,7 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
         <div className="space-y-4">
           
           {/* Filters */}
-          <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-lg">
+          <div className="bg-white border border-slate-200/90 p-4 rounded-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
             <div className="relative flex-1">
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
@@ -446,14 +446,14 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
                 placeholder="Pesquisar por descrição de despesa..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700/80 rounded-xl text-slate-200 text-sm focus:outline-none focus:border-emerald-500"
+                className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30"
               />
             </div>
 
             <select
               value={expenseCategoryFilter}
               onChange={(e) => setExpenseCategoryFilter(e.target.value)}
-              className="px-3 py-2 bg-slate-800 border border-slate-700/80 rounded-xl text-slate-200 text-xs font-medium focus:outline-none focus:border-emerald-500"
+              className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 text-xs font-semibold focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30"
             >
               <option value="ALL">Todas as Categorias</option>
               <option value="Internet">Internet</option>
@@ -468,21 +468,21 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
 
           {/* Expenses List */}
           {filteredExpenses.length === 0 ? (
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center text-slate-400 space-y-3">
-              <Receipt className="w-12 h-12 text-slate-600 mx-auto" />
-              <h3 className="text-base font-semibold text-slate-300">Nenhuma despesa cadastrada</h3>
+            <div className="bg-white border border-slate-200/90 rounded-2xl p-12 text-center space-y-3">
+              <Receipt className="w-10 h-10 text-slate-300 mx-auto" />
+              <h3 className="text-sm font-bold text-slate-700">Nenhuma despesa cadastrada</h3>
               <button
                 onClick={onOpenNewExpenseModal}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl inline-flex items-center gap-1.5"
+                className="px-4 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-bold text-xs rounded-xl inline-flex items-center gap-1.5 shadow-sm"
               >
                 <Plus className="w-4 h-4" /> Cadastrar Nova Despesa
               </button>
             </div>
           ) : (
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+            <div className="bg-white border border-slate-200/90 rounded-2xl overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-slate-300">
-                  <thead className="bg-slate-950 text-slate-400 font-semibold border-b border-slate-800">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-500 font-extrabold uppercase tracking-wider text-[10px] border-b border-slate-200">
                     <tr>
                       <th className="px-4 py-3.5">Categoria</th>
                       <th className="px-4 py-3.5">Descrição</th>
@@ -492,29 +492,29 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
                       <th className="px-4 py-3.5 text-right">Ações</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/80">
+                  <tbody className="divide-y divide-slate-100">
                     {filteredExpenses.map((exp) => {
                       const diffDays = getDaysDiff(exp.date);
                       const isOverdue = !exp.paid && diffDays < 0;
 
                       return (
-                        <tr key={exp.id} className="hover:bg-slate-800/50 transition-colors">
+                        <tr key={exp.id} className="hover:bg-slate-50/80 transition-colors">
                           <td className="px-4 py-3.5">
-                            <span className="px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 font-semibold border border-slate-700">
+                            <span className="px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 font-bold border border-slate-200 text-[11px]">
                               {exp.category}
                             </span>
                           </td>
 
-                          <td className="px-4 py-3.5 font-medium text-slate-200">
+                          <td className="px-4 py-3.5 font-medium text-slate-700">
                             {exp.description}
                           </td>
 
-                          <td className="px-4 py-3.5 font-bold text-slate-200 text-sm">
+                          <td className="px-4 py-3.5 font-extrabold text-slate-900 text-sm">
                             {formatCurrency(exp.amount, exp.currency)}
                           </td>
 
                           <td className="px-4 py-3.5">
-                            <span className={isOverdue ? 'text-rose-400 font-bold' : 'text-slate-300'}>
+                            <span className={isOverdue ? 'text-rose-600 font-bold' : 'text-slate-600 font-medium'}>
                               {formatDate(exp.date)}
                             </span>
                           </td>
@@ -522,10 +522,10 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
                           <td className="px-4 py-3.5">
                             <button
                               onClick={() => onToggleExpensePaid(exp)}
-                              className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all flex items-center gap-1 ${
+                              className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all flex items-center gap-1 border ${
                                 exp.paid
-                                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                                  : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                                  ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                                  : 'bg-amber-100 text-amber-700 border-amber-200'
                               }`}
                             >
                               {exp.paid ? <Check className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />}
@@ -537,13 +537,13 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
                             <div className="flex items-center justify-end space-x-1">
                               <button
                                 onClick={() => onEditExpense(exp)}
-                                className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+                                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
                               >
                                 <Edit3 className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={() => onDeleteExpense(exp.id)}
-                                className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors"
+                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
@@ -562,41 +562,41 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
 
       {/* TAB 3: AGENDA FINANCEIRA (CALENDÁRIO) */}
       {subTab === 'agenda' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+        <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs space-y-6">
           
           {/* Calendar Month Selector Header */}
           <div className="flex items-center justify-between">
-            <h3 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-              <CalendarIcon className="w-6 h-6 text-emerald-400" />
+            <h3 className="text-sm font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+              <CalendarIcon className="w-5 h-5 text-emerald-600" />
               {monthNamesPT[calendarMonth]} {calendarYear}
             </h3>
 
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => setCurrentCalendarDate(new Date(calendarYear, calendarMonth - 1, 1))}
-                className="p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700"
+                className="p-2 rounded-xl bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200 border border-slate-200 transition-colors"
               >
-                <ChevronLeft className="w-5 h-5" />
+                <ChevronLeft className="w-4 h-4" />
               </button>
 
               <button
                 onClick={() => setCurrentCalendarDate(new Date())}
-                className="px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 hover:text-white text-xs font-semibold"
+                className="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 hover:text-slate-900 hover:bg-slate-200 text-xs font-bold border border-slate-200 transition-colors"
               >
                 Hoje
               </button>
 
               <button
                 onClick={() => setCurrentCalendarDate(new Date(calendarYear, calendarMonth + 1, 1))}
-                className="p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700"
+                className="p-2 rounded-xl bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200 border border-slate-200 transition-colors"
               >
-                <ChevronRight className="w-5 h-5" />
+                <ChevronRight className="w-4 h-4" />
               </button>
             </div>
           </div>
 
           {/* Calendar Grid Header (Days of week) */}
-          <div className="grid grid-cols-7 gap-2 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">
+          <div className="grid grid-cols-7 gap-2 text-center text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">
             <div>Dom</div>
             <div>Seg</div>
             <div>Ter</div>
@@ -610,7 +610,7 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
           <div className="grid grid-cols-7 gap-2">
             {/* Empty slots before first day */}
             {Array.from({ length: firstDayOfWeek }).map((_, idx) => (
-              <div key={`empty-${idx}`} className="h-28 bg-slate-950/40 rounded-xl border border-slate-800/40 opacity-30" />
+              <div key={`empty-${idx}`} className="h-28 bg-slate-50 rounded-xl border border-slate-100 opacity-40" />
             ))}
 
             {/* Days of month */}
@@ -626,23 +626,23 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
                   key={`day-${dayNum}`}
                   className={`h-28 p-1.5 rounded-xl border text-xs flex flex-col justify-between overflow-hidden transition-all ${
                     isTodayDay
-                      ? 'bg-slate-800 border-emerald-500 shadow-lg shadow-emerald-500/10'
-                      : 'bg-slate-800/40 border-slate-800 hover:border-slate-700'
+                      ? 'bg-emerald-50 border-emerald-400 shadow-sm'
+                      : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-xs'
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <span
-                      className={`font-bold text-xs ${
+                      className={`font-extrabold text-xs ${
                         isTodayDay
-                          ? 'w-6 h-6 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center'
-                          : 'text-slate-300'
+                          ? 'w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center'
+                          : 'text-slate-700'
                       }`}
                     >
                       {dayNum}
                     </span>
                     {events.length > 0 && (
-                      <span className="text-[10px] text-slate-400 font-medium">
-                        {events.length} evento(s)
+                      <span className="text-[9px] text-slate-400 font-bold">
+                        {events.length}x
                       </span>
                     )}
                   </div>
@@ -652,7 +652,7 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
                     {events.map((ev) => (
                       <div
                         key={ev.id}
-                        className={`text-[10px] p-1 rounded font-medium border truncate ${ev.color}`}
+                        className={`text-[10px] p-1 rounded font-bold border truncate ${ev.color}`}
                         title={ev.text}
                       >
                         {ev.text}

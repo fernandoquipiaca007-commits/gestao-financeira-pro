@@ -553,19 +553,19 @@ export default function App() {
   }
 
   const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'calendar', label: 'Agenda / Calendário', icon: CalendarIcon, badge: agendaEvents.filter((e) => e.status === 'pending').length },
-    { id: 'projects', label: 'Projetos', icon: FolderKanban, badge: projects.filter((p) => p.status === 'Em andamento').length },
-    { id: 'clients', label: 'Clientes', icon: Users, badge: clients.length },
-    { id: 'financial', label: 'Financeiro', icon: DollarSign, badge: incomes.filter((i) => i.status === 'Pendente').length },
-    { id: 'partners', label: 'Parceiros', icon: Handshake, badge: partners.length },
+    { id: 'dashboard', label: 'Painel Financeiro', icon: LayoutDashboard },
+    { id: 'calendar', label: 'Agenda & Prazos', icon: CalendarIcon, badge: agendaEvents.filter((e) => e.status === 'pending').length },
+    { id: 'projects', label: 'Projetos & Operações', icon: FolderKanban, badge: projects.filter((p) => p.status === 'Em andamento').length },
+    { id: 'clients', label: 'Clientes & Contas', icon: Users, badge: clients.length },
+    { id: 'financial', label: 'Transações Financeiras', icon: DollarSign, badge: incomes.filter((i) => i.status === 'Pendente').length },
+    { id: 'partners', label: 'Gestão de Parceiros', icon: Handshake, badge: partners.length },
     { id: 'categories', label: 'Categorias', icon: Tag },
-    { id: 'reports', label: 'Relatórios', icon: PieChart },
+    { id: 'reports', label: 'Relatórios Gerenciais', icon: PieChart },
     { id: 'settings', label: 'Configurações', icon: Settings },
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans flex flex-col selection:bg-emerald-500 selection:text-slate-950">
+    <div className="min-h-screen bg-slate-50/70 text-slate-900 font-sans flex flex-col selection:bg-emerald-600 selection:text-white">
       
       {/* Top Header */}
       <Header
@@ -587,11 +587,14 @@ export default function App() {
       />
 
       {/* Main App Container */}
-      <div className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex gap-8">
+      <div className="flex-1 w-full max-w-[1700px] mx-auto px-4 sm:px-6 lg:px-8 py-7 flex gap-8">
         
         {/* Desktop Sidebar Navigation */}
         <aside className="hidden lg:block w-60 shrink-0">
-          <nav className="sticky top-24 space-y-1.5 bg-slate-900/60 p-3 rounded-2xl border border-slate-800/80 shadow-xl">
+          <nav className="sticky top-24 space-y-1 bg-white p-3 rounded-2xl border border-slate-200/90 shadow-xs">
+            <div className="px-3 py-2 text-[10px] font-bold tracking-wider text-slate-400 uppercase">
+              Menu Executivo
+            </div>
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -600,14 +603,14 @@ export default function App() {
                 <button
                   key={item.id}
                   onClick={() => handleNavigateTab(item.id)}
-                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     isActive
-                      ? 'bg-emerald-500 text-slate-950 font-bold shadow-md shadow-emerald-500/10'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-800/80'
+                      ? 'bg-slate-900 text-white shadow-sm shadow-slate-900/10'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
                   }`}
                 >
                   <div className="flex items-center space-x-3">
-                    <Icon className={`w-4 h-4 ${isActive ? 'text-slate-950' : 'text-slate-400'}`} />
+                    <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-400' : 'text-slate-500'}`} />
                     <span>{item.label}</span>
                   </div>
 
@@ -615,8 +618,8 @@ export default function App() {
                     <span
                       className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                         isActive
-                          ? 'bg-slate-950 text-emerald-400'
-                          : 'bg-slate-800 text-slate-400 border border-slate-700'
+                          ? 'bg-slate-800 text-emerald-300'
+                          : 'bg-slate-100 text-slate-600 border border-slate-200'
                       }`}
                     >
                       {item.badge}
@@ -632,18 +635,18 @@ export default function App() {
         {isMobileMenuOpen && (
           <div className="fixed inset-0 z-40 lg:hidden flex">
             <div
-              className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm"
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs"
               onClick={() => setIsMobileMenuOpen(false)}
             />
-            <div className="relative w-72 bg-slate-900 border-r border-slate-800 p-5 h-full flex flex-col z-50">
-              <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-800">
+            <div className="relative w-72 bg-white border-r border-slate-200 p-5 h-full flex flex-col z-50 shadow-2xl">
+              <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
                 <div className="flex items-center space-x-2">
-                  <Sparkles className="w-5 h-5 text-emerald-400" />
-                  <span className="font-bold text-white text-base">Menu Principal</span>
+                  <Sparkles className="w-5 h-5 text-emerald-600" />
+                  <span className="font-extrabold text-slate-900 text-base">Menu Principal</span>
                 </div>
                 <button
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-white cursor-pointer"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -658,18 +661,18 @@ export default function App() {
                     <button
                       key={item.id}
                       onClick={() => handleNavigateTab(item.id)}
-                      className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
+                      className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                         isActive
-                          ? 'bg-emerald-500 text-slate-950 font-bold'
-                          : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                          ? 'bg-slate-900 text-white'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                       }`}
                     >
                       <div className="flex items-center space-x-3">
-                        <Icon className="w-5 h-5" />
+                        <Icon className="w-4 h-4" />
                         <span>{item.label}</span>
                       </div>
                       {item.badge !== undefined && item.badge > 0 && (
-                        <span className="px-2 py-0.5 rounded-full text-xs bg-slate-800 text-slate-300">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] bg-slate-100 text-slate-600 border border-slate-200">
                           {item.badge}
                         </span>
                       )}
@@ -680,7 +683,7 @@ export default function App() {
 
               <button
                 onClick={handleLogout}
-                className="mt-auto w-full flex items-center justify-center space-x-2 py-3 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/30 text-xs font-bold hover:bg-rose-500/20 transition-all cursor-pointer"
+                className="mt-auto w-full flex items-center justify-center space-x-2 py-3 rounded-xl bg-rose-50 text-rose-600 border border-rose-200 text-xs font-bold hover:bg-rose-100 transition-all cursor-pointer"
               >
                 <LogOut className="w-4 h-4" />
                 <span>Sair do Sistema</span>
