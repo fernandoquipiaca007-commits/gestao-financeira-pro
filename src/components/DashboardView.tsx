@@ -161,10 +161,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   // 7. Projetos concluídos
   const completedProjects = filteredProjects.filter((p) => p.status === 'Concluído');
 
-  // 8. Pagamentos atrasados
+  // 8. Pagamentos pendentes e atrasados
   const overdueIncomes = filteredIncomes.filter(
     (i) => i.status === 'Atrasado' || (i.status === 'Pendente' && getDaysDiff(i.dueDate) < 0)
   );
+  const pendingIncomes = filteredIncomes.filter((i) => i.status !== 'Recebido');
 
   // Build Monthly Chart Data (Last 6 Months)
   const chartData = React.useMemo(() => {
