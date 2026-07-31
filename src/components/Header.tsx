@@ -210,7 +210,7 @@ export const Header: React.FC<HeaderProps> = ({
                       className="w-full px-4 py-2.5 text-left hover:bg-slate-700/70 flex items-center space-x-2.5 transition-colors cursor-pointer"
                     >
                       <Receipt className="w-4 h-4 text-rose-400" />
-                      <span>Nova Despesa</span>
+                      <span>Nova Despesa / Saída</span>
                     </button>
                     {onOpenNewPartnerModal && (
                       <button

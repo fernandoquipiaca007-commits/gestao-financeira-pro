@@ -50,6 +50,7 @@ interface DashboardViewProps {
   onOpenWhatsAppCharge: (phone: string, text: string) => void;
   onOpenNewProjectModal: () => void;
   onOpenNewIncomeModal: () => void;
+  onOpenNewExpenseModal?: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -63,6 +64,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenWhatsAppCharge,
   onOpenNewProjectModal,
   onOpenNewIncomeModal,
+  onOpenNewExpenseModal,
 }) => {
   const clientMap = new Map<string, Client>(clients.map((c) => [c.id, c]));
 
@@ -216,6 +218,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         currencyFilter={currencyFilter}
         onNavigateToTab={onNavigateTab}
         onOpenWhatsAppCharge={onOpenWhatsAppCharge}
+        onOpenNewExpenseModal={onOpenNewExpenseModal}
       />
 
       {/* 2. Resumo Geral KPI Grid */}

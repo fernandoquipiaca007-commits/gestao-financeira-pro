@@ -25,6 +25,7 @@ interface Quick10SecSummaryProps {
   currencyFilter: CurrencyCode | 'ALL';
   onNavigateToTab: (tab: string, filter?: string) => void;
   onOpenWhatsAppCharge: (phone: string, text: string) => void;
+  onOpenNewExpenseModal?: () => void;
 }
 
 export const Quick10SecSummary: React.FC<Quick10SecSummaryProps> = ({
@@ -36,6 +37,7 @@ export const Quick10SecSummary: React.FC<Quick10SecSummaryProps> = ({
   currencyFilter,
   onNavigateToTab,
   onOpenWhatsAppCharge,
+  onOpenNewExpenseModal,
 }) => {
   const now = new Date();
   const currentYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -353,6 +355,14 @@ export const Quick10SecSummary: React.FC<Quick10SecSummaryProps> = ({
           </div>
           <p className="text-[11px] text-slate-400 mt-1 flex items-center justify-between">
             <span>Disponível em conta hoje</span>
+            {onOpenNewExpenseModal && (
+              <button
+                onClick={onOpenNewExpenseModal}
+                className="text-teal-300 hover:underline text-[10px] font-bold inline-flex items-center gap-0.5 cursor-pointer"
+              >
+                💸 Registrar Saída
+              </button>
+            )}
           </p>
         </div>
 

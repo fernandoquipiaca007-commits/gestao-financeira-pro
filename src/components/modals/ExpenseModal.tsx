@@ -91,22 +91,36 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
           {/* Categoria */}
           <div>
             <label className="text-xs font-semibold text-slate-300 block mb-1">
-              Categoria da Despesa *
+              Categoria da Despesa / Saída *
             </label>
             <select
               value={category}
-              onChange={(e) => setCategory(e.target.value as ExpenseCategory)}
-              className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-200 text-sm focus:outline-none focus:border-slate-500"
+              onChange={(e) => {
+                const newCat = e.target.value as ExpenseCategory;
+                setCategory(newCat);
+                if (newCat === 'Retirada Própria') {
+                  setPaid(true);
+                }
+              }}
+              className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-200 text-sm focus:outline-none focus:border-slate-500 font-medium"
             >
+              <option value="Retirada Própria">💸 Retirada Própria (Saída de Caixa / Gastos)</option>
               <option value="Internet">Internet</option>
               <option value="Hospedagem">Hospedagem</option>
               <option value="Domínio">Domínio</option>
               <option value="Publicidade">Publicidade</option>
               <option value="Ferramentas">Ferramentas</option>
               <option value="Salário">Salário</option>
+              <option value="Comissão Parceiro">Comissão Parceiro</option>
               <option value="Outros">Outros</option>
             </select>
           </div>
+
+          {category === 'Retirada Própria' && (
+            <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-300">
+              💡 <strong>Retirada de Caixa:</strong> Este valor é debitado imediatamente do seu <strong>Saldo Real em Caixa</strong> (disponível em conta).
+            </div>
+          )}
 
           {/* Descrição */}
           <div>

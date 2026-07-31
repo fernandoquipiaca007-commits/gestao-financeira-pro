@@ -704,6 +704,7 @@ export default function App() {
               onOpenWhatsAppCharge={handleOpenWhatsAppCharge}
               onOpenNewProjectModal={() => { setProjectToEdit(null); setIsProjectModalOpen(true); }}
               onOpenNewIncomeModal={() => { setIncomeToEdit(null); setIsIncomeModalOpen(true); }}
+              onOpenNewExpenseModal={() => { setExpenseToEdit(null); setIsExpenseModalOpen(true); }}
             />
           )}
 

@@ -215,17 +215,25 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
         <div className="flex items-center space-x-2">
           <button
             onClick={onOpenNewIncomeModal}
-            className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl flex items-center space-x-1.5 transition-all shadow-md active:scale-95"
+            className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl flex items-center space-x-1.5 transition-all shadow-md active:scale-95 cursor-pointer"
           >
             <Plus className="w-4 h-4 stroke-[3]" />
             <span>Nova Receita</span>
           </button>
           <button
             onClick={onOpenNewExpenseModal}
-            className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs rounded-xl flex items-center space-x-1.5 transition-all active:scale-95"
+            className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs rounded-xl flex items-center space-x-1.5 transition-all active:scale-95 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Nova Despesa</span>
+          </button>
+          <button
+            onClick={onOpenNewExpenseModal}
+            className="px-3.5 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold text-xs rounded-xl flex items-center space-x-1.5 transition-all active:scale-95 cursor-pointer"
+            title="Registrar retirada própria ou saída de caixa do saldo real"
+          >
+            <Receipt className="w-4 h-4 text-amber-400" />
+            <span>💸 Registrar Retirada / Saída</span>
           </button>
         </div>
       </div>
