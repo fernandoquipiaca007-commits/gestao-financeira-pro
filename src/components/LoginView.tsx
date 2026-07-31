@@ -15,12 +15,10 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
-    setSuccessMessage('');
     setLoading(true);
 
     try {
@@ -30,24 +28,20 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
           password,
           options: {
             data: { name: name || 'Gestor' },
-            emailRedirectTo: window.location.origin,
           },
         });
 
         if (error) throw error;
 
-        if (data.user && data.session) {
-          // Account created and session active (email confirmation disabled)
+        // Session active immediately (email confirmation disabled in Supabase)
+        if (data.user) {
           const userSession: UserSession = {
             id: data.user.id,
             email: data.user.email || email,
             name: name || 'Gestor',
-            token: data.session.access_token,
+            token: data.session?.access_token,
           };
           onLoginSuccess(userSession);
-        } else if (data.user && !data.session) {
-          // Email confirmation required
-          setSuccessMessage('Conta criada! Verifique seu e-mail para confirmar o acesso.');
         }
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -71,8 +65,6 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
       console.warn('Auth error:', err);
       if (err.message?.includes('Invalid login credentials')) {
         setErrorMessage('E-mail ou senha incorretos.');
-      } else if (err.message?.includes('Email not confirmed')) {
-        setErrorMessage('Confirme seu e-mail antes de entrar. Verifique sua caixa de entrada.');
       } else {
         setErrorMessage(err.message || 'Erro ao autenticar. Tente novamente.');
       }
@@ -102,12 +94,7 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
           </p>
         </div>
 
-        {/* Success message */}
-        {successMessage && (
-          <div className="mb-5 p-3.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 text-xs font-semibold text-center">
-            {successMessage}
-          </div>
-        )}
+
 
         {/* Error message */}
         {errorMessage && (
@@ -202,7 +189,6 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
             onClick={() => {
               setIsSignUp(!isSignUp);
               setErrorMessage('');
-              setSuccessMessage('');
             }}
             className="text-xs text-slate-400 hover:text-emerald-400 font-semibold transition-colors cursor-pointer"
           >
