@@ -30,7 +30,6 @@ import {
   getStoredIncomes,
   getStoredExpenses,
   getStoredSettings,
-  resetAllDataToDefault,
   clearAllData,
   exportBackupData,
   importBackupData,
@@ -86,13 +85,8 @@ import { AgendaModal } from './components/modals/AgendaModal';
 
 export default function App() {
   // Authentication State
-  const [userSession, setUserSession] = useState<UserSession | null>(() => {
-    try {
-      const stored = localStorage.getItem('gfo_demo_session');
-      if (stored) return JSON.parse(stored);
-    } catch {}
-    return null;
-  });
+  const [userSession, setUserSession] = useState<UserSession | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
   // Check Supabase Auth session on load
   useEffect(() => {
@@ -105,6 +99,7 @@ export default function App() {
           token: session.access_token,
         });
       }
+      setAuthLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -115,16 +110,23 @@ export default function App() {
           name: session.user.user_metadata?.name || 'Gestor',
           token: session.access_token,
         });
+      } else {
+        setUserSession(null);
       }
+      setAuthLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
   const handleLogout = async () => {
-    localStorage.removeItem('gfo_demo_session');
     await supabase.auth.signOut();
     setUserSession(null);
+    // Clear local cache on logout
+    localStorage.removeItem('gfo_clients_v1');
+    localStorage.removeItem('gfo_projects_v1');
+    localStorage.removeItem('gfo_incomes_v1');
+    localStorage.removeItem('gfo_expenses_v1');
   };
 
   // Navigation State
@@ -180,11 +182,12 @@ export default function App() {
         fetchLiveExchangeRates(),
       ]);
 
-      if (fetchedClients.length > 0) setClients(fetchedClients);
-      if (fetchedProjects.length > 0) setProjects(fetchedProjects);
-      if (fetchedIncomes.length > 0) setIncomes(fetchedIncomes);
-      if (fetchedExpenses.length > 0) setExpenses(fetchedExpenses);
-      if (fetchedEvents.length > 0) setAgendaEvents(fetchedEvents);
+      // Always use DB data as source of truth
+      setClients(fetchedClients);
+      setProjects(fetchedProjects);
+      setIncomes(fetchedIncomes);
+      setExpenses(fetchedExpenses);
+      setAgendaEvents(fetchedEvents);
 
       if (rates) {
         setSettings((prev) => {
@@ -426,25 +429,23 @@ export default function App() {
     setAgendaEvents((prev) => prev.map((e) => (e.id === eventId ? updated : e)));
   };
 
-  // Reset Demo & Clear Data
+  // Clear local cache only
   const handleResetData = () => {
-    resetAllDataToDefault();
-    setClients(getStoredClients());
-    setProjects(getStoredProjects());
-    setIncomes(getStoredIncomes());
-    setExpenses(getStoredExpenses());
-    setSettings(getStoredSettings());
-    alert('Dados de demonstração restaurados!');
+    if (window.confirm('Limpar cache local e recarregar dados do banco?')) {
+      clearAllData();
+      window.location.reload();
+    }
   };
 
   const handleClearData = () => {
-    clearAllData();
-    setClients([]);
-    setProjects([]);
-    setIncomes([]);
-    setExpenses([]);
-    setAgendaEvents([]);
-    alert('Sistema limpo com sucesso!');
+    if (window.confirm('Tem certeza que deseja limpar o cache local? Os dados no banco de dados não serão apagados.')) {
+      clearAllData();
+      setClients([]);
+      setProjects([]);
+      setIncomes([]);
+      setExpenses([]);
+      setAgendaEvents([]);
+    }
   };
 
   // Export & Import Backup
@@ -472,7 +473,18 @@ export default function App() {
     }
   };
 
-  // ROUTE GUARD: If user is not authenticated, render LoginView
+  // ROUTE GUARD: Wait for auth check, then redirect if unauthenticated
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-slate-400 text-sm font-medium">A carregar...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!userSession) {
     return <LoginView onLoginSuccess={(session) => setUserSession(session)} />;
   }
