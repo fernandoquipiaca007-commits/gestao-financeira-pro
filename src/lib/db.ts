@@ -67,26 +67,25 @@ export function saveAgendaEvents(events: AgendaEvent[]): void {
 export async function fetchClientsFromDb(): Promise<Client[]> {
   try {
     const { data, error } = await supabase.from('clients').select('*').order('created_at', { ascending: false });
-    if (!error && data && data.length > 0) {
-      const formatted: Client[] = data.map((item) => ({
-        id: item.id,
-        name: item.name,
-        company: item.company || '',
-        whatsapp: item.whatsapp || '',
-        email: item.email || '',
-        type: item.type || 'Outro',
-        country: item.country || 'BR',
-        currency: item.currency || 'BRL',
-        notes: item.notes || '',
-        createdAt: item.created_at ? item.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
-      }));
-      saveClients(formatted);
-      return formatted;
-    }
+    if (error) throw error;
+    const formatted: Client[] = (data || []).map((item) => ({
+      id: item.id,
+      name: item.name,
+      company: item.company || '',
+      whatsapp: item.whatsapp || '',
+      email: item.email || '',
+      type: item.type || 'Outro',
+      country: item.country || 'BR',
+      currency: item.currency || 'BRL',
+      notes: item.notes || '',
+      createdAt: item.created_at ? item.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
+    }));
+    saveClients(formatted);
+    return formatted;
   } catch (err) {
-    console.warn('Supabase fetch clients failed, using local storage:', err);
+    console.warn('Supabase fetch clients failed, using local cache:', err);
+    return getStoredClients();
   }
-  return getStoredClients();
 }
 
 export async function upsertClientToDb(client: Client): Promise<void> {
@@ -120,29 +119,28 @@ export async function deleteClientFromDb(clientId: string): Promise<void> {
 export async function fetchProjectsFromDb(): Promise<Project[]> {
   try {
     const { data, error } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
-    if (!error && data && data.length > 0) {
-      const formatted: Project[] = data.map((item) => ({
-        id: item.id,
-        name: item.name,
-        clientId: item.client_id || '',
-        category: item.category || 'Outro',
-        totalAmount: Number(item.total_amount) || 0,
-        paidAmount: Number(item.paid_amount) || 0,
-        currency: item.currency || 'BRL',
-        startDate: item.start_date || '',
-        dueDate: item.due_date || '',
-        nextPaymentDate: item.next_payment_date || undefined,
-        status: item.status || 'Em andamento',
-        notes: item.notes || '',
-        createdAt: item.created_at ? item.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
-      }));
-      saveProjects(formatted);
-      return formatted;
-    }
+    if (error) throw error;
+    const formatted: Project[] = (data || []).map((item) => ({
+      id: item.id,
+      name: item.name,
+      clientId: item.client_id || '',
+      category: item.category || 'Outro',
+      totalAmount: Number(item.total_amount) || 0,
+      paidAmount: Number(item.paid_amount) || 0,
+      currency: item.currency || 'BRL',
+      startDate: item.start_date || '',
+      dueDate: item.due_date || '',
+      nextPaymentDate: item.next_payment_date || undefined,
+      status: item.status || 'Em andamento',
+      notes: item.notes || '',
+      createdAt: item.created_at ? item.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
+    }));
+    saveProjects(formatted);
+    return formatted;
   } catch (err) {
-    console.warn('Supabase fetch projects failed, using local storage:', err);
+    console.warn('Supabase fetch projects failed, using local cache:', err);
+    return getStoredProjects();
   }
-  return getStoredProjects();
 }
 
 export async function upsertProjectToDb(project: Project): Promise<void> {
@@ -179,28 +177,27 @@ export async function deleteProjectFromDb(projectId: string): Promise<void> {
 export async function fetchIncomesFromDb(): Promise<Income[]> {
   try {
     const { data, error } = await supabase.from('incomes').select('*').order('created_at', { ascending: false });
-    if (!error && data && data.length > 0) {
-      const formatted: Income[] = data.map((item) => ({
-        id: item.id,
-        clientId: item.client_id || '',
-        projectId: item.project_id || undefined,
-        description: item.description,
-        amount: Number(item.amount) || 0,
-        currency: item.currency || 'BRL',
-        dueDate: item.due_date,
-        receivedDate: item.received_date || undefined,
-        paymentMethod: item.payment_method || 'PIX',
-        status: item.status || 'Pendente',
-        notes: item.notes || '',
-        createdAt: item.created_at ? item.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
-      }));
-      saveIncomes(formatted);
-      return formatted;
-    }
+    if (error) throw error;
+    const formatted: Income[] = (data || []).map((item) => ({
+      id: item.id,
+      clientId: item.client_id || '',
+      projectId: item.project_id || undefined,
+      description: item.description,
+      amount: Number(item.amount) || 0,
+      currency: item.currency || 'BRL',
+      dueDate: item.due_date,
+      receivedDate: item.received_date || undefined,
+      paymentMethod: item.payment_method || 'PIX',
+      status: item.status || 'Pendente',
+      notes: item.notes || '',
+      createdAt: item.created_at ? item.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
+    }));
+    saveIncomes(formatted);
+    return formatted;
   } catch (err) {
-    console.warn('Supabase fetch incomes failed, using local storage:', err);
+    console.warn('Supabase fetch incomes failed, using local cache:', err);
+    return getStoredIncomes();
   }
-  return getStoredIncomes();
 }
 
 export async function upsertIncomeToDb(income: Income): Promise<void> {
@@ -236,24 +233,23 @@ export async function deleteIncomeFromDb(incomeId: string): Promise<void> {
 export async function fetchExpensesFromDb(): Promise<Expense[]> {
   try {
     const { data, error } = await supabase.from('expenses').select('*').order('created_at', { ascending: false });
-    if (!error && data && data.length > 0) {
-      const formatted: Expense[] = data.map((item) => ({
-        id: item.id,
-        category: item.category || 'Outros',
-        description: item.description,
-        amount: Number(item.amount) || 0,
-        currency: item.currency || 'BRL',
-        date: item.date,
-        paid: item.paid || false,
-        createdAt: item.created_at ? item.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
-      }));
-      saveExpenses(formatted);
-      return formatted;
-    }
+    if (error) throw error;
+    const formatted: Expense[] = (data || []).map((item) => ({
+      id: item.id,
+      category: item.category || 'Outros',
+      description: item.description,
+      amount: Number(item.amount) || 0,
+      currency: item.currency || 'BRL',
+      date: item.date,
+      paid: item.paid || false,
+      createdAt: item.created_at ? item.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
+    }));
+    saveExpenses(formatted);
+    return formatted;
   } catch (err) {
-    console.warn('Supabase fetch expenses failed, using local storage:', err);
+    console.warn('Supabase fetch expenses failed, using local cache:', err);
+    return getStoredExpenses();
   }
-  return getStoredExpenses();
 }
 
 export async function upsertExpenseToDb(expense: Expense): Promise<void> {
@@ -285,27 +281,26 @@ export async function deleteExpenseFromDb(expenseId: string): Promise<void> {
 export async function fetchAgendaEventsFromDb(): Promise<AgendaEvent[]> {
   try {
     const { data, error } = await supabase.from('agenda_events').select('*').order('date', { ascending: true });
-    if (!error && data && data.length > 0) {
-      const formatted: AgendaEvent[] = data.map((item) => ({
-        id: item.id,
-        title: item.title,
-        type: item.type,
-        date: item.date,
-        time: item.time || undefined,
-        clientId: item.client_id || undefined,
-        projectId: item.project_id || undefined,
-        description: item.description || '',
-        status: item.status || 'pending',
-        notifyPush: item.notify_push ?? true,
-        createdAt: item.created_at || new Date().toISOString(),
-      }));
-      saveAgendaEvents(formatted);
-      return formatted;
-    }
+    if (error) throw error;
+    const formatted: AgendaEvent[] = (data || []).map((item) => ({
+      id: item.id,
+      title: item.title,
+      type: item.type,
+      date: item.date,
+      time: item.time || undefined,
+      clientId: item.client_id || undefined,
+      projectId: item.project_id || undefined,
+      description: item.description || '',
+      status: item.status || 'pending',
+      notifyPush: item.notify_push ?? true,
+      createdAt: item.created_at || new Date().toISOString(),
+    }));
+    saveAgendaEvents(formatted);
+    return formatted;
   } catch (err) {
-    console.warn('Supabase fetch agenda failed, using local storage:', err);
+    console.warn('Supabase fetch agenda failed, using local cache:', err);
+    return getStoredAgendaEvents();
   }
-  return getStoredAgendaEvents();
 }
 
 export async function upsertAgendaEventToDb(event: AgendaEvent): Promise<void> {

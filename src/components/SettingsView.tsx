@@ -274,53 +274,53 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div>
           <h3 className="text-base font-bold text-white flex items-center gap-2">
             <RefreshCw className="w-5 h-5 text-amber-400" />
-            Gerenciamento de Dados do Sistema
+            Gerenciamento de Dados
           </h3>
           <p className="text-xs text-slate-400 mt-1">
-            Escolha entre iniciar do zero para uso real na sua empresa ou restaurar a base de demonstração.
+            Limpar o cache local ou apagar permanentemente todos os registros do sistema.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-          {/* Clear All Data for Real Use */}
-          <div className="p-4 rounded-xl bg-rose-950/20 border border-rose-900/40 space-y-2">
-            <span className="text-xs font-bold text-rose-400 flex items-center gap-1.5">
-              <Trash2 className="w-4 h-4" /> Iniciar do Zero (Uso Real)
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Reload from DB */}
+          <div className="p-4 rounded-xl bg-slate-800/40 border border-slate-700/40 space-y-2">
+            <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+              <RefreshCw className="w-4 h-4" /> Recarregar Dados do Banco
             </span>
             <p className="text-[11px] text-slate-400">
-              Remove todos os clientes e projetos de teste para você começar a cadastrar seus dados reais.
+              Limpa o cache local do navegador e recarrega todos os dados diretamente do Supabase.
             </p>
             <button
               type="button"
               onClick={() => {
-                if (window.confirm('⚠️ ATENÇÃO: Isso irá apagar TODOS os clientes, projetos e registros financeiros atuais para iniciar o sistema limpo para uso real. Deseja prosseguir?')) {
+                if (window.confirm('Limpar cache local e recarregar os dados do banco agora?')) {
+                  onResetData();
+                }
+              }}
+              className="mt-2 px-4 py-2 bg-slate-600/80 hover:bg-slate-500 text-white text-xs font-bold rounded-xl transition-all"
+            >
+              Recarregar do Supabase
+            </button>
+          </div>
+
+          {/* Clear all data */}
+          <div className="p-4 rounded-xl bg-rose-950/20 border border-rose-900/40 space-y-2">
+            <span className="text-xs font-bold text-rose-400 flex items-center gap-1.5">
+              <Trash2 className="w-4 h-4" /> Apagar Cache Local
+            </span>
+            <p className="text-[11px] text-slate-400">
+              Remove os dados em cache no navegador. Os dados no Supabase não serão apagados.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm('Apagar o cache local do navegador? Os dados no banco de dados permanecem intactos.')) {
                   onClearData();
                 }
               }}
               className="mt-2 px-4 py-2 bg-rose-600/80 hover:bg-rose-500 text-white text-xs font-bold rounded-xl transition-all"
             >
-              Limpar Tudo (Iniciar do Zero)
-            </button>
-          </div>
-
-          {/* Reset Demo Data */}
-          <div className="p-4 rounded-xl bg-amber-950/20 border border-amber-900/40 space-y-2">
-            <span className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
-              <RefreshCw className="w-4 h-4" /> Carregar Dados de Demonstração
-            </span>
-            <p className="text-[11px] text-slate-400">
-              Restaura a base de testes com clientes de Angola, Brasil, EUA, Portugal e lançamentos em AOA, BRL, USD, EUR.
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                if (window.confirm('Tem certeza que deseja restaurar os dados de demonstração?')) {
-                  onResetData();
-                }
-              }}
-              className="mt-2 px-4 py-2 bg-amber-600/80 hover:bg-amber-500 text-white text-xs font-bold rounded-xl transition-all"
-            >
-              Restaurar Dados de Teste
+              Limpar Cache Local
             </button>
           </div>
         </div>
