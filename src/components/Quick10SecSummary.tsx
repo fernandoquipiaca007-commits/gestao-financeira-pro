@@ -172,23 +172,23 @@ export const Quick10SecSummary: React.FC<Quick10SecSummaryProps> = ({
     <div className="bg-white border border-slate-200/90 rounded-2xl p-6 mb-8 shadow-xs relative">
       
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-6 border-b border-slate-100">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-6 border-b border-slate-200">
         <div className="flex items-center space-x-3">
-          <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200/60 shadow-2xs">
-            <Zap className="w-5 h-5 fill-emerald-600" />
+          <div className="p-2.5 rounded-xl bg-emerald-100 text-emerald-700 border border-emerald-300 shadow-2xs">
+            <Zap className="w-5 h-5 fill-emerald-700" />
           </div>
           <div>
-            <h2 className="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+            <h2 className="text-base font-black text-slate-900 tracking-tight flex items-center gap-2">
               Visão Geral Financeira
             </h2>
-            <p className="text-xs text-slate-500 font-medium">
+            <p className="text-xs text-slate-600 font-semibold mt-0.5">
               Indicadores vitais em tempo real para controle operacional e estratégico
             </p>
           </div>
         </div>
 
         {currencyFilter === 'ALL' && (
-          <span className="text-[11px] font-semibold px-3 py-1 rounded-lg bg-slate-100 border border-slate-200 text-slate-600 self-start sm:self-auto shadow-2xs">
+          <span className="text-xs font-bold px-3 py-1 rounded-lg bg-slate-100 border border-slate-300 text-slate-700 self-start sm:self-auto shadow-2xs">
             🌐 Moeda Base: <strong className="text-slate-900">{settings.defaultCurrency}</strong>
           </span>
         )}
@@ -198,180 +198,180 @@ export const Quick10SecSummary: React.FC<Quick10SecSummaryProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
         {/* KPI 1: Contas a Receber */}
-        <div className="bg-slate-50/70 hover:bg-slate-50 p-4 rounded-xl border border-slate-200/80 transition-all hover:shadow-sm group">
+        <div className="bg-slate-50/90 hover:bg-slate-100/80 p-4 rounded-xl border border-slate-300/80 transition-all shadow-2xs hover:shadow-xs group">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Contas a Receber</span>
-            <div className="p-1.5 rounded-lg bg-emerald-100/70 text-emerald-600">
-              <DollarSign className="w-4 h-4" />
+            <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Contas a Receber</span>
+            <div className="p-1.5 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-200">
+              <DollarSign className="w-4 h-4 stroke-[2.5]" />
             </div>
           </div>
-          <div className="text-2xl font-extrabold text-emerald-600 tracking-tight">
+          <div className="text-2xl font-black text-emerald-700 tracking-tight">
             {totalToReceive.formatted}
           </div>
-          <div className="text-[11px] text-slate-500 font-medium mt-2 flex items-center justify-between border-t border-slate-200/60 pt-2">
+          <div className="text-xs text-slate-700 font-bold mt-2 flex items-center justify-between border-t border-slate-200 pt-2">
             <span>{pendingIncomeItems.length} fatura(s) pendente(s)</span>
             <button
               onClick={() => onNavigateToTab('financial', 'receitas-pendentes')}
-              className="text-emerald-600 hover:text-emerald-700 font-bold inline-flex items-center gap-0.5 cursor-pointer"
+              className="text-emerald-700 hover:text-emerald-900 font-extrabold inline-flex items-center gap-0.5 cursor-pointer hover:underline"
             >
-              Ver <ArrowRight className="w-3 h-3" />
+              Ver <ArrowRight className="w-3.5 h-3.5 stroke-[3]" />
             </button>
           </div>
         </div>
 
         {/* KPI 2: Inadimplência */}
-        <div className="bg-slate-50/70 hover:bg-slate-50 p-4 rounded-xl border border-slate-200/80 transition-all hover:shadow-sm group">
+        <div className="bg-slate-50/90 hover:bg-slate-100/80 p-4 rounded-xl border border-slate-300/80 transition-all shadow-2xs hover:shadow-xs group">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Inadimplência</span>
-            <div className="p-1.5 rounded-lg bg-rose-100/70 text-rose-600">
-              <AlertCircle className="w-4 h-4" />
+            <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Inadimplência</span>
+            <div className="p-1.5 rounded-lg bg-rose-100 text-rose-800 border border-rose-200">
+              <AlertCircle className="w-4 h-4 stroke-[2.5]" />
             </div>
           </div>
-          <div className="text-2xl font-extrabold text-rose-600 tracking-tight">
+          <div className="text-2xl font-black text-rose-700 tracking-tight">
             {unpaidClientsCount} cliente(s)
           </div>
-          <div className="text-[11px] text-slate-500 font-medium mt-2 flex items-center justify-between border-t border-slate-200/60 pt-2">
+          <div className="text-xs text-slate-700 font-bold mt-2 flex items-center justify-between border-t border-slate-200 pt-2">
             <span>{unpaidIncomes.length} cobrança(s) vencida(s)</span>
             <button
               onClick={() => onNavigateToTab('financial', 'receitas-atrasadas')}
-              className="text-rose-600 hover:text-rose-700 font-bold inline-flex items-center gap-0.5 cursor-pointer"
+              className="text-rose-700 hover:text-rose-900 font-extrabold inline-flex items-center gap-0.5 cursor-pointer hover:underline"
             >
-              Cobrar <ArrowRight className="w-3 h-3" />
+              Cobrar <ArrowRight className="w-3.5 h-3.5 stroke-[3]" />
             </button>
           </div>
         </div>
 
         {/* KPI 3: Cobranças do Dia */}
-        <div className="bg-slate-50/70 hover:bg-slate-50 p-4 rounded-xl border border-slate-200/80 transition-all hover:shadow-sm group">
+        <div className="bg-slate-50/90 hover:bg-slate-100/80 p-4 rounded-xl border border-slate-300/80 transition-all shadow-2xs hover:shadow-xs group">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Cobranças do Dia</span>
-            <div className="p-1.5 rounded-lg bg-amber-100/70 text-amber-600">
-              <MessageCircle className="w-4 h-4" />
+            <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Cobranças do Dia</span>
+            <div className="p-1.5 rounded-lg bg-amber-100 text-amber-800 border border-amber-200">
+              <MessageCircle className="w-4 h-4 stroke-[2.5]" />
             </div>
           </div>
-          <div className="text-2xl font-extrabold text-amber-600 tracking-tight">
+          <div className="text-2xl font-black text-amber-700 tracking-tight">
             {incomesToChargeToday.length} conta(s)
           </div>
-          <div className="text-[11px] text-slate-500 font-medium mt-2 flex items-center justify-between border-t border-slate-200/60 pt-2">
+          <div className="text-xs text-slate-700 font-bold mt-2 flex items-center justify-between border-t border-slate-200 pt-2">
             <span>Vencimento hoje ou atrasado</span>
             <button
               onClick={() => onNavigateToTab('financial', 'cobrar-hoje')}
-              className="text-amber-600 hover:text-amber-700 font-bold inline-flex items-center gap-0.5 cursor-pointer"
+              className="text-amber-700 hover:text-amber-900 font-extrabold inline-flex items-center gap-0.5 cursor-pointer hover:underline"
             >
-              Executar <ArrowRight className="w-3 h-3" />
+              Executar <ArrowRight className="w-3.5 h-3.5 stroke-[3]" />
             </button>
           </div>
         </div>
 
         {/* KPI 4: Receita Recebida */}
-        <div className="bg-slate-50/70 hover:bg-slate-50 p-4 rounded-xl border border-slate-200/80 transition-all hover:shadow-sm group">
+        <div className="bg-slate-50/90 hover:bg-slate-100/80 p-4 rounded-xl border border-slate-300/80 transition-all shadow-2xs hover:shadow-xs group">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Receita Recebida</span>
-            <div className="p-1.5 rounded-lg bg-emerald-100/70 text-emerald-600">
-              <TrendingUp className="w-4 h-4" />
+            <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Receita Recebida</span>
+            <div className="p-1.5 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-200">
+              <TrendingUp className="w-4 h-4 stroke-[2.5]" />
             </div>
           </div>
-          <div className="text-2xl font-extrabold text-emerald-600 tracking-tight">
+          <div className="text-2xl font-black text-emerald-700 tracking-tight">
             {totalBilledThisMonth.formatted}
           </div>
-          <div className="text-[11px] text-slate-500 font-medium mt-2 flex items-center justify-between border-t border-slate-200/60 pt-2">
+          <div className="text-xs text-slate-700 font-bold mt-2 flex items-center justify-between border-t border-slate-200 pt-2">
             <span>Mês atual ({monthlyReceivedItems.length} entradas)</span>
           </div>
         </div>
 
         {/* KPI 5: Custos Operacionais */}
-        <div className="bg-slate-50/70 hover:bg-slate-50 p-4 rounded-xl border border-slate-200/80 transition-all hover:shadow-sm group">
+        <div className="bg-slate-50/90 hover:bg-slate-100/80 p-4 rounded-xl border border-slate-300/80 transition-all shadow-2xs hover:shadow-xs group">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Custos Operacionais</span>
-            <div className="p-1.5 rounded-lg bg-slate-200/80 text-slate-700">
-              <Receipt className="w-4 h-4" />
+            <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Custos Operacionais</span>
+            <div className="p-1.5 rounded-lg bg-slate-200 text-slate-800 border border-slate-300">
+              <Receipt className="w-4 h-4 stroke-[2.5]" />
             </div>
           </div>
-          <div className="text-2xl font-extrabold text-slate-800 tracking-tight">
+          <div className="text-2xl font-black text-slate-900 tracking-tight">
             {totalSpentThisMonth.formatted}
           </div>
-          <div className="text-[11px] text-slate-500 font-medium mt-2 flex items-center justify-between border-t border-slate-200/60 pt-2">
+          <div className="text-xs text-slate-700 font-bold mt-2 flex items-center justify-between border-t border-slate-200 pt-2">
             <span>Mês atual ({monthlyExpenseItems.length} despesas)</span>
           </div>
         </div>
 
         {/* KPI 6: Resultado Líquido Mensal */}
-        <div className="bg-slate-50/70 hover:bg-slate-50 p-4 rounded-xl border border-slate-200/80 transition-all hover:shadow-sm group">
+        <div className="bg-slate-50/90 hover:bg-slate-100/80 p-4 rounded-xl border border-slate-300/80 transition-all shadow-2xs hover:shadow-xs group">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Resultado Líquido Mensal</span>
-            <div className={`p-1.5 rounded-lg ${profitRaw >= 0 ? 'bg-teal-100/70 text-teal-600' : 'bg-rose-100/70 text-rose-600'}`}>
-              <CheckCircle2 className="w-4 h-4" />
+            <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Resultado Líquido Mensal</span>
+            <div className={`p-1.5 rounded-lg border ${profitRaw >= 0 ? 'bg-teal-100 text-teal-800 border-teal-200' : 'bg-rose-100 text-rose-800 border-rose-200'}`}>
+              <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
             </div>
           </div>
-          <div className={`text-2xl font-extrabold tracking-tight ${profitRaw >= 0 ? 'text-teal-600' : 'text-rose-600'}`}>
+          <div className={`text-2xl font-black tracking-tight ${profitRaw >= 0 ? 'text-teal-700' : 'text-rose-700'}`}>
             {netProfitThisMonthFormatted}
           </div>
-          <div className="text-[11px] text-slate-500 font-medium mt-2 flex items-center justify-between border-t border-slate-200/60 pt-2">
+          <div className="text-xs text-slate-700 font-bold mt-2 flex items-center justify-between border-t border-slate-200 pt-2">
             <span>{profitRaw >= 0 ? 'Margem operacional positiva' : 'Atenção às margens'}</span>
           </div>
         </div>
 
         {/* KPI 7: Projetos Ativos */}
-        <div className="bg-slate-50/70 hover:bg-slate-50 p-4 rounded-xl border border-slate-200/80 transition-all hover:shadow-sm group">
+        <div className="bg-slate-50/90 hover:bg-slate-100/80 p-4 rounded-xl border border-slate-300/80 transition-all shadow-2xs hover:shadow-xs group">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Projetos Ativos</span>
-            <div className="p-1.5 rounded-lg bg-indigo-100/70 text-indigo-600">
-              <FolderKanban className="w-4 h-4" />
+            <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Projetos Ativos</span>
+            <div className="p-1.5 rounded-lg bg-indigo-100 text-indigo-800 border border-indigo-200">
+              <FolderKanban className="w-4 h-4 stroke-[2.5]" />
             </div>
           </div>
-          <div className="text-2xl font-extrabold text-indigo-600 tracking-tight">
+          <div className="text-2xl font-black text-indigo-700 tracking-tight">
             {activeProjects.length} projeto(s)
           </div>
-          <div className="text-[11px] text-slate-500 font-medium mt-2 flex items-center justify-between border-t border-slate-200/60 pt-2">
+          <div className="text-xs text-slate-700 font-bold mt-2 flex items-center justify-between border-t border-slate-200 pt-2">
             <span>Operação em andamento</span>
             <button
               onClick={() => onNavigateToTab('projects', 'Em andamento')}
-              className="text-indigo-600 hover:text-indigo-700 font-bold inline-flex items-center gap-0.5 cursor-pointer"
+              className="text-indigo-700 hover:text-indigo-900 font-extrabold inline-flex items-center gap-0.5 cursor-pointer hover:underline"
             >
-              Ver <ArrowRight className="w-3 h-3" />
+              Ver <ArrowRight className="w-3.5 h-3.5 stroke-[3]" />
             </button>
           </div>
         </div>
 
         {/* KPI 8: Projetos com Pendências */}
-        <div className="bg-slate-50/70 hover:bg-slate-50 p-4 rounded-xl border border-slate-200/80 transition-all hover:shadow-sm group">
+        <div className="bg-slate-50/90 hover:bg-slate-100/80 p-4 rounded-xl border border-slate-300/80 transition-all shadow-2xs hover:shadow-xs group">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Projetos com Pendências</span>
-            <div className="p-1.5 rounded-lg bg-purple-100/70 text-purple-600">
-              <Clock className="w-4 h-4" />
+            <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Projetos com Pendências</span>
+            <div className="p-1.5 rounded-lg bg-purple-100 text-purple-800 border border-purple-200">
+              <Clock className="w-4 h-4 stroke-[2.5]" />
             </div>
           </div>
-          <div className="text-2xl font-extrabold text-purple-600 tracking-tight">
+          <div className="text-2xl font-black text-purple-700 tracking-tight">
             {projectsNeedingAttention.length} projeto(s)
           </div>
-          <div className="text-[11px] text-slate-500 font-medium mt-2 flex items-center justify-between border-t border-slate-200/60 pt-2">
+          <div className="text-xs text-slate-700 font-bold mt-2 flex items-center justify-between border-t border-slate-200 pt-2">
             <span>Prazos/Aguardando cliente</span>
             <button
               onClick={() => onNavigateToTab('projects')}
-              className="text-purple-600 hover:text-purple-700 font-bold inline-flex items-center gap-0.5 cursor-pointer"
+              className="text-purple-700 hover:text-purple-900 font-extrabold inline-flex items-center gap-0.5 cursor-pointer hover:underline"
             >
-              Ver <ArrowRight className="w-3 h-3" />
+              Ver <ArrowRight className="w-3.5 h-3.5 stroke-[3]" />
             </button>
           </div>
         </div>
 
         {/* KPI 9: Disponibilidade em Caixa */}
-        <div className="bg-teal-50/60 hover:bg-teal-50/90 p-4 rounded-xl border border-teal-200/90 transition-all hover:shadow-sm group">
+        <div className="bg-teal-50 hover:bg-teal-100/70 p-4 rounded-xl border border-teal-300 transition-all shadow-2xs hover:shadow-xs group">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-teal-800 uppercase tracking-wider">Disponibilidade em Caixa</span>
-            <div className="p-1.5 rounded-lg bg-teal-200/80 text-teal-800">
-              <Wallet className="w-4 h-4" />
+            <span className="text-xs font-extrabold text-teal-900 uppercase tracking-wider">Disponibilidade em Caixa</span>
+            <div className="p-1.5 rounded-lg bg-teal-200 text-teal-900 border border-teal-300">
+              <Wallet className="w-4 h-4 stroke-[2.5]" />
             </div>
           </div>
-          <div className={`text-2xl font-extrabold tracking-tight ${realCashBalanceRaw >= 0 ? 'text-teal-700' : 'text-rose-600'}`}>
+          <div className={`text-2xl font-black tracking-tight ${realCashBalanceRaw >= 0 ? 'text-teal-800' : 'text-rose-700'}`}>
             {realCashBalanceFormatted}
           </div>
-          <div className="text-[11px] text-slate-600 font-medium mt-2 flex items-center justify-between border-t border-teal-200/60 pt-2">
+          <div className="text-xs text-slate-700 font-bold mt-2 flex items-center justify-between border-t border-teal-200 pt-2">
             <span>Disponível em conta hoje</span>
             {onOpenNewExpenseModal && (
               <button
                 onClick={onOpenNewExpenseModal}
-                className="text-teal-700 hover:text-teal-900 font-bold inline-flex items-center gap-0.5 cursor-pointer"
+                className="text-teal-800 hover:text-teal-950 font-black inline-flex items-center gap-0.5 cursor-pointer hover:underline"
               >
                 💸 Registrar Saída
               </button>
@@ -380,39 +380,39 @@ export const Quick10SecSummary: React.FC<Quick10SecSummaryProps> = ({
         </div>
 
         {/* KPI 10: Receita Contratada */}
-        <div className="bg-emerald-50/60 hover:bg-emerald-50/90 p-4 rounded-xl border border-emerald-200/90 transition-all hover:shadow-sm group">
+        <div className="bg-emerald-50 hover:bg-emerald-100/70 p-4 rounded-xl border border-emerald-300 transition-all shadow-2xs hover:shadow-xs group">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Receita Contratada</span>
-            <div className="p-1.5 rounded-lg bg-emerald-200/80 text-emerald-800">
-              <TrendingUp className="w-4 h-4" />
+            <span className="text-xs font-extrabold text-emerald-900 uppercase tracking-wider">Receita Contratada</span>
+            <div className="p-1.5 rounded-lg bg-emerald-200 text-emerald-900 border border-emerald-300">
+              <TrendingUp className="w-4 h-4 stroke-[2.5]" />
             </div>
           </div>
-          <div className="text-2xl font-extrabold text-emerald-700 tracking-tight">
+          <div className="text-2xl font-black text-emerald-800 tracking-tight">
             {totalPipelineContracted.formatted}
           </div>
-          <div className="text-[11px] text-slate-600 font-medium mt-2 flex items-center justify-between border-t border-emerald-200/60 pt-2">
+          <div className="text-xs text-slate-700 font-bold mt-2 flex items-center justify-between border-t border-emerald-200 pt-2">
             <span>Soma total dos projetos</span>
           </div>
         </div>
 
         {/* KPI 11: Repasses a Parceiros */}
-        <div className="bg-purple-50/60 hover:bg-purple-50/90 p-4 rounded-xl border border-purple-200/90 transition-all hover:shadow-sm group">
+        <div className="bg-purple-50 hover:bg-purple-100/70 p-4 rounded-xl border border-purple-300 transition-all shadow-2xs hover:shadow-xs group">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-purple-800 uppercase tracking-wider">Repasses a Parceiros</span>
-            <div className="p-1.5 rounded-lg bg-purple-200/80 text-purple-800">
-              <Handshake className="w-4 h-4" />
+            <span className="text-xs font-extrabold text-purple-900 uppercase tracking-wider">Repasses a Parceiros</span>
+            <div className="p-1.5 rounded-lg bg-purple-200 text-purple-900 border border-purple-300">
+              <Handshake className="w-4 h-4 stroke-[2.5]" />
             </div>
           </div>
-          <div className="text-2xl font-extrabold text-purple-700 tracking-tight">
+          <div className="text-2xl font-black text-purple-800 tracking-tight">
             {totalPendingCommissions.formatted}
           </div>
-          <div className="text-[11px] text-slate-600 font-medium mt-2 flex items-center justify-between border-t border-purple-200/60 pt-2">
+          <div className="text-xs text-slate-700 font-bold mt-2 flex items-center justify-between border-t border-purple-200 pt-2">
             <span>Comissões a pagar</span>
             <button
               onClick={() => onNavigateToTab('partners')}
-              className="text-purple-700 hover:text-purple-900 font-bold inline-flex items-center gap-0.5 cursor-pointer"
+              className="text-purple-800 hover:text-purple-950 font-black inline-flex items-center gap-0.5 cursor-pointer hover:underline"
             >
-              Parceiros <ArrowRight className="w-3 h-3" />
+              Parceiros <ArrowRight className="w-3.5 h-3.5 stroke-[3]" />
             </button>
           </div>
         </div>

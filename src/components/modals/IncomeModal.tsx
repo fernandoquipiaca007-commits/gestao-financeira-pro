@@ -99,23 +99,23 @@ export const IncomeModal: React.FC<IncomeModalProps> = ({
   const clientProjects = projects.filter((p) => p.clientId === clientId);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-fade-in font-sans">
+      <div className="w-full max-w-lg bg-white border border-slate-200/90 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         
         {/* Header */}
-        <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/80">
+        <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
           <div className="flex items-center space-x-2">
-            <div className="p-2 rounded-xl bg-teal-500/10 text-teal-400">
-              <DollarSign className="w-5 h-5" />
+            <div className="p-2 rounded-xl bg-teal-100 text-teal-800 border border-teal-200">
+              <DollarSign className="w-5 h-5 stroke-[2.2]" />
             </div>
-            <h3 className="font-bold text-white text-base">
+            <h3 className="font-black text-slate-900 text-base">
               {incomeToEdit ? 'Editar Receita' : 'Cadastrar Nova Receita'}
             </h3>
           </div>
 
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-200/60 cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -126,14 +126,14 @@ export const IncomeModal: React.FC<IncomeModalProps> = ({
           
           {/* Cliente */}
           <div>
-            <label className="text-xs font-semibold text-slate-300 block mb-1">
+            <label className="text-xs font-black text-slate-800 block mb-1">
               Cliente *
             </label>
             <select
               required
               value={clientId}
               onChange={(e) => handleClientChange(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-200 text-sm focus:outline-none focus:border-teal-500"
+              className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-bold focus:outline-none focus:border-teal-500"
             >
               {clients.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -145,13 +145,13 @@ export const IncomeModal: React.FC<IncomeModalProps> = ({
 
           {/* Projeto (Opcional) */}
           <div>
-            <label className="text-xs font-semibold text-slate-300 block mb-1">
+            <label className="text-xs font-black text-slate-800 block mb-1">
               Projeto Vinculado (Opcional)
             </label>
             <select
               value={projectId}
               onChange={(e) => setProjectId(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-200 text-sm focus:outline-none focus:border-teal-500"
+              className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-bold focus:outline-none focus:border-teal-500"
             >
               <option value="">Sem projeto específico</option>
               {clientProjects.map((p) => (
@@ -164,7 +164,7 @@ export const IncomeModal: React.FC<IncomeModalProps> = ({
 
           {/* Descrição */}
           <div>
-            <label className="text-xs font-semibold text-slate-300 block mb-1">
+            <label className="text-xs font-black text-slate-800 block mb-1">
               Descrição da Cobrança *
             </label>
             <input
@@ -173,14 +173,14 @@ export const IncomeModal: React.FC<IncomeModalProps> = ({
               placeholder="Ex: 2ª Parcela - Landing Page Mirtes"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-200 text-sm focus:outline-none focus:border-teal-500"
+              className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-bold focus:outline-none focus:border-teal-500 placeholder-slate-400"
             />
           </div>
 
           {/* Valor & Moeda */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-1">
+              <label className="text-xs font-black text-slate-800 block mb-1">
                 Valor ({CURRENCIES[currency]?.symbol})
               </label>
               <input
@@ -189,18 +189,18 @@ export const IncomeModal: React.FC<IncomeModalProps> = ({
                 required
                 value={amount}
                 onChange={(e) => setAmount(Number(e.target.value))}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-emerald-400 font-bold text-sm focus:outline-none focus:border-teal-500"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-emerald-700 font-black text-sm focus:outline-none focus:border-teal-500"
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-1">
+              <label className="text-xs font-black text-slate-800 block mb-1">
                 Moeda
               </label>
               <select
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-200 text-sm font-semibold focus:outline-none focus:border-teal-500"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-bold focus:outline-none focus:border-teal-500"
               >
                 <option value="AOA">AOA (Kz)</option>
                 <option value="BRL">BRL (R$)</option>
@@ -213,7 +213,7 @@ export const IncomeModal: React.FC<IncomeModalProps> = ({
           {/* Data Prevista, Forma Pgt, Status */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-1">
+              <label className="text-xs font-black text-slate-800 block mb-1">
                 Data Prevista
               </label>
               <input
@@ -221,18 +221,18 @@ export const IncomeModal: React.FC<IncomeModalProps> = ({
                 required
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-200 text-xs focus:outline-none focus:border-teal-500"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-bold focus:outline-none focus:border-teal-500"
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-1">
+              <label className="text-xs font-black text-slate-800 block mb-1">
                 Forma Pgt
               </label>
               <select
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-200 text-xs focus:outline-none focus:border-teal-500"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-bold focus:outline-none focus:border-teal-500"
               >
                 <option value="PIX">PIX</option>
                 <option value="Transferência">Transferência</option>
@@ -244,13 +244,13 @@ export const IncomeModal: React.FC<IncomeModalProps> = ({
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-1">
+              <label className="text-xs font-black text-slate-800 block mb-1">
                 Status
               </label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as IncomeStatus)}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-200 text-xs font-bold focus:outline-none focus:border-teal-500"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-black focus:outline-none focus:border-teal-500"
               >
                 <option value="Pendente">Pendente</option>
                 <option value="Recebido">Recebido</option>
@@ -260,19 +260,19 @@ export const IncomeModal: React.FC<IncomeModalProps> = ({
           </div>
 
           {/* Footer controls */}
-          <div className="pt-3 border-t border-slate-800 flex items-center justify-end space-x-3">
+          <div className="pt-3 border-t border-slate-200 flex items-center justify-end space-x-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl bg-slate-800 text-slate-300 hover:text-white text-sm font-semibold"
+              className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="px-5 py-2.5 bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-sm rounded-xl flex items-center space-x-2 transition-all shadow-md active:scale-95"
+              className="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-xl flex items-center space-x-2 transition-all shadow-xs cursor-pointer active:scale-95"
             >
-              <Save className="w-4 h-4" />
+              <Save className="w-4 h-4 stroke-[2.5]" />
               <span>Salvar Receita</span>
             </button>
           </div>

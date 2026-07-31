@@ -50,27 +50,27 @@ export function PartnerModal({ isOpen, onClose, onSave, partnerToEdit }: Partner
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs font-sans">
+      <div className="bg-white border border-slate-200/90 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden relative">
         
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-800 bg-slate-900/50">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50">
           <div className="flex items-center space-x-3">
-            <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
-              <Handshake className="w-5 h-5" />
+            <div className="p-2 rounded-xl bg-purple-100 text-purple-800 border border-purple-200">
+              <Handshake className="w-5 h-5 stroke-[2.2]" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white">
+              <h3 className="text-base font-black text-slate-900">
                 {partnerToEdit ? 'Editar Parceiro' : 'Novo Parceiro / Indicador'}
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-600 font-bold">
                 Cadastre quem indica clientes e recebe comissão por projeto
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-200/60 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -79,7 +79,7 @@ export function PartnerModal({ isOpen, onClose, onSave, partnerToEdit }: Partner
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-black text-slate-800 uppercase tracking-wider mb-1.5">
               Nome do Parceiro *
             </label>
             <div className="relative">
@@ -90,14 +90,14 @@ export function PartnerModal({ isOpen, onClose, onSave, partnerToEdit }: Partner
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Ex: Carlos Mendes"
-                className="w-full bg-slate-950/80 border border-slate-800 focus:border-purple-500 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none transition-all"
+                className="w-full bg-white border border-slate-300 focus:border-purple-500 rounded-xl pl-10 pr-4 py-2.5 text-xs font-bold text-slate-900 placeholder-slate-400 focus:outline-none transition-all"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-black text-slate-800 uppercase tracking-wider mb-1.5">
                 WhatsApp de Contato
               </label>
               <div className="relative">
@@ -107,13 +107,13 @@ export function PartnerModal({ isOpen, onClose, onSave, partnerToEdit }: Partner
                   value={whatsapp}
                   onChange={(e) => setWhatsapp(e.target.value)}
                   placeholder="+244923000000"
-                  className="w-full bg-slate-950/80 border border-slate-800 focus:border-purple-500 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none transition-all"
+                  className="w-full bg-white border border-slate-300 focus:border-purple-500 rounded-xl pl-10 pr-4 py-2.5 text-xs font-bold text-slate-900 placeholder-slate-400 focus:outline-none transition-all"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-black text-slate-800 uppercase tracking-wider mb-1.5">
                 Comissão Padrão (%)
               </label>
               <div className="relative">
@@ -126,14 +126,14 @@ export function PartnerModal({ isOpen, onClose, onSave, partnerToEdit }: Partner
                   value={defaultCommissionPercent}
                   onChange={(e) => setDefaultCommissionPercent(parseFloat(e.target.value) || 0)}
                   placeholder="10"
-                  className="w-full bg-slate-950/80 border border-slate-800 focus:border-purple-500 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none transition-all"
+                  className="w-full bg-white border border-slate-300 focus:border-purple-500 rounded-xl pl-10 pr-4 py-2.5 text-xs font-bold text-slate-900 placeholder-slate-400 focus:outline-none transition-all"
                 />
               </div>
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-black text-slate-800 uppercase tracking-wider mb-1.5">
               E-mail (opcional)
             </label>
             <div className="relative">
@@ -143,13 +143,13 @@ export function PartnerModal({ isOpen, onClose, onSave, partnerToEdit }: Partner
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="parceiro@email.com"
-                className="w-full bg-slate-950/80 border border-slate-800 focus:border-purple-500 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none transition-all"
+                className="w-full bg-white border border-slate-300 focus:border-purple-500 rounded-xl pl-10 pr-4 py-2.5 text-xs font-bold text-slate-900 placeholder-slate-400 focus:outline-none transition-all"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-black text-slate-800 uppercase tracking-wider mb-1.5">
               Observações / Acordo de Parceria
             </label>
             <div className="relative">
@@ -159,22 +159,22 @@ export function PartnerModal({ isOpen, onClose, onSave, partnerToEdit }: Partner
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Ex: Recebe 10% de comissão em projetos de Websites e Landing Pages que indicar."
-                className="w-full bg-slate-950/80 border border-slate-800 focus:border-purple-500 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none transition-all resize-none"
+                className="w-full bg-white border border-slate-300 focus:border-purple-500 rounded-xl pl-10 pr-4 py-2 text-xs font-semibold text-slate-900 placeholder-slate-400 focus:outline-none transition-all resize-none"
               />
             </div>
           </div>
 
-          <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-800">
+          <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-200">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="px-5 py-2.5 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-purple-600/20 transition-all cursor-pointer"
+              className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer active:scale-95"
             >
               {partnerToEdit ? 'Salvar Alterações' : 'Cadastrar Parceiro'}
             </button>

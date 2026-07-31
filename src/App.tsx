@@ -592,7 +592,7 @@ export default function App() {
         {/* Desktop Sidebar Navigation */}
         <aside className="hidden lg:block w-60 shrink-0">
           <nav className="sticky top-24 space-y-1 bg-white p-3 rounded-2xl border border-slate-200/90 shadow-xs">
-            <div className="px-3 py-2 text-[10px] font-bold tracking-wider text-slate-400 uppercase">
+            <div className="px-3 py-2 text-[10px] font-black tracking-widest text-slate-600 uppercase">
               Menu Executivo
             </div>
             {navItems.map((item) => {
@@ -603,23 +603,23 @@ export default function App() {
                 <button
                   key={item.id}
                   onClick={() => handleNavigateTab(item.id)}
-                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
                     isActive
-                      ? 'bg-slate-900 text-white shadow-sm shadow-slate-900/10'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
+                      ? 'bg-slate-900 text-white shadow-sm'
+                      : 'text-slate-800 hover:text-slate-950 hover:bg-slate-100'
                   }`}
                 >
                   <div className="flex items-center space-x-3">
-                    <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-400' : 'text-slate-500'}`} />
+                    <Icon className={`w-4 h-4 stroke-[2.2] ${isActive ? 'text-emerald-400' : 'text-slate-700'}`} />
                     <span>{item.label}</span>
                   </div>
 
                   {item.badge !== undefined && item.badge > 0 && (
                     <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
                         isActive
                           ? 'bg-slate-800 text-emerald-300'
-                          : 'bg-slate-100 text-slate-600 border border-slate-200'
+                          : 'bg-slate-100 text-slate-900 border border-slate-300'
                       }`}
                     >
                       {item.badge}
@@ -639,14 +639,14 @@ export default function App() {
               onClick={() => setIsMobileMenuOpen(false)}
             />
             <div className="relative w-72 bg-white border-r border-slate-200 p-5 h-full flex flex-col z-50 shadow-2xl">
-              <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
+              <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200">
                 <div className="flex items-center space-x-2">
                   <Sparkles className="w-5 h-5 text-emerald-600" />
-                  <span className="font-extrabold text-slate-900 text-base">Menu Principal</span>
+                  <span className="font-black text-slate-900 text-base">Menu Principal</span>
                 </div>
                 <button
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 cursor-pointer"
+                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -661,18 +661,18 @@ export default function App() {
                     <button
                       key={item.id}
                       onClick={() => handleNavigateTab(item.id)}
-                      className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
                         isActive
                           ? 'bg-slate-900 text-white'
-                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                          : 'text-slate-800 hover:text-slate-950 hover:bg-slate-100'
                       }`}
                     >
                       <div className="flex items-center space-x-3">
-                        <Icon className="w-4 h-4" />
+                        <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-400' : 'text-slate-700'}`} />
                         <span>{item.label}</span>
                       </div>
                       {item.badge !== undefined && item.badge > 0 && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] bg-slate-100 text-slate-600 border border-slate-200">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-slate-100 text-slate-900 border border-slate-300">
                           {item.badge}
                         </span>
                       )}

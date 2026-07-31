@@ -76,11 +76,11 @@ export const Header: React.FC<HeaderProps> = ({
                 <Sparkles className="w-5 h-5 fill-current" />
               </div>
               <div>
-                <span className="font-extrabold text-lg tracking-tight text-slate-900 block leading-tight">
+                <span className="font-black text-lg tracking-tight text-slate-900 block leading-tight">
                   Gestão<span className="text-emerald-600">FO</span>
                 </span>
-                <span className="text-[9px] text-slate-400 font-bold block tracking-wider uppercase">
-                  Plataforma Financeira & Operacional
+                <span className="text-[10px] text-slate-600 font-black block tracking-widest uppercase">
+                  Plataforma Financeira &amp; Operacional
                 </span>
               </div>
             </div>
@@ -90,13 +90,13 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="hidden md:flex flex-1 max-w-lg mx-8">
             <button
               onClick={onOpenGlobalSearch}
-              className="w-full flex items-center justify-between px-4 py-2 rounded-xl bg-slate-50 hover:bg-slate-100/90 border border-slate-200 text-slate-500 text-sm transition-all shadow-2xs group cursor-pointer"
+              className="w-full flex items-center justify-between px-4 py-2 rounded-xl bg-slate-50 hover:bg-slate-100/90 border border-slate-300 text-slate-700 text-sm transition-all shadow-2xs group cursor-pointer"
             >
               <div className="flex items-center space-x-2.5">
-                <Search className="w-4 h-4 text-slate-400 group-hover:text-emerald-600 transition-colors" />
-                <span className="text-xs font-medium text-slate-500">Pesquisar clientes, projetos, faturas...</span>
+                <Search className="w-4 h-4 text-slate-500 group-hover:text-emerald-600 transition-colors" />
+                <span className="text-xs font-bold text-slate-700">Pesquisar clientes, projetos, faturas...</span>
               </div>
-              <kbd className="hidden sm:inline-block px-2 py-0.5 text-[10px] font-mono bg-white text-slate-400 rounded-md border border-slate-200 shadow-2xs">
+              <kbd className="hidden sm:inline-block px-2 py-0.5 text-[10px] font-mono bg-white text-slate-600 font-bold rounded-md border border-slate-300 shadow-2xs">
                 ⌘K
               </kbd>
             </button>
@@ -106,16 +106,16 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center space-x-2.5">
             
             {/* Currency Filter */}
-            <div className="flex items-center bg-slate-100/90 p-1 rounded-xl border border-slate-200/80 text-xs font-semibold">
-              <span className="px-2 text-slate-500 hidden lg:inline-flex items-center gap-1 text-[11px]">
+            <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-300 text-xs font-bold">
+              <span className="px-2 text-slate-800 hidden lg:inline-flex items-center gap-1 text-[11px] font-extrabold">
                 <Globe className="w-3.5 h-3.5 text-emerald-600" /> Moeda:
               </span>
               <button
                 onClick={() => setActiveCurrencyFilter('ALL')}
                 className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer text-xs ${
                   activeCurrencyFilter === 'ALL'
-                    ? 'bg-white text-slate-900 font-bold shadow-xs border border-slate-200/60'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-white text-slate-900 font-black shadow-xs border border-slate-300'
+                    : 'text-slate-700 hover:text-slate-950 font-bold'
                 }`}
               >
                 Todas
@@ -128,8 +128,8 @@ export const Header: React.FC<HeaderProps> = ({
                     onClick={() => setActiveCurrencyFilter(code)}
                     className={`px-2 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer text-xs ${
                       activeCurrencyFilter === code
-                        ? 'bg-white text-slate-900 font-bold shadow-xs border border-slate-200/60'
-                        : 'text-slate-600 hover:text-slate-900'
+                        ? 'bg-white text-slate-900 font-black shadow-xs border border-slate-300'
+                        : 'text-slate-700 hover:text-slate-950 font-bold'
                     }`}
                     title={curr.name}
                   >

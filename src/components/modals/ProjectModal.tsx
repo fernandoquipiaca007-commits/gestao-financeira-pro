@@ -151,38 +151,38 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-[2px]">
+      <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-2xl shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
         
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-800 bg-slate-900/50 shrink-0">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-white shrink-0">
           <div className="flex items-center space-x-3">
-            <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <div className="p-2.5 rounded-lg bg-blue-50 text-blue-600">
               <FolderKanban className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white">
+              <h3 className="text-base font-bold text-slate-900">
                 {projectToEdit ? 'Editar Projeto' : 'Novo Projeto'}
               </h3>
-              <p className="text-xs text-slate-400">
-                Cadastre o valor, prazos e comissão do parceiro
+              <p className="text-xs text-slate-500">
+                Gerencie os detalhes e finanças do seu projeto
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto flex-1">
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
                 Nome do Projeto *
               </label>
               <input
@@ -190,20 +190,20 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Ex: Website Institucional"
-                className="w-full bg-slate-950/80 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none transition-all"
+                placeholder="Ex: Identidade Visual"
+                className="w-full bg-slate-50 border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 rounded-lg px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none transition-all"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
                 Cliente *
               </label>
               <select
                 required
                 value={clientId}
                 onChange={(e) => handleClientChange(e.target.value)}
-                className="w-full bg-slate-950/80 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all"
+                className="w-full bg-slate-50 border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:outline-none transition-all"
               >
                 <option value="">Selecione um cliente...</option>
                 {clients.map((c) => (
@@ -217,13 +217,13 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
                 Categoria
               </label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value as ProjectCategory)}
-                className="w-full bg-slate-950/80 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all"
+                className="w-full bg-slate-50 border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:outline-none transition-all"
               >
                 <option value="Website">Website</option>
                 <option value="Landing Page">Landing Page</option>
@@ -235,13 +235,13 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
                 Moeda
               </label>
               <select
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
-                className="w-full bg-slate-950/80 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all font-bold text-emerald-400"
+                className="w-full bg-slate-50 border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:outline-none transition-all"
               >
                 {Object.values(CURRENCIES).map((c) => (
                   <option key={c.code} value={c.code}>
@@ -252,13 +252,13 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
                 Status
               </label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as ProjectStatus)}
-                className="w-full bg-slate-950/80 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all"
+                className="w-full bg-slate-50 border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:outline-none transition-all"
               >
                 <option value="Em andamento">Em andamento</option>
                 <option value="Aguardando cliente">Aguardando cliente</option>
@@ -268,10 +268,10 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-slate-950/50 border border-slate-800 rounded-2xl">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-slate-50 border border-slate-100 rounded-xl">
             <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-                Valor Total do Projeto ({CURRENCIES[currency]?.symbol})
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
+                Valor Total ({CURRENCIES[currency]?.symbol})
               </label>
               <input
                 type="number"
@@ -280,13 +280,13 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                 required
                 value={totalAmount}
                 onChange={(e) => setTotalAmount(parseFloat(e.target.value) || 0)}
-                className="w-full bg-slate-900 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-3 text-base font-bold text-white placeholder-slate-500 focus:outline-none transition-all"
+                className="w-full bg-white border border-slate-200 focus:border-blue-500 rounded-lg px-4 py-2.5 text-sm font-bold text-slate-900 focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-                Valor Já Pago / Entrada ({CURRENCIES[currency]?.symbol})
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
+                Já Pago ({CURRENCIES[currency]?.symbol})
               </label>
               <input
                 type="number"
@@ -294,169 +294,98 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                 step="any"
                 value={paidAmount}
                 onChange={(e) => setPaidAmount(parseFloat(e.target.value) || 0)}
-                className="w-full bg-slate-900 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-3 text-base font-bold text-emerald-400 placeholder-slate-500 focus:outline-none transition-all"
+                className="w-full bg-white border border-slate-200 focus:border-blue-500 rounded-lg px-4 py-2.5 text-sm font-bold text-slate-900 focus:outline-none"
               />
             </div>
 
-            <div className="sm:col-span-2 flex items-center justify-between pt-2 border-t border-slate-800 text-xs font-semibold">
-              <span className="text-slate-400">Saldo Restante a Receber:</span>
-              <span className="text-amber-400 font-extrabold text-sm">
+            <div className="sm:col-span-2 flex items-center justify-between border-t border-slate-200 pt-3">
+              <span className="text-xs font-semibold text-slate-500">Saldo Restante:</span>
+              <span className="text-sm font-black text-slate-900">
                 {formatCurrency(remainingAmount, currency)}
               </span>
             </div>
           </div>
 
-          {/* Dates */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-                Data de Início
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
+                Início
               </label>
               <input
                 type="date"
                 required
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full bg-slate-950/80 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-                Previsão de Entrega
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
+                Entrega
               </label>
               <input
                 type="date"
                 required
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full bg-slate-950/80 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-                Próximo Pagamento
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
+                Próx. Pagamento
               </label>
               <input
                 type="date"
                 value={nextPaymentDate}
                 onChange={(e) => setNextPaymentDate(e.target.value)}
-                className="w-full bg-slate-950/80 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:outline-none"
               />
             </div>
           </div>
 
-          {/* Partner & Commission Section */}
-          <div className="p-4 bg-purple-950/20 border border-purple-900/40 rounded-2xl space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="flex items-center space-x-2.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={hasPartner}
-                  onChange={(e) => setHasPartner(e.target.checked)}
-                  className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 bg-slate-950 border-slate-800"
-                />
-                <span className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
-                  <Handshake className="w-4 h-4 text-purple-400" />
-                  Projeto em Parceria / Indicação (Comissão)
-                </span>
-              </label>
-            </div>
+          <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+            <label className="flex items-center space-x-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={hasPartner}
+                onChange={(e) => setHasPartner(e.target.checked)}
+                className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+              />
+              <span className="text-xs font-bold text-slate-700">Projeto com parceiro/comissão</span>
+            </label>
 
             {hasPartner && (
-              <div className="space-y-3 pt-2">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-300 uppercase mb-1">
-                      Parceiro *
-                    </label>
-                    <select
-                      required={hasPartner}
-                      value={partnerId}
-                      onChange={(e) => handlePartnerChange(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-purple-500 rounded-xl px-3 py-2 text-xs text-white"
-                    >
-                      <option value="">Selecione o parceiro...</option>
-                      {partners.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name} ({p.defaultCommissionPercent}% comissão)
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-300 uppercase mb-1">
-                        Tipo
-                      </label>
-                      <select
-                        value={commissionType}
-                        onChange={(e) => setCommissionType(e.target.value as 'percent' | 'fixed')}
-                        className="w-full bg-slate-950 border border-slate-800 focus:border-purple-500 rounded-xl px-2 py-2 text-xs text-white"
-                      >
-                        <option value="percent">Porcentagem (%)</option>
-                        <option value="fixed">Valor Fixo ({CURRENCIES[currency]?.symbol})</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-300 uppercase mb-1">
-                        Comissão
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        step="any"
-                        value={commissionValue}
-                        onChange={(e) => setCommissionValue(parseFloat(e.target.value) || 0)}
-                        placeholder="10"
-                        className="w-full bg-slate-950 border border-slate-800 focus:border-purple-500 rounded-xl px-3 py-2 text-xs text-white font-bold"
-                      />
-                    </div>
-                  </div>
+              <div className="space-y-3 border-t border-slate-200 pt-3">
+                <select
+                  required
+                  value={partnerId}
+                  onChange={(e) => handlePartnerChange(e.target.value)}
+                  className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs"
+                >
+                  <option value="">Selecione o parceiro...</option>
+                  {partners.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+                <div className="grid grid-cols-2 gap-2">
+                  <input type="number" placeholder="Comissão" value={commissionValue} onChange={(e) => setCommissionValue(Number(e.target.value))} className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs" />
+                  <select value={commissionType} onChange={(e) => setCommissionType(e.target.value as any)} className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs">
+                    <option value="percent">%</option>
+                    <option value="fixed">Fixo</option>
+                  </select>
                 </div>
-
-                {/* Partner Live Breakdown Box */}
-                {partnerId && (
-                  <div className="p-3 bg-slate-900 border border-purple-800/40 rounded-xl text-xs space-y-1.5">
-                    <div className="flex justify-between text-slate-300">
-                      <span>💰 Valor Total do Projeto:</span>
-                      <strong className="text-white">{formatCurrency(numTotal, currency)}</strong>
-                    </div>
-                    <div className="flex justify-between text-purple-300">
-                      <span>🤝 Comissão do Parceiro ({commissionType === 'percent' ? `${commissionValue}%` : 'Fixo'}):</span>
-                      <strong className="text-purple-400">{formatCurrency(calculatedCommission, currency)}</strong>
-                    </div>
-                    <div className="flex justify-between text-emerald-400 font-bold border-t border-slate-800 pt-1.5">
-                      <span>✨ Seu Valor Líquido (Studio):</span>
-                      <span>{formatCurrency(netStudioAmount, currency)}</span>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
           </div>
 
-          <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-800">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all flex items-center space-x-2 cursor-pointer"
-            >
-              <Save className="w-4 h-4" />
-              <span>{projectToEdit ? 'Salvar Alterações' : 'Criar Projeto'}</span>
+          <div className="flex items-center justify-end space-x-3 pt-4">
+            <button type="button" onClick={onClose} className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-900">Cancelar</button>
+            <button type="submit" className="px-6 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 shadow-md">
+              {projectToEdit ? 'Atualizar Projeto' : 'Criar Projeto'}
             </button>
           </div>
         </form>
-
       </div>
     </div>
   );

@@ -33,19 +33,19 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
   );
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12 font-sans">
       
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white border border-slate-200/90 p-6 rounded-2xl shadow-xs">
         <div className="flex items-center space-x-3.5">
-          <div className="p-3 rounded-2xl bg-purple-500/10 text-purple-400 border border-purple-500/20 shadow-lg shadow-purple-500/10">
-            <Handshake className="w-7 h-7" />
+          <div className="p-3 rounded-2xl bg-purple-100 text-purple-700 border border-purple-200 shadow-2xs">
+            <Handshake className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-xl font-black text-white tracking-tight">
-              Parceiros & Comissões
+            <h1 className="text-lg font-black text-slate-900 tracking-tight">
+              Parceiros &amp; Comissões
             </h1>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-slate-600 font-bold mt-0.5">
               Gestão de quem indica clientes e repasse de comissões por projeto
             </p>
           </div>
@@ -53,28 +53,28 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
 
         <button
           onClick={onOpenNewPartnerModal}
-          className="bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 px-5 rounded-xl shadow-lg shadow-purple-600/20 transition-all flex items-center space-x-2 text-xs self-start sm:self-auto cursor-pointer"
+          className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 px-4 rounded-xl shadow-xs transition-all flex items-center space-x-2 text-xs self-start sm:self-auto cursor-pointer active:scale-95"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-4 h-4 stroke-[3]" />
           <span>Novo Parceiro</span>
         </button>
       </div>
 
       {/* Partners List & Cards */}
       {partners.length === 0 ? (
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-12 text-center space-y-4">
-          <div className="w-16 h-16 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center mx-auto">
+        <div className="bg-white border border-slate-200/90 rounded-2xl p-12 text-center space-y-4">
+          <div className="w-16 h-16 rounded-2xl bg-purple-100 border border-purple-200 text-purple-700 flex items-center justify-center mx-auto">
             <Handshake className="w-8 h-8" />
           </div>
-          <h3 className="text-lg font-bold text-white">Nenhum parceiro cadastrado ainda</h3>
-          <p className="text-xs text-slate-400 max-w-md mx-auto">
+          <h3 className="text-base font-black text-slate-900">Nenhum parceiro cadastrado ainda</h3>
+          <p className="text-xs text-slate-600 font-semibold max-w-md mx-auto">
             Cadastre parceiros que passam clientes para o seu studio e configure comissões por porcentagem ou valor fixo em cada projeto!
           </p>
           <button
             onClick={onOpenNewPartnerModal}
-            className="px-5 py-2.5 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-xl transition-all inline-flex items-center space-x-2 cursor-pointer"
+            className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl transition-all inline-flex items-center space-x-2 cursor-pointer shadow-xs"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-4 h-4 stroke-[3]" />
             <span>Cadastrar Primeiro Parceiro</span>
           </button>
         </div>
@@ -94,13 +94,13 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
             return (
               <div
                 key={partner.id}
-                className="bg-slate-900 border border-slate-800 hover:border-purple-500/40 p-5 rounded-2xl transition-all shadow-lg flex flex-col justify-between"
+                className="bg-white border border-slate-200/90 hover:border-slate-300 p-5 rounded-2xl transition-all shadow-xs flex flex-col justify-between"
               >
                 <div>
                   <div className="flex items-start justify-between mb-3">
                     <div>
-                      <h3 className="text-base font-bold text-white tracking-tight">{partner.name}</h3>
-                      <p className="text-xs text-purple-400 font-semibold mt-0.5">
+                      <h3 className="text-base font-black text-slate-900 tracking-tight">{partner.name}</h3>
+                      <p className="text-xs text-purple-700 font-extrabold mt-0.5">
                         Comissão Padrão: {partner.defaultCommissionPercent}%
                       </p>
                     </div>
@@ -108,13 +108,13 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                     <div className="flex items-center space-x-1">
                       <button
                         onClick={() => onEditPartner(partner)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                        className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => onDeletePartner(partner.id)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-colors cursor-pointer"
+                        className="p-1.5 rounded-lg text-slate-500 hover:text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -122,7 +122,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                   </div>
 
                   {/* Contact Info */}
-                  <div className="space-y-1.5 text-xs text-slate-400 mb-4">
+                  <div className="space-y-1.5 text-xs text-slate-700 font-semibold mb-4">
                     {partner.whatsapp && (
                       <div className="flex items-center space-x-2">
                         <Phone className="w-3.5 h-3.5 text-slate-500" />
@@ -136,41 +136,43 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                       </div>
                     )}
                     {partner.notes && (
-                      <p className="text-[11px] text-slate-500 italic mt-2">"{partner.notes}"</p>
+                      <p className="text-xs text-slate-600 italic mt-2 bg-slate-50 p-2 rounded-lg border border-slate-200">&ldquo;{partner.notes}&rdquo;</p>
                     )}
                   </div>
 
                   {/* Summary Box */}
-                  <div className="p-3 bg-slate-950/60 border border-slate-800 rounded-xl space-y-1.5 text-xs">
-                    <div className="flex justify-between text-slate-300">
+                  <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 text-xs font-bold">
+                    <div className="flex justify-between text-slate-800">
                       <span>Projetos Indicados:</span>
-                      <strong className="text-white">{partnerProjects.length}</strong>
+                      <strong className="text-slate-900">{partnerProjects.length}</strong>
                     </div>
-                    <div className="flex justify-between text-amber-400">
+                    <div className="flex justify-between text-amber-800 font-extrabold">
                       <span>Comissões Pendentes:</span>
                       <strong>{formatCurrency(totalCommissionPending, sampleCurrency)}</strong>
                     </div>
-                    <div className="flex justify-between text-emerald-400">
-                      <span>Comissões Pagas:</span>
+                    <div className="flex justify-between text-emerald-800 font-extrabold pt-1 border-t border-slate-200">
+                      <span>Comissões Repassadas:</span>
                       <strong>{formatCurrency(totalCommissionPaid, sampleCurrency)}</strong>
                     </div>
                   </div>
                 </div>
 
-                {/* Actions */}
+                {/* Footer WA Button */}
                 {partner.whatsapp && (
-                  <button
-                    onClick={() =>
-                      onOpenWhatsAppCharge(
-                        partner.whatsapp!,
-                        `Olá ${partner.name}, gostaria de falar sobre as comissões dos projetos indicados!`
-                      )
-                    }
-                    className="mt-4 w-full py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-2 cursor-pointer"
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                    <span>Falar no WhatsApp</span>
-                  </button>
+                  <div className="pt-4 mt-4 border-t border-slate-100">
+                    <button
+                      onClick={() =>
+                        onOpenWhatsAppCharge(
+                          partner.whatsapp!,
+                          `Olá, ${partner.name}! Passando para conversar sobre as comissões pendentes.`
+                        )
+                      }
+                      className="w-full py-2 px-3 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 rounded-xl text-xs font-extrabold flex items-center justify-center space-x-1.5 transition-all cursor-pointer"
+                    >
+                      <MessageCircle className="w-4 h-4 stroke-[2.2]" />
+                      <span>Falar sobre Comissões</span>
+                    </button>
+                  </div>
                 )}
               </div>
             );

@@ -76,23 +76,23 @@ export const ClientModal: React.FC<ClientModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-fade-in font-sans">
+      <div className="w-full max-w-lg bg-white border border-slate-200/90 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         
         {/* Modal Header */}
-        <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/80">
+        <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
           <div className="flex items-center space-x-2">
-            <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400">
-              <Users className="w-5 h-5" />
+            <div className="p-2 rounded-xl bg-blue-100 text-blue-800 border border-blue-200">
+              <Users className="w-5 h-5 stroke-[2.2]" />
             </div>
-            <h3 className="font-bold text-white text-base">
+            <h3 className="font-black text-slate-900 text-base">
               {clientToEdit ? 'Editar Cliente' : 'Cadastrar Novo Cliente'}
             </h3>
           </div>
 
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-200/60 cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -103,7 +103,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
           
           {/* Nome */}
           <div>
-            <label className="text-xs font-semibold text-slate-300 block mb-1">
+            <label className="text-xs font-black text-slate-800 block mb-1">
               Nome do Cliente *
             </label>
             <input
@@ -112,13 +112,13 @@ export const ClientModal: React.FC<ClientModalProps> = ({
               placeholder="Ex: Mirtes Silva"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-200 text-sm focus:outline-none focus:border-blue-500"
+              className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-bold focus:outline-none focus:border-blue-500 placeholder-slate-400"
             />
           </div>
 
           {/* Empresa */}
           <div>
-            <label className="text-xs font-semibold text-slate-300 block mb-1">
+            <label className="text-xs font-black text-slate-800 block mb-1">
               Empresa
             </label>
             <input
@@ -126,14 +126,14 @@ export const ClientModal: React.FC<ClientModalProps> = ({
               placeholder="Ex: Mirtes Moda & Estilo"
               value={company}
               onChange={(e) => setCompany(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-200 text-sm focus:outline-none focus:border-blue-500"
+              className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-bold focus:outline-none focus:border-blue-500 placeholder-slate-400"
             />
           </div>
 
           {/* WhatsApp & Email */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-1">
+              <label className="text-xs font-black text-slate-800 block mb-1">
                 WhatsApp
               </label>
               <input
@@ -141,12 +141,12 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                 placeholder="+55 11 98765-4321"
                 value={whatsapp}
                 onChange={(e) => setWhatsapp(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-200 text-sm focus:outline-none focus:border-blue-500"
+                className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-bold focus:outline-none focus:border-blue-500 placeholder-slate-400"
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-1">
+              <label className="text-xs font-black text-slate-800 block mb-1">
                 E-mail
               </label>
               <input
@@ -154,7 +154,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                 placeholder="cliente@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-200 text-sm focus:outline-none focus:border-blue-500"
+                className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-bold focus:outline-none focus:border-blue-500 placeholder-slate-400"
               />
             </div>
           </div>
@@ -162,13 +162,13 @@ export const ClientModal: React.FC<ClientModalProps> = ({
           {/* Tipo & País */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-1">
+              <label className="text-xs font-black text-slate-800 block mb-1">
                 Tipo de Serviço
               </label>
               <select
                 value={type}
                 onChange={(e) => setType(e.target.value as ClientType)}
-                className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-200 text-sm focus:outline-none focus:border-blue-500"
+                className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-bold focus:outline-none focus:border-blue-500"
               >
                 <option value="Tráfego Pago">Tráfego Pago</option>
                 <option value="Desenvolvimento">Desenvolvimento</option>
@@ -178,13 +178,13 @@ export const ClientModal: React.FC<ClientModalProps> = ({
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-1">
+              <label className="text-xs font-black text-slate-800 block mb-1">
                 País do Cliente
               </label>
               <select
                 value={country}
                 onChange={(e) => handleCountryChange(e.target.value as CountryCode)}
-                className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-200 text-sm focus:outline-none focus:border-blue-500"
+                className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-bold focus:outline-none focus:border-blue-500"
               >
                 <option value="AO">🇦🇴 Angola</option>
                 <option value="BR">🇧🇷 Brasil</option>
@@ -197,27 +197,27 @@ export const ClientModal: React.FC<ClientModalProps> = ({
 
           {/* Moeda Associada */}
           <div>
-            <label className="text-xs font-semibold text-slate-300 block mb-1">
+            <label className="text-xs font-black text-slate-800 block mb-1">
               Moeda de Cobrança Padrão do Cliente
             </label>
             <select
               value={currency}
               onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
-              className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-200 text-sm focus:outline-none focus:border-blue-500 font-bold text-emerald-400"
+              className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-black focus:outline-none focus:border-blue-500 text-emerald-700"
             >
               <option value="AOA">🇦🇴 Kwanza (Kz / AOA)</option>
               <option value="BRL">🇧🇷 Real (R$ / BRL)</option>
               <option value="USD">🇺🇸 Dólar (US$ / USD)</option>
               <option value="EUR">🇵🇹 Euro (€ / EUR)</option>
             </select>
-            <span className="text-[11px] text-slate-400 mt-1 block">
+            <span className="text-xs text-slate-600 font-semibold mt-1 block">
               Projetos e faturas deste cliente adotarão esta moeda por padrão.
             </span>
           </div>
 
           {/* Observações */}
           <div>
-            <label className="text-xs font-semibold text-slate-300 block mb-1">
+            <label className="text-xs font-black text-slate-800 block mb-1">
               Observações
             </label>
             <textarea
@@ -225,24 +225,24 @@ export const ClientModal: React.FC<ClientModalProps> = ({
               placeholder="Anotações adicionais sobre o cliente..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full px-3.5 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-200 text-sm focus:outline-none focus:border-blue-500"
+              className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-semibold focus:outline-none focus:border-blue-500 placeholder-slate-400 resize-none"
             />
           </div>
 
           {/* Footer controls */}
-          <div className="pt-3 border-t border-slate-800 flex items-center justify-end space-x-3">
+          <div className="pt-3 border-t border-slate-200 flex items-center justify-end space-x-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl bg-slate-800 text-slate-300 hover:text-white text-sm font-semibold"
+              className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="px-5 py-2.5 bg-blue-500 hover:bg-blue-400 text-slate-950 font-bold text-sm rounded-xl flex items-center space-x-2 transition-all shadow-md active:scale-95"
+              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl flex items-center space-x-2 transition-all shadow-xs cursor-pointer active:scale-95"
             >
-              <Save className="w-4 h-4" />
+              <Save className="w-4 h-4 stroke-[2.5]" />
               <span>Salvar Cliente</span>
             </button>
           </div>

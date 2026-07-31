@@ -201,38 +201,38 @@ export function CalendarView({
   const getTypeBadgeStyle = (type: AgendaEventType) => {
     switch (type) {
       case 'cobranca':
-        return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+        return 'bg-amber-100 text-amber-800 border-amber-300 font-extrabold';
       case 'pagamento':
-        return 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+        return 'bg-rose-100 text-rose-800 border-rose-300 font-extrabold';
       case 'entrega':
-        return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+        return 'bg-blue-100 text-blue-800 border-blue-300 font-extrabold';
       case 'alarme':
-        return 'bg-purple-500/10 text-purple-400 border-purple-500/20';
+        return 'bg-purple-100 text-purple-800 border-purple-300 font-extrabold';
       default:
-        return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+        return 'bg-emerald-100 text-emerald-800 border-emerald-300 font-extrabold';
     }
   };
 
   return (
-    <div className="space-y-6 font-sans">
+    <div className="space-y-6 font-sans pb-12">
       
       {/* Push Notification Permission Banner */}
       {pushStatus !== 'granted' && (
-        <div className="bg-gradient-to-r from-emerald-950/60 via-slate-900 to-slate-900 border border-emerald-500/30 rounded-2xl p-4 flex items-center justify-between shadow-lg">
+        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center justify-between shadow-xs">
           <div className="flex items-center space-x-3">
-            <div className="p-2.5 bg-emerald-500/10 rounded-xl text-emerald-400">
+            <div className="p-2.5 bg-emerald-100 rounded-xl text-emerald-700">
               <Bell className="w-5 h-5 animate-bounce" />
             </div>
             <div>
-              <h4 className="text-sm font-bold text-white">Ativar Notificações Web Push do Navegador</h4>
-              <p className="text-xs text-slate-400">
+              <h4 className="text-sm font-extrabold text-slate-900">Ativar Notificações Web Push do Navegador</h4>
+              <p className="text-xs text-slate-600 font-medium">
                 Receba alertas automáticos de cobrança, entregas e alarmes no seu computador mesmo minimizado.
               </p>
             </div>
           </div>
           <button
             onClick={handleEnablePush}
-            className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer whitespace-nowrap"
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer whitespace-nowrap"
           >
             Ativar Agora
           </button>
@@ -240,23 +240,23 @@ export function CalendarView({
       )}
 
       {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-900/60 p-5 rounded-2xl border border-slate-800 shadow-xl">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs">
         <div className="flex items-center space-x-3">
-          <div className="p-2.5 bg-emerald-500/10 rounded-xl text-emerald-400 border border-emerald-500/20">
+          <div className="p-2.5 bg-emerald-100 rounded-xl text-emerald-700 border border-emerald-200">
             <CalendarIcon className="w-6 h-6" />
           </div>
           <div>
-            <h2 className="text-xl font-black text-white">Agenda & Calendário Real</h2>
-            <p className="text-xs text-slate-400">Sincronizado com cobranças, compromissos e prazos de entrega</p>
+            <h2 className="text-lg font-extrabold text-slate-900 tracking-tight">Agenda &amp; Calendário Real</h2>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">Sincronizado com cobranças, compromissos e prazos de entrega</p>
           </div>
         </div>
 
         <div className="flex items-center space-x-3 w-full sm:w-auto">
           <button
             onClick={() => onOpenNewEventModal(selectedDate)}
-            className="w-full sm:w-auto px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg shadow-emerald-500/10 transition-all flex items-center justify-center space-x-2 cursor-pointer"
+            className="w-full sm:w-auto px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center space-x-2 cursor-pointer active:scale-95"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-4 h-4 stroke-[3]" />
             <span>Novo Evento / Alarme</span>
           </button>
         </div>
@@ -266,30 +266,30 @@ export function CalendarView({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* Calendar Grid (7 cols) */}
-        <div className="lg:col-span-7 bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 shadow-xl">
+        <div className="lg:col-span-7 bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
           
           {/* Calendar Header Controls */}
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-base font-bold text-white">
-              {monthNames[month]} <span className="text-emerald-400">{year}</span>
+          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+            <h3 className="text-base font-extrabold text-slate-900">
+              {monthNames[month]} <span className="text-emerald-700">{year}</span>
             </h3>
 
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => setSelectedDate(todayIso)}
-                className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-lg transition-all"
+                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-lg transition-all border border-slate-200"
               >
                 Hoje
               </button>
               <button
                 onClick={prevMonth}
-                className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-all"
+                className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-all border border-slate-200"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <button
                 onClick={nextMonth}
-                className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-all"
+                className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-all border border-slate-200"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -299,7 +299,7 @@ export function CalendarView({
           {/* Weekday Labels */}
           <div className="grid grid-cols-7 gap-1 text-center mb-2">
             {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((d) => (
-              <span key={d} className="text-[11px] font-bold text-slate-500 uppercase tracking-wider py-1">
+              <span key={d} className="text-[11px] font-extrabold text-slate-600 uppercase tracking-widest py-1">
                 {d}
               </span>
             ))}
@@ -316,31 +316,31 @@ export function CalendarView({
                 <button
                   key={idx}
                   onClick={() => setSelectedDate(cell.dateIso)}
-                  className={`min-h-[64px] p-1.5 rounded-xl border flex flex-col justify-between text-left transition-all relative ${
+                  className={`min-h-[68px] p-2 rounded-xl border flex flex-col justify-between text-left transition-all relative cursor-pointer ${
                     isSelected
-                      ? 'bg-emerald-500/10 border-emerald-500/80 shadow-md shadow-emerald-500/10'
+                      ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-500/20 shadow-xs'
                       : cell.isCurrentMonth
-                      ? 'bg-slate-950/40 border-slate-800/60 hover:bg-slate-800/60'
-                      : 'bg-slate-950/20 border-slate-900 text-slate-600'
+                      ? 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/60'
+                      : 'bg-slate-50/60 border-slate-100 text-slate-400'
                   }`}
                 >
                   <div className="flex items-center justify-between w-full">
                     <span
-                      className={`text-xs font-bold ${
+                      className={`text-xs font-black ${
                         isToday
-                          ? 'w-5 h-5 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center text-[11px]'
+                          ? 'w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs shadow-xs'
                           : isSelected
-                          ? 'text-emerald-400'
+                          ? 'text-emerald-800 text-sm'
                           : cell.isCurrentMonth
-                          ? 'text-slate-300'
-                          : 'text-slate-600'
+                          ? 'text-slate-900'
+                          : 'text-slate-400'
                       }`}
                     >
                       {cell.dayNum}
                     </span>
 
                     {dayEvents.length > 0 && (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-slate-800 text-emerald-400 border border-slate-700">
+                      <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">
                         {dayEvents.length}
                       </span>
                     )}
@@ -351,14 +351,14 @@ export function CalendarView({
                     {dayEvents.slice(0, 3).map((ev, i) => (
                       <span
                         key={i}
-                        className={`w-1.5 h-1.5 rounded-full ${
+                        className={`w-2 h-2 rounded-full ${
                           ev.type === 'cobranca'
-                            ? 'bg-amber-400'
+                            ? 'bg-amber-500'
                             : ev.type === 'pagamento'
-                            ? 'bg-rose-400'
+                            ? 'bg-rose-500'
                             : ev.type === 'entrega'
-                            ? 'bg-blue-400'
-                            : 'bg-emerald-400'
+                            ? 'bg-blue-600'
+                            : 'bg-emerald-600'
                         }`}
                       />
                     ))}
@@ -371,16 +371,16 @@ export function CalendarView({
         </div>
 
         {/* Event Details List (5 cols) */}
-        <div className="lg:col-span-5 bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 shadow-xl flex flex-col">
+        <div className="lg:col-span-5 bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs flex flex-col">
           
           {/* Header & Filter */}
-          <div className="pb-4 border-b border-slate-800 space-y-3">
+          <div className="pb-4 border-b border-slate-200 space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-white flex items-center space-x-2">
+              <h3 className="text-sm font-extrabold text-slate-900 flex items-center space-x-2">
                 <span>Eventos de</span>
-                <span className="text-emerald-400">{selectedDate.split('-').reverse().join('/')}</span>
+                <span className="text-emerald-700">{selectedDate.split('-').reverse().join('/')}</span>
               </h3>
-              <span className="text-xs text-slate-400 font-semibold">
+              <span className="text-xs text-slate-600 font-bold bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
                 {selectedDateEvents.length} {selectedDateEvents.length === 1 ? 'item' : 'itens'}
               </span>
             </div>
@@ -391,7 +391,7 @@ export function CalendarView({
               <select
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}
-                className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-emerald-500"
+                className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 font-semibold focus:outline-none focus:border-emerald-500"
               >
                 <option value="ALL">Todos os Tipos</option>
                 <option value="cobranca">🔔 Cobranças</option>
@@ -406,14 +406,14 @@ export function CalendarView({
           {/* Events List Scrollable */}
           <div className="flex-1 overflow-y-auto space-y-3 pt-4 max-h-[420px] pr-1">
             {selectedDateEvents.length === 0 ? (
-              <div className="text-center py-12 px-4 border border-dashed border-slate-800 rounded-2xl">
-                <CalendarIcon className="w-8 h-8 text-slate-600 mx-auto mb-2" />
-                <p className="text-sm text-slate-400 font-semibold">Nenhum evento para este dia.</p>
+              <div className="text-center py-12 px-4 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+                <CalendarIcon className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                <p className="text-xs text-slate-600 font-bold">Nenhum evento para este dia.</p>
                 <button
                   onClick={() => onOpenNewEventModal(selectedDate)}
-                  className="mt-3 inline-flex items-center space-x-1.5 text-xs text-emerald-400 hover:text-emerald-300 font-bold"
+                  className="mt-3 inline-flex items-center space-x-1.5 text-xs text-emerald-700 hover:text-emerald-800 font-extrabold cursor-pointer"
                 >
-                  <Plus className="w-3.5 h-3.5" />
+                  <Plus className="w-3.5 h-3.5 stroke-[3]" />
                   <span>Cadastrar evento para {selectedDate.split('-').reverse().join('/')}</span>
                 </button>
               </div>
@@ -426,15 +426,15 @@ export function CalendarView({
                     key={ev.id}
                     className={`p-3.5 rounded-xl border transition-all ${
                       ev.status === 'completed'
-                        ? 'bg-slate-950/30 border-slate-800 opacity-60'
-                        : 'bg-slate-950/70 border-slate-800/80 hover:border-slate-700'
+                        ? 'bg-slate-50 border-slate-200'
+                        : 'bg-white border-slate-200/90 shadow-xs hover:border-slate-300'
                     }`}
                   >
                     <div className="flex items-start justify-between">
                       <div className="space-y-1">
                         <div className="flex items-center space-x-2">
                           <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${getTypeBadgeStyle(
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold border uppercase tracking-wider ${getTypeBadgeStyle(
                               ev.type
                             )}`}
                           >
@@ -442,7 +442,7 @@ export function CalendarView({
                           </span>
 
                           {ev.time && (
-                            <span className="text-[11px] font-semibold text-slate-400 flex items-center space-x-1">
+                            <span className="text-[11px] font-bold text-slate-600 flex items-center space-x-1">
                               <Clock className="w-3 h-3 text-slate-500" />
                               <span>{ev.time}</span>
                             </span>
@@ -450,20 +450,20 @@ export function CalendarView({
                         </div>
 
                         <h4
-                          className={`text-sm font-bold text-white ${
-                            ev.status === 'completed' ? 'line-through text-slate-400' : ''
+                          className={`text-sm font-extrabold text-slate-900 ${
+                            ev.status === 'completed' ? 'line-through text-slate-500' : ''
                           }`}
                         >
                           {ev.title}
                         </h4>
 
                         {ev.description && (
-                          <p className="text-xs text-slate-400 line-clamp-2">{ev.description}</p>
+                          <p className="text-xs text-slate-600 font-medium line-clamp-2">{ev.description}</p>
                         )}
 
                         {client && (
                           <div className="flex items-center space-x-2 pt-1">
-                            <span className="text-[11px] text-slate-400">Cliente: {client.name}</span>
+                            <span className="text-[11px] text-slate-600 font-bold">Cliente: {client.name}</span>
                             {client.whatsapp && (
                               <button
                                 onClick={() =>
@@ -472,7 +472,7 @@ export function CalendarView({
                                     `Olá ${client.name}! Lembrete sobre: ${ev.title}`
                                   )
                                 }
-                                className="text-[10px] font-bold text-emerald-400 hover:underline"
+                                className="text-[11px] font-extrabold text-emerald-700 hover:underline cursor-pointer"
                               >
                                 WhatsApp
                               </button>
@@ -487,10 +487,10 @@ export function CalendarView({
                           <>
                             <button
                               onClick={() => onToggleEventStatus(ev.id)}
-                              className={`p-1.5 rounded-lg border text-xs font-semibold transition-all ${
+                              className={`p-1.5 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
                                 ev.status === 'completed'
-                                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                                  : 'bg-slate-800 text-slate-400 hover:text-white border-slate-700'
+                                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                  : 'bg-slate-100 text-slate-600 hover:text-slate-900 border-slate-200'
                               }`}
                               title={ev.status === 'completed' ? 'Marcar como pendente' : 'Marcar como concluído'}
                             >
@@ -499,7 +499,7 @@ export function CalendarView({
 
                             <button
                               onClick={() => onEditEvent(ev)}
-                              className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+                              className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
                               title="Editar"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
@@ -507,7 +507,7 @@ export function CalendarView({
 
                             <button
                               onClick={() => onDeleteEvent(ev.id)}
-                              className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors"
+                              className="p-1.5 text-slate-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                               title="Excluir"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
