@@ -81,6 +81,26 @@ export function CalendarView({
     }
   };
 
+  const handleTestPush = async () => {
+    let currentPerm = pushStatus;
+    if (currentPerm !== 'granted') {
+      currentPerm = await requestNotificationPermission();
+      setPushStatus(currentPerm);
+    }
+    if (currentPerm === 'granted') {
+      const ok = await sendWebPushNotification('🔔 Teste de Notificação Web Push', {
+        body: 'Se você está vendo este aviso, as notificações da agenda estão 100% operacionais!',
+      });
+      if (ok) {
+        alert('Notificação enviada com sucesso!');
+      } else {
+        alert('O navegador ou o sistema operacional pode estar a bloquear as notificações popup. Verifica as definições do browser.');
+      }
+    } else {
+      alert('Permissão de notificação negada pelo navegador. Permita notificações nas definições do navegador para utilizar esta função.');
+    }
+  };
+
   // Build combined events map: manual AgendaEvents + auto generated events from Projects/Incomes/Expenses
   const allCombinedEvents = useMemo(() => {
     const list: Array<AgendaEvent & { isAuto?: boolean }> = [...agendaEvents];
@@ -252,6 +272,15 @@ export function CalendarView({
         </div>
 
         <div className="flex items-center space-x-3 w-full sm:w-auto">
+          <button
+            onClick={handleTestPush}
+            title="Testar Notificação Push no Navegador"
+            className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition-all flex items-center justify-center space-x-1.5 cursor-pointer"
+          >
+            <Bell className="w-4 h-4 text-emerald-600" />
+            <span>Testar Push</span>
+          </button>
+
           <button
             onClick={() => onOpenNewEventModal(selectedDate)}
             className="w-full sm:w-auto px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center space-x-2 cursor-pointer active:scale-95"

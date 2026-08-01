@@ -3,10 +3,10 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
   if ('serviceWorker' in navigator) {
     try {
       const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
-      console.log('Service Worker registered successfully:', reg);
+      console.log('Service Worker registrado com sucesso:', reg);
       return reg;
     } catch (err) {
-      console.warn('Service Worker registration failed:', err);
+      console.warn('Falha ao registrar Service Worker:', err);
     }
   }
   return null;
@@ -14,7 +14,7 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
 
 export async function requestNotificationPermission(): Promise<NotificationPermission> {
   if (!('Notification' in window)) {
-    console.warn('This browser does not support desktop notifications');
+    console.warn('Este navegador não suporta notificações de trabalho/área de trabalho.');
     return 'denied';
   }
 
@@ -23,39 +23,60 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
   }
 
   if (Notification.permission !== 'denied') {
-    const permission = await Notification.requestPermission();
-    return permission;
+    try {
+      const permission = await Notification.requestPermission();
+      return permission;
+    } catch (e) {
+      // Callback approach for older browsers
+      return new Promise((resolve) => {
+        Notification.requestPermission((permission) => resolve(permission));
+      });
+    }
   }
 
   return Notification.permission;
 }
 
-export async function sendWebPushNotification(title: string, options?: NotificationOptions) {
-  if (!('Notification' in window)) return;
+export async function sendWebPushNotification(title: string, options?: NotificationOptions): Promise<boolean> {
+  if (!('Notification' in window)) return false;
 
-  if (Notification.permission === 'granted') {
-    // If Service Worker is registered, use SW notification for better persistence
-    if ('serviceWorker' in navigator) {
-      try {
-        const reg = await navigator.serviceWorker.ready;
-        reg.showNotification(title, {
-          body: options?.body || '',
-          icon: '/assets/icon.png',
-          tag: options?.tag || 'gestao-push',
-          vibrate: [200, 100, 200],
-          ...options,
-        });
-        return;
-      } catch {
-        // Fallback to standard Notification
+  if (Notification.permission !== 'granted') {
+    return false;
+  }
+
+  const notificationOptions: NotificationOptions = {
+    body: options?.body || '',
+    icon: '/favicon.ico',
+    badge: '/favicon.ico',
+    tag: options?.tag || `gestao-push-${Date.now()}`,
+    vibrate: [200, 100, 200],
+    ...options,
+  };
+
+  // Try via Service Worker Registration first
+  if ('serviceWorker' in navigator) {
+    try {
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (reg && reg.active) {
+        await reg.showNotification(title, notificationOptions);
+        return true;
       }
+    } catch (err) {
+      console.warn('SW showNotification falhou, tentando fallback:', err);
     }
+  }
 
-    new Notification(title, {
-      body: options?.body || '',
-      icon: '/assets/icon.png',
-      ...options,
-    });
+  // Fallback to standard DOM Notification
+  try {
+    const notif = new Notification(title, notificationOptions);
+    notif.onclick = () => {
+      window.focus();
+      notif.close();
+    };
+    return true;
+  } catch (err) {
+    console.warn('Erro ao disparar Notificação:', err);
+    return false;
   }
 }
 

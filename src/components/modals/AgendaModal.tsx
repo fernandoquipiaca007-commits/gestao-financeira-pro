@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calendar as CalendarIcon, Clock, Bell, User, FolderKanban } from 'lucide-react';
 import { AgendaEvent, AgendaEventType, Client, Project } from '../../types';
+import { requestNotificationPermission } from '../../lib/webpush';
 
 interface AgendaModalProps {
   isOpen: boolean;
@@ -52,9 +53,13 @@ export function AgendaModal({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !date) return;
+
+    if (notifyPush && 'Notification' in window && Notification.permission !== 'granted') {
+      await requestNotificationPermission();
+    }
 
     onSave({
       id: eventToEdit?.id,

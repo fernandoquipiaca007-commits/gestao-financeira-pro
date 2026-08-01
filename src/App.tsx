@@ -226,6 +226,7 @@ export default function App() {
           const client = clients.find((c) => c.id === inc.clientId);
           sendWebPushNotification(`🔔 Cobrança Hoje: ${inc.description}`, {
             body: `Cliente: ${client?.name || 'Cliente'} - Valor: ${inc.currency} ${inc.amount.toLocaleString()}`,
+            tag: `inc-${inc.id}-${today}`,
           });
         }
       });
@@ -235,19 +236,21 @@ export default function App() {
         if (proj.dueDate === today && proj.status !== 'Concluído') {
           sendWebPushNotification(`📦 Entrega de Projeto Hoje!`, {
             body: `Projeto: ${proj.name} deve ser entregue hoje.`,
+            tag: `proj-${proj.id}-${today}`,
           });
         }
       });
 
       // Check for manual alarms/events today
       agendaEvents.forEach((ev) => {
-        if (ev.date === today && ev.status === 'pending' && ev.notifyPush) {
+        if (ev.date === today && ev.status === 'pending' && (ev.notifyPush ?? true)) {
           sendWebPushNotification(`⏰ Alerta de Agenda: ${ev.title}`, {
             body: ev.description || `Evento agendado para hoje.`,
+            tag: `ev-${ev.id}-${today}`,
           });
         }
       });
-    }, 120000); // Check every 2 minutes
+    }, 60000); // Check every 60 seconds
   }, [incomes, projects, agendaEvents, clients]);
 
   // Compute Notifications list
