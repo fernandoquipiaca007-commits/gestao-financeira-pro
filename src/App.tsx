@@ -16,6 +16,7 @@ import {
 import {
   Client,
   Project,
+  ProjectStatus,
   Income,
   Expense,
   CategoryItem,
@@ -33,6 +34,8 @@ import {
   getStoredExpenses,
   getStoredSettings,
   getStoredPartners,
+  getTodayIso,
+  addDaysIso,
   clearAllData,
   exportBackupData,
   importBackupData,
@@ -358,6 +361,33 @@ export default function App() {
     }
   };
 
+  // PROJECT HELPER: Sync project paid amount and completion status from linked incomes
+  const syncProjectPaidAmountFromIncomes = async (
+    targetProjectId: string,
+    currentIncomes: Income[],
+    currentProjects: Project[]
+  ) => {
+    const proj = currentProjects.find((p) => p.id === targetProjectId);
+    if (!proj) return;
+
+    const totalReceived = currentIncomes
+      .filter((i) => i.projectId === targetProjectId && i.status === 'Recebido')
+      .reduce((sum, i) => sum + i.amount, 0);
+
+    const isFullyPaidNow = totalReceived >= proj.totalAmount && proj.totalAmount > 0;
+    const updatedStatus: ProjectStatus = isFullyPaidNow ? 'Concluído' : (proj.status === 'Concluído' && !isFullyPaidNow ? 'Em andamento' : proj.status);
+
+    if (proj.paidAmount !== totalReceived || proj.status !== updatedStatus) {
+      const updatedProj: Project = {
+        ...proj,
+        paidAmount: totalReceived,
+        status: updatedStatus,
+      };
+      await upsertProjectToDb(updatedProj);
+      setProjects((prev) => prev.map((p) => (p.id === targetProjectId ? updatedProj : p)));
+    }
+  };
+
   const handleDeleteProject = async (projectId: string) => {
     const project = projects.find((p) => p.id === projectId);
     if (!project) return;
@@ -366,6 +396,31 @@ export default function App() {
       setProjects((prev) => prev.filter((p) => p.id !== projectId));
       setIncomes((prev) => prev.filter((i) => i.projectId !== projectId));
     }
+  };
+
+  const handleDuplicateProject = (project: Project) => {
+    const today = getTodayIso();
+    const next15 = addDaysIso(15);
+    const duplicated: Project = {
+      ...project,
+      id: '', // Empty ID so modal treats it as NEW project
+      name: `${project.name} (Novo Mês)`,
+      paidAmount: 0,
+      startDate: today,
+      dueDate: next15,
+      nextPaymentDate: next15,
+      status: 'Em andamento',
+      rating: 0,
+      createdAt: today,
+    };
+    setProjectToEdit(duplicated);
+    setIsProjectModalOpen(true);
+  };
+
+  const handleRateProject = async (project: Project, rating: number) => {
+    const updated: Project = { ...project, rating };
+    await upsertProjectToDb(updated);
+    setProjects((prev) => prev.map((p) => (p.id === project.id ? updated : p)));
   };
 
   // INCOME CRUD
@@ -377,13 +432,29 @@ export default function App() {
       createdAt: new Date().toISOString().split('T')[0],
     };
     await upsertIncomeToDb(newInc);
-    setIncomes((prev) => [newInc, ...prev.filter((i) => i.id !== targetId)]);
+    const updatedIncomes = [newInc, ...incomes.filter((i) => i.id !== targetId)];
+    setIncomes(updatedIncomes);
+
+    // Auto-sync linked project
+    if (newInc.projectId) {
+      await syncProjectPaidAmountFromIncomes(newInc.projectId, updatedIncomes, projects);
+    }
+    // Also sync old project if projectId changed
+    const oldIncome = incomes.find((i) => i.id === targetId);
+    if (oldIncome?.projectId && oldIncome.projectId !== newInc.projectId) {
+      await syncProjectPaidAmountFromIncomes(oldIncome.projectId, updatedIncomes, projects);
+    }
   };
 
   const handleDeleteIncome = async (incomeId: string) => {
+    const targetInc = incomes.find((i) => i.id === incomeId);
     if (window.confirm('Tem certeza que deseja excluir esta receita?')) {
       await deleteIncomeFromDb(incomeId);
-      setIncomes((prev) => prev.filter((i) => i.id !== incomeId));
+      const updatedIncomes = incomes.filter((i) => i.id !== incomeId);
+      setIncomes(updatedIncomes);
+      if (targetInc?.projectId) {
+        await syncProjectPaidAmountFromIncomes(targetInc.projectId, updatedIncomes, projects);
+      }
     }
   };
 
@@ -395,7 +466,11 @@ export default function App() {
       receivedDate: nextStatus === 'Recebido' ? new Date().toISOString().split('T')[0] : undefined,
     };
     await upsertIncomeToDb(updated);
-    setIncomes((prev) => prev.map((i) => (i.id === income.id ? updated : i)));
+    const updatedIncomes = incomes.map((i) => (i.id === income.id ? updated : i));
+    setIncomes(updatedIncomes);
+    if (updated.projectId) {
+      await syncProjectPaidAmountFromIncomes(updated.projectId, updatedIncomes, projects);
+    }
   };
 
   // EXPENSE CRUD
@@ -737,6 +812,8 @@ export default function App() {
               initialStatusFilter={tabFilter}
               onOpenNewProjectModal={() => { setProjectToEdit(null); setIsProjectModalOpen(true); }}
               onEditProject={(p) => { setProjectToEdit(p); setIsProjectModalOpen(true); }}
+              onDuplicateProject={handleDuplicateProject}
+              onRateProject={handleRateProject}
               onDeleteProject={handleDeleteProject}
               onOpenWhatsAppCharge={handleOpenWhatsAppCharge}
             />

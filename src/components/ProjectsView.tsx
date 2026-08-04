@@ -11,13 +11,13 @@ import {
   MessageCircle,
   Edit3,
   Trash2,
-  DollarSign,
   Calendar,
   Building2,
-  ExternalLink,
+  Star,
+  Copy,
 } from 'lucide-react';
-import { Project, Client, ProjectStatus, ProjectCategory, CurrencyCode } from '../types';
-import { formatCurrency, formatDate, getDaysDiff, generateWhatsAppLink } from '../lib/formatters';
+import { Project, Client, ProjectStatus, CurrencyCode } from '../types';
+import { formatCurrency, formatDate, getDaysDiff } from '../lib/formatters';
 
 interface ProjectsViewProps {
   projects: Project[];
@@ -26,6 +26,8 @@ interface ProjectsViewProps {
   initialStatusFilter?: string;
   onOpenNewProjectModal: () => void;
   onEditProject: (project: Project) => void;
+  onDuplicateProject?: (project: Project) => void;
+  onRateProject?: (project: Project, rating: number) => void;
   onDeleteProject: (projectId: string) => void;
   onOpenWhatsAppCharge: (phone: string, text: string) => void;
 }
@@ -37,6 +39,8 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   initialStatusFilter,
   onOpenNewProjectModal,
   onEditProject,
+  onDuplicateProject,
+  onRateProject,
   onDeleteProject,
   onOpenWhatsAppCharge,
 }) => {
@@ -110,68 +114,87 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   };
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6 font-sans pb-12">
       
-      {/* Title & Top Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-            <FolderKanban className="w-5 h-5 text-emerald-600" />
-            Portfólio de Projetos
-          </h2>
-          <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Controlo operacional, valores recebidos/restantes e prazos de entrega
-          </p>
+      {/* Header Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white border border-slate-200/90 p-5 rounded-2xl shadow-xs">
+        <div className="flex items-center space-x-3.5">
+          <div className="p-2.5 rounded-xl bg-blue-100 text-blue-700 border border-blue-200">
+            <FolderKanban className="w-6 h-6 stroke-[2.2]" />
+          </div>
+          <div>
+            <h2 className="text-lg font-extrabold text-slate-900 tracking-tight">Projetos &amp; Operações</h2>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">Gerenciamento de contratos, entregas, pagamentos e repasses</p>
+          </div>
         </div>
 
         <button
           onClick={onOpenNewProjectModal}
-          className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95"
+          className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center space-x-2 cursor-pointer active:scale-95 self-start sm:self-auto"
         >
           <Plus className="w-4 h-4 stroke-[3]" />
-          <span>Cadastrar Projeto</span>
+          <span>Novo Projeto</span>
         </button>
       </div>
 
-      {/* Filters Bar */}
-      <div className="bg-white border border-slate-200/90 p-4 rounded-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+      {/* Filter Bar */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col md:flex-row gap-3 items-center justify-between">
         
         {/* Search */}
-        <div className="relative flex-1">
+        <div className="relative w-full md:w-72">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Pesquisar por projeto, cliente ou categoria..."
+            placeholder="Pesquisar projeto, cliente..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition-colors"
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
           />
         </div>
 
-        {/* Filter dropdowns */}
-        <div className="flex flex-wrap items-center gap-2">
-          
+        {/* Filters Dropdowns */}
+        <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
           {/* Status Filter */}
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 text-xs font-semibold focus:outline-none focus:border-emerald-500"
-          >
-            <option value="ALL">Todos os Status</option>
-            <option value="ativos">Apenas Ativos</option>
-            <option value="Em andamento">Em andamento</option>
-            <option value="Aguardando cliente">Aguardando cliente</option>
-            <option value="Concluído">Concluído</option>
-            <option value="Cancelado">Cancelado</option>
-          </select>
+          <div className="flex items-center space-x-1 bg-slate-50 border border-slate-200 rounded-xl p-1 text-xs">
+            <button
+              onClick={() => setStatusFilter('ALL')}
+              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                statusFilter === 'ALL'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Todos ({projects.length})
+            </button>
+            <button
+              onClick={() => setStatusFilter('Em andamento')}
+              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                statusFilter === 'Em andamento'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Em andamento
+            </button>
+            <button
+              onClick={() => setStatusFilter('Concluído')}
+              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                statusFilter === 'Concluído'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Concluídos
+            </button>
+          </div>
 
           {/* Category Filter */}
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 text-xs font-semibold focus:outline-none focus:border-emerald-500"
+            className="bg-slate-50 border border-slate-200 text-slate-800 text-xs font-bold rounded-xl px-3 py-2 focus:outline-none cursor-pointer"
           >
-            <option value="ALL">Todas as Categorias</option>
+            <option value="ALL">Todas Categorias</option>
             <option value="Tráfego Pago">Tráfego Pago</option>
             <option value="Website">Website</option>
             <option value="Landing Page">Landing Page</option>
@@ -179,24 +202,18 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             <option value="Automação">Automação</option>
             <option value="Outro">Outro</option>
           </select>
-
         </div>
+
       </div>
 
       {/* Projects Grid */}
       {filteredProjects.length === 0 ? (
-        <div className="bg-white border border-slate-200/90 rounded-2xl p-12 text-center space-y-3">
-          <FolderKanban className="w-10 h-10 text-slate-300 mx-auto" />
-          <h3 className="text-sm font-bold text-slate-700">Nenhum projeto encontrado</h3>
-          <p className="text-xs text-slate-500 max-w-sm mx-auto">
-            Não existem projetos que correspondam aos filtros selecionados.
+        <div className="bg-white border border-slate-200/90 rounded-2xl p-12 text-center shadow-xs">
+          <FolderKanban className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+          <h3 className="text-base font-bold text-slate-900">Nenhum projeto encontrado</h3>
+          <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+            Não existem projetos que correspondam aos filtros selecionados ou nenhum projeto foi cadastrado ainda.
           </p>
-          <button
-            onClick={onOpenNewProjectModal}
-            className="px-4 py-2 bg-emerald-600 text-white font-bold text-xs rounded-xl inline-flex items-center gap-1.5 hover:bg-emerald-700 transition-colors"
-          >
-            <Plus className="w-4 h-4" /> Cadastrar Novo Projeto
-          </button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -204,6 +221,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             const client = clientMap.get(p.clientId);
             const remaining = Math.max(0, p.totalAmount - p.paidAmount);
             const isFullyPaid = remaining === 0;
+            const isCompletedOrPaid = p.status === 'Concluído' || isFullyPaid;
             const progressPct = p.totalAmount > 0 ? Math.min(100, Math.round((p.paidAmount / p.totalAmount) * 100)) : 0;
             const diffDays = getDaysDiff(p.dueDate);
 
@@ -214,13 +232,11 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                 key={p.id}
                 className="bg-white border border-slate-200/90 hover:border-slate-300 hover:shadow-sm rounded-2xl p-5 flex flex-col justify-between transition-all group relative overflow-hidden"
               >
-                {/* Accent top border if delivery is soon */}
                 {isDeliverySoon && (
                   <div className="absolute top-0 left-0 right-0 h-0.5 bg-amber-400 rounded-t-2xl" />
                 )}
 
                 <div>
-                  {/* Category Pill & Status Badge */}
                   <div className="flex items-center justify-between gap-2 mb-3">
                     <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[11px] font-bold border border-slate-200">
                       {p.category}
@@ -228,17 +244,43 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                     {getStatusBadge(p.status)}
                   </div>
 
-                  {/* Project Name & Client */}
                   <h3 className="text-base font-extrabold text-slate-900 tracking-tight leading-snug group-hover:text-emerald-700 transition-colors">
                     {p.name}
                   </h3>
 
-                  <div className="flex items-center space-x-1.5 text-xs text-slate-500 mt-1 mb-4 font-medium">
-                    <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                    <span><strong className="text-slate-800">{client ? client.name : 'Cliente não encontrado'}</strong></span>
-                    {client?.company && (
-                      <span className="text-slate-400">({client.company})</span>
-                    )}
+                  <div className="flex items-center justify-between mt-1 mb-3">
+                    <div className="flex items-center space-x-1.5 text-xs text-slate-500 font-medium">
+                      <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      <span><strong className="text-slate-800">{client ? client.name : 'Cliente não encontrado'}</strong></span>
+                      {client?.company && (
+                        <span className="text-slate-400">({client.company})</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Star Rating Bar */}
+                  <div className="flex items-center space-x-1 mb-4 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200/80 w-fit">
+                    <span className="text-[11px] font-bold text-slate-600 mr-1">Avaliação:</span>
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onRateProject?.(p, p.rating === star ? 0 : star);
+                        }}
+                        className="p-0.5 transition-transform hover:scale-125 cursor-pointer"
+                        title={`Classificar como ${star} estrela(s)`}
+                      >
+                        <Star
+                          className={`w-3.5 h-3.5 ${
+                            (p.rating || 0) >= star
+                              ? 'fill-amber-400 text-amber-400'
+                              : 'text-slate-300 hover:text-amber-300'
+                          }`}
+                        />
+                      </button>
+                    ))}
                   </div>
 
                   {/* Financial Breakdown Card */}
@@ -264,7 +306,6 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                       </strong>
                     </div>
 
-                    {/* Progress bar */}
                     <div className="pt-1.5">
                       <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
                         <div
@@ -289,10 +330,19 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                       </strong>
                     </div>
 
-                    {p.nextPaymentDate && (
+                    {!isCompletedOrPaid && p.nextPaymentDate && (
                       <div className="flex items-center justify-between text-amber-700 font-bold bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-200">
                         <span>Próximo Pagamento:</span>
                         <strong>{formatDate(p.nextPaymentDate)}</strong>
+                      </div>
+                    )}
+
+                    {isCompletedOrPaid && (
+                      <div className="flex items-center justify-between text-emerald-800 font-bold bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-200 text-xs">
+                        <span className="flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Projeto Liquidado
+                        </span>
+                        <strong className="text-emerald-700">100% Pago</strong>
                       </div>
                     )}
                   </div>
@@ -309,14 +359,23 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                   <div className="flex items-center space-x-1">
                     <button
                       onClick={() => onEditProject(p)}
-                      className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                      className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
                       title="Editar Projeto"
                     >
                       <Edit3 className="w-4 h-4" />
                     </button>
+                    
+                    <button
+                      onClick={() => onDuplicateProject?.(p)}
+                      className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                      title="Replicar Projeto Recorrente (Novo Mês)"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </button>
+
                     <button
                       onClick={() => onDeleteProject(p.id)}
-                      className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                      className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                       title="Excluir Projeto"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -329,7 +388,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                         const msg = `Olá, ${client.name}! Tudo bem? Gostaria de atualizar sobre o projeto "${p.name}". O valor restante pendente é de ${formatCurrency(remaining, p.currency)}. Próximo vencimento: ${p.nextPaymentDate ? formatDate(p.nextPaymentDate) : formatDate(p.dueDate)}. Obrigado!`;
                         onOpenWhatsAppCharge(client.whatsapp, msg);
                       }}
-                      className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg text-xs font-bold flex items-center space-x-1 transition-all"
+                      className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg text-xs font-bold flex items-center space-x-1 transition-all cursor-pointer"
                     >
                       <MessageCircle className="w-3.5 h-3.5" />
                       <span>Cobrar Restante</span>

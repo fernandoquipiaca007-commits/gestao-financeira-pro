@@ -44,7 +44,7 @@ export async function sendWebPushNotification(title: string, options?: Notificat
     return false;
   }
 
-  const notificationOptions: NotificationOptions = {
+  const notificationOptions: any = {
     body: options?.body || '',
     icon: '/favicon.ico',
     badge: '/favicon.ico',

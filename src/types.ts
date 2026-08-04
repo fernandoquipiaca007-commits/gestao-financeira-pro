@@ -70,6 +70,7 @@ export interface Project {
   nextPaymentDate?: string;
   status: ProjectStatus;
   notes?: string;
+  rating?: number; // 0 to 5 stars
   createdAt: string;
   // Partner & Commission fields
   partnerId?: string;
