@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { X, FolderKanban, Save, DollarSign, Calendar, Handshake, Percent, UserCheck } from 'lucide-react';
-import { Project, Client, ProjectCategory, ProjectStatus, CurrencyCode, CURRENCIES, Partner } from '../../types';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, FolderKanban, Save, DollarSign, Calendar, Handshake, Percent, UserCheck, Paperclip, Upload, FileText, Download, Trash2 } from 'lucide-react';
+import { Project, Client, ProjectCategory, ProjectStatus, CurrencyCode, CURRENCIES, Partner, ProjectAttachment } from '../../types';
 import { getTodayIso, addDaysIso } from '../../lib/storage';
 import { formatCurrency } from '../../lib/formatters';
 
@@ -34,6 +34,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   const [nextPaymentDate, setNextPaymentDate] = useState(addDaysIso(0));
   const [status, setStatus] = useState<ProjectStatus>('Em andamento');
   const [notes, setNotes] = useState('');
+  const [attachments, setAttachments] = useState<ProjectAttachment[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Partner & Commission State
   const [hasPartner, setHasPartner] = useState(false);
@@ -55,6 +57,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       setNextPaymentDate(projectToEdit.nextPaymentDate || '');
       setStatus(projectToEdit.status);
       setNotes(projectToEdit.notes || '');
+      setAttachments(projectToEdit.attachments || []);
       setHasPartner(!!projectToEdit.partnerId);
       setPartnerId(projectToEdit.partnerId || '');
       setCommissionType(projectToEdit.commissionType || 'percent');
@@ -78,6 +81,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       setNextPaymentDate(addDaysIso(0));
       setStatus('Em andamento');
       setNotes('');
+      setAttachments([]);
       setHasPartner(false);
       setPartnerId('');
       setCommissionType('percent');
@@ -85,6 +89,39 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       setCommissionPaid(false);
     }
   }, [projectToEdit, isOpen, clients, defaultCurrency]);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    Array.from(files).forEach((file: File) => {
+      if (file.size > 15 * 1024 * 1024) {
+        alert(`O ficheiro "${file.name}" excede o tamanho máximo de 15MB.`);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const base64Url = ev.target?.result as string;
+        const newAtt: ProjectAttachment = {
+          id: `att-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+          name: file.name,
+          size: file.size,
+          type: file.type || file.name.split('.').pop() || 'file',
+          url: base64Url,
+          createdAt: getTodayIso(),
+        };
+        setAttachments((prev) => [...prev, newAtt]);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleRemoveAttachment = (id: string) => {
+    setAttachments((prev) => prev.filter((att) => att.id !== id));
+  };
 
   const handleClientChange = (cId: string) => {
     setClientId(cId);
@@ -139,6 +176,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       nextPaymentDate: nextPaymentDate ? nextPaymentDate : undefined,
       status,
       notes: notes.trim(),
+      attachments,
       partnerId: hasPartner ? partnerId : undefined,
       partnerName: hasPartner ? selectedPartner?.name : undefined,
       commissionType: hasPartner ? commissionType : undefined,
@@ -165,7 +203,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                 {projectToEdit ? 'Editar Projeto' : 'Novo Projeto'}
               </h3>
               <p className="text-xs text-slate-500">
-                Gerencie os detalhes e finanças do seu projeto
+                Gerencie os detalhes, finanças e arquivos do seu projeto
               </p>
             </div>
           </div>
@@ -346,6 +384,72 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
             </div>
           </div>
 
+          {/* Section: File Attachments / Anexos */}
+          <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                <Paperclip className="w-4 h-4 text-blue-600" /> Ficheiros &amp; Anexos do Projeto ({attachments.length})
+              </label>
+              <label className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold flex items-center space-x-1 cursor-pointer transition-all">
+                <Upload className="w-3.5 h-3.5" />
+                <span>Anexar Ficheiro</span>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+              </label>
+            </div>
+
+            {attachments.length === 0 ? (
+              <p className="text-xs text-slate-400 italic">
+                Nenhum ficheiro anexado. Adicione listas de inscritos, relatórios, PDFs ou documentos do projeto.
+              </p>
+            ) : (
+              <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
+                {attachments.map((att) => (
+                  <div
+                    key={att.id}
+                    className="flex items-center justify-between p-2.5 bg-white border border-slate-200 rounded-lg text-xs"
+                  >
+                    <div className="flex items-center space-x-2 min-w-0 flex-1">
+                      <FileText className="w-4 h-4 text-slate-400 shrink-0" />
+                      <span className="font-bold text-slate-800 truncate">{att.name}</span>
+                      {att.size && (
+                        <span className="text-[10px] text-slate-400 shrink-0">
+                          ({(att.size / 1024).toFixed(0)} KB)
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center space-x-1 shrink-0 ml-2">
+                      <a
+                        href={att.url}
+                        download={att.name}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                        title="Baixar Ficheiro"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveAttachment(att.id)}
+                        className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
+                        title="Remover Ficheiro"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
             <label className="flex items-center space-x-2 cursor-pointer">
               <input
@@ -380,8 +484,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
           </div>
 
           <div className="flex items-center justify-end space-x-3 pt-4">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-900">Cancelar</button>
-            <button type="submit" className="px-6 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 shadow-md">
+            <button type="button" onClick={onClose} className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-900 cursor-pointer">Cancelar</button>
+            <button type="submit" className="px-6 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 shadow-md cursor-pointer">
               {projectToEdit ? 'Atualizar Projeto' : 'Criar Projeto'}
             </button>
           </div>

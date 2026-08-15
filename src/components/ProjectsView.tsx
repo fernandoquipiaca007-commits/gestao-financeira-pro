@@ -15,6 +15,9 @@ import {
   Building2,
   Star,
   Copy,
+  Paperclip,
+  Download,
+  FileText,
 } from 'lucide-react';
 import { Project, Client, ProjectStatus, CurrencyCode } from '../types';
 import { formatCurrency, formatDate, getDaysDiff } from '../lib/formatters';
@@ -346,6 +349,38 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                       </div>
                     )}
                   </div>
+
+                  {/* Project Attachments / Ficheiros */}
+                  {p.attachments && p.attachments.length > 0 && (
+                    <div className="mb-4 bg-slate-50 border border-slate-200/80 p-2.5 rounded-xl space-y-1.5 text-xs">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-slate-700">
+                        <span className="flex items-center gap-1">
+                          <Paperclip className="w-3.5 h-3.5 text-blue-600" /> Ficheiros do Projeto ({p.attachments.length})
+                        </span>
+                      </div>
+                      <div className="space-y-1 max-h-28 overflow-y-auto pr-1">
+                        {p.attachments.map((att) => (
+                          <div key={att.id} className="flex items-center justify-between bg-white p-1.5 px-2 rounded-lg border border-slate-200 text-[11px]">
+                            <div className="flex items-center space-x-1.5 min-w-0 flex-1">
+                              <FileText className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                              <span className="font-semibold text-slate-800 truncate" title={att.name}>{att.name}</span>
+                            </div>
+                            <a
+                              href={att.url}
+                              download={att.name}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors shrink-0 ml-1 flex items-center gap-1 font-bold cursor-pointer"
+                              title="Baixar ficheiro"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              <span className="text-[10px]">Baixar</span>
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {p.notes && (
                     <p className="text-xs text-slate-500 italic bg-slate-50 p-2.5 rounded-lg mb-4 line-clamp-2 border border-slate-200">

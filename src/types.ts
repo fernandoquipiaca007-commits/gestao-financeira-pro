@@ -57,6 +57,15 @@ export type ProjectCategory = 'Tráfego Pago' | 'Website' | 'Landing Page' | 'Lo
 
 export type ProjectStatus = 'Em andamento' | 'Aguardando cliente' | 'Concluído' | 'Cancelado';
 
+export interface ProjectAttachment {
+  id: string;
+  name: string;
+  size?: number; // bytes
+  type?: string; // mime type
+  url: string; // base64 or URL
+  createdAt: string;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -71,6 +80,7 @@ export interface Project {
   status: ProjectStatus;
   notes?: string;
   rating?: number; // 0 to 5 stars
+  attachments?: ProjectAttachment[];
   createdAt: string;
   // Partner & Commission fields
   partnerId?: string;
