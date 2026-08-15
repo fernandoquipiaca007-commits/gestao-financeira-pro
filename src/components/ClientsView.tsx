@@ -162,40 +162,40 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                 <div>
                   {/* Top Header: Flag, Currency badge & Type pill */}
                   <div className="flex items-center justify-between gap-2 mb-3">
-                    <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-[11px] font-bold border border-slate-200 flex items-center gap-1.5">
+                    <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-900 text-[11px] font-black border border-slate-300 shadow-2xs flex items-center gap-1.5">
                       <span>{countryInfo.flag}</span>
                       <span>{c.type}</span>
                     </span>
 
-                    <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-700 text-[11px] font-bold border border-emerald-200">
+                    <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-950 text-[11px] font-black border border-emerald-300 shadow-2xs">
                       {currencyInfo.symbol} {c.currency}
                     </span>
                   </div>
 
                   {/* Client Name & Company */}
-                  <h3 className="text-base font-extrabold text-slate-900 tracking-tight group-hover:text-blue-700 transition-colors">
+                  <h3 className="text-base font-black text-slate-950 tracking-tight group-hover:text-blue-700 transition-colors">
                     {c.name}
                   </h3>
 
                   {c.company && (
-                    <div className="flex items-center space-x-1.5 text-xs text-slate-500 font-medium mt-0.5 mb-3">
-                      <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <div className="flex items-center space-x-1.5 text-xs text-slate-700 font-bold mt-0.5 mb-3">
+                      <Building2 className="w-3.5 h-3.5 text-slate-600 shrink-0 stroke-[2.2]" />
                       <span>{c.company}</span>
                     </div>
                   )}
 
                   {/* Contacts */}
-                  <div className="space-y-1.5 text-xs mb-4 pt-2 border-t border-slate-100">
+                  <div className="space-y-1.5 text-xs mb-4 pt-2 border-t border-slate-200">
                     {c.whatsapp && (
-                      <div className="flex items-center justify-between text-slate-700">
-                        <span className="flex items-center gap-1.5 text-slate-500 font-medium">
-                          <MessageCircle className="w-3.5 h-3.5 text-emerald-600" /> WhatsApp:
+                      <div className="flex items-center justify-between text-slate-800">
+                        <span className="flex items-center gap-1.5 text-slate-700 font-extrabold">
+                          <MessageCircle className="w-3.5 h-3.5 text-emerald-600 stroke-[2.2]" /> WhatsApp:
                         </span>
                         <a
                           href={generateWhatsAppLink(c.whatsapp, `Olá, ${c.name}!`)}
                           target="_blank"
                           rel="noreferrer"
-                          className="font-bold text-slate-800 hover:text-emerald-700 hover:underline flex items-center gap-1"
+                          className="font-black text-slate-950 hover:text-emerald-700 hover:underline flex items-center gap-1"
                         >
                           {c.whatsapp} <ExternalLink className="w-3 h-3" />
                         </a>
@@ -203,13 +203,13 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     )}
 
                     {c.email && (
-                      <div className="flex items-center justify-between text-slate-700">
-                        <span className="flex items-center gap-1.5 text-slate-500 font-medium">
-                          <Mail className="w-3.5 h-3.5 text-blue-500" /> E-mail:
+                      <div className="flex items-center justify-between text-slate-800">
+                        <span className="flex items-center gap-1.5 text-slate-700 font-extrabold">
+                          <Mail className="w-3.5 h-3.5 text-blue-600 stroke-[2.2]" /> E-mail:
                         </span>
                         <a
                           href={`mailto:${c.email}`}
-                          className="font-bold text-slate-800 hover:text-blue-700 hover:underline truncate max-w-[160px]"
+                          className="font-black text-slate-950 hover:text-blue-700 hover:underline truncate max-w-[160px]"
                         >
                           {c.email}
                         </a>
@@ -218,37 +218,37 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                   </div>
 
                   {/* Client Financial Metrics */}
-                  <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 space-y-2 text-xs mb-4">
+                  <div className="bg-slate-100/90 p-3.5 rounded-xl border border-slate-300 space-y-2 text-xs mb-4 shadow-2xs">
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-500 font-medium flex items-center gap-1">
-                        <FolderKanban className="w-3.5 h-3.5 text-indigo-500" /> Projetos:
+                      <span className="text-slate-800 font-extrabold flex items-center gap-1">
+                        <FolderKanban className="w-3.5 h-3.5 text-indigo-600 stroke-[2.2]" /> Projetos:
                       </span>
-                      <strong className="text-slate-900 font-bold">{projectsCount} projeto(s)</strong>
+                      <strong className="text-slate-950 font-black">{projectsCount} projeto(s)</strong>
                     </div>
 
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-500 font-medium flex items-center gap-1">
-                        <DollarSign className="w-3.5 h-3.5 text-emerald-600" /> Já pagou:
+                      <span className="text-slate-800 font-extrabold flex items-center gap-1">
+                        <DollarSign className="w-3.5 h-3.5 text-emerald-600 stroke-[2.5]" /> Já pagou:
                       </span>
-                      <strong className="text-emerald-700 font-bold">
+                      <strong className="text-emerald-700 font-black">
                         {formatCurrency(totalPaid, c.currency)}
                       </strong>
                     </div>
 
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-500 font-medium flex items-center gap-1">
-                        <DollarSign className="w-3.5 h-3.5 text-rose-500" /> Ainda deve:
+                      <span className="text-slate-800 font-extrabold flex items-center gap-1">
+                        <DollarSign className="w-3.5 h-3.5 text-rose-600 stroke-[2.5]" /> Ainda deve:
                       </span>
-                      <strong className={totalOwed > 0 ? 'text-rose-700 font-bold' : 'text-slate-400'}>
+                      <strong className={totalOwed > 0 ? 'text-rose-700 font-black' : 'text-slate-600 font-bold'}>
                         {formatCurrency(totalOwed, c.currency)}
                       </strong>
                     </div>
 
-                    <div className="flex items-center justify-between pt-1.5 border-t border-slate-200">
-                      <span className="text-slate-500 font-medium flex items-center gap-1">
-                        <Calendar className="w-3.5 h-3.5 text-slate-400" /> Último pagamento:
+                    <div className="flex items-center justify-between pt-1.5 border-t border-slate-300">
+                      <span className="text-slate-800 font-extrabold flex items-center gap-1">
+                        <Calendar className="w-3.5 h-3.5 text-slate-600 stroke-[2.2]" /> Último pagamento:
                       </span>
-                      <span className="text-slate-700 font-bold">
+                      <span className="text-slate-950 font-black">
                         {lastPaymentDate ? formatDate(lastPaymentDate) : '—'}
                       </span>
                     </div>

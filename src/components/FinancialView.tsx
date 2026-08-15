@@ -320,7 +320,7 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
             <div className="bg-white border border-slate-200/90 rounded-2xl overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 text-slate-500 font-extrabold uppercase tracking-wider text-[10px] border-b border-slate-200">
+                  <thead className="bg-slate-100 text-slate-950 font-black uppercase tracking-wider text-[11px] border-b border-slate-300">
                     <tr>
                       <th className="px-4 py-3.5">Cliente &amp; Projeto</th>
                       <th className="px-4 py-3.5">Descrição</th>
@@ -331,7 +331,7 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
                       <th className="px-4 py-3.5 text-right">Ações</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-200">
                     {filteredIncomes.map((inc) => {
                       const client = clientMap.get(inc.clientId);
                       const project = inc.projectId ? projectMap.get(inc.projectId) : null;
@@ -339,34 +339,34 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
                       const isOverdue = inc.status !== 'Recebido' && diffDays < 0;
 
                       return (
-                        <tr key={inc.id} className="hover:bg-slate-50/80 transition-colors">
+                        <tr key={inc.id} className="hover:bg-slate-50 transition-colors">
                           <td className="px-4 py-3.5">
-                            <div className="font-bold text-slate-900 text-sm">
+                            <div className="font-black text-slate-950 text-sm">
                               {client ? client.name : 'Cliente'}
                             </div>
                             {project && (
-                              <div className="text-[11px] text-slate-500 font-medium">
+                              <div className="text-xs text-slate-800 font-bold">
                                 {project.name}
                               </div>
                             )}
                           </td>
 
-                          <td className="px-4 py-3.5 font-medium text-slate-700">
+                          <td className="px-4 py-3.5 font-bold text-slate-900">
                             {inc.description}
                           </td>
 
-                          <td className="px-4 py-3.5 font-extrabold text-emerald-700 text-sm">
+                          <td className="px-4 py-3.5 font-black text-emerald-700 text-sm">
                             {formatCurrency(inc.amount, inc.currency)}
                           </td>
 
                           <td className="px-4 py-3.5">
-                            <span className={isOverdue ? 'text-rose-600 font-bold' : 'text-slate-600 font-medium'}>
+                            <span className={isOverdue ? 'text-rose-700 font-black' : 'text-slate-900 font-bold'}>
                               {formatDate(inc.dueDate)}
                             </span>
                           </td>
 
                           <td className="px-4 py-3.5">
-                            <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold border border-slate-200 text-[11px]">
+                            <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-950 font-black border border-slate-300 text-[11px] shadow-2xs">
                               {inc.paymentMethod || 'PIX'}
                             </span>
                           </td>
@@ -374,19 +374,19 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
                           <td className="px-4 py-3.5">
                             <button
                               onClick={() => onToggleIncomeStatus(inc)}
-                              className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all flex items-center gap-1 border ${
+                              className={`px-2.5 py-1 rounded-lg font-black text-[11px] transition-all flex items-center gap-1 border shadow-2xs ${
                                 inc.status === 'Recebido'
-                                  ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                                  ? 'bg-emerald-100 text-emerald-950 border-emerald-300'
                                   : isOverdue
-                                  ? 'bg-rose-100 text-rose-700 border-rose-200'
-                                  : 'bg-amber-100 text-amber-700 border-amber-200'
+                                  ? 'bg-rose-100 text-rose-950 border-rose-300'
+                                  : 'bg-amber-100 text-amber-950 border-amber-300'
                               }`}
                               title="Clique para alterar status"
                             >
                               {inc.status === 'Recebido' ? (
-                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700 stroke-[2.5]" />
                               ) : (
-                                <Clock className="w-3.5 h-3.5" />
+                                <Clock className="w-3.5 h-3.5 stroke-[2.5]" />
                               )}
                               <span>{isOverdue && inc.status !== 'Recebido' ? `Atrasado (${Math.abs(diffDays)}d)` : inc.status}</span>
                             </button>

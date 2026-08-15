@@ -669,8 +669,8 @@ export default function App() {
         
         {/* Desktop Sidebar Navigation */}
         <aside className="hidden lg:block w-60 shrink-0">
-          <nav className="sticky top-24 space-y-1 bg-white p-3 rounded-2xl border border-slate-200/90 shadow-xs">
-            <div className="px-3 py-2 text-[10px] font-black tracking-widest text-slate-600 uppercase">
+          <nav className="sticky top-24 space-y-1 bg-white p-3.5 rounded-2xl border border-slate-300 shadow-2xs">
+            <div className="px-3 py-2 text-[11px] font-black tracking-widest text-slate-900 uppercase">
               Menu Executivo
             </div>
             {navItems.map((item) => {
@@ -681,14 +681,14 @@ export default function App() {
                 <button
                   key={item.id}
                   onClick={() => handleNavigateTab(item.id)}
-                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                     isActive
-                      ? 'bg-slate-900 text-white shadow-sm'
-                      : 'text-slate-800 hover:text-slate-950 hover:bg-slate-100'
+                      ? 'bg-slate-950 text-white shadow-xs'
+                      : 'text-slate-900 hover:text-slate-950 hover:bg-slate-100 font-extrabold'
                   }`}
                 >
                   <div className="flex items-center space-x-3">
-                    <Icon className={`w-4 h-4 stroke-[2.2] ${isActive ? 'text-emerald-400' : 'text-slate-700'}`} />
+                    <Icon className={`w-4 h-4 stroke-[2.5] ${isActive ? 'text-emerald-400' : 'text-slate-800'}`} />
                     <span>{item.label}</span>
                   </div>
 
@@ -697,7 +697,7 @@ export default function App() {
                       className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
                         isActive
                           ? 'bg-slate-800 text-emerald-300'
-                          : 'bg-slate-100 text-slate-900 border border-slate-300'
+                          : 'bg-slate-200 text-slate-950 border border-slate-300'
                       }`}
                     >
                       {item.badge}

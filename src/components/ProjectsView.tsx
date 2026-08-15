@@ -241,29 +241,29 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-3">
-                    <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[11px] font-bold border border-slate-200">
+                    <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-900 text-[11px] font-black border border-slate-300 shadow-2xs">
                       {p.category}
                     </span>
                     {getStatusBadge(p.status)}
                   </div>
 
-                  <h3 className="text-base font-extrabold text-slate-900 tracking-tight leading-snug group-hover:text-emerald-700 transition-colors">
+                  <h3 className="text-base font-black text-slate-950 tracking-tight leading-snug group-hover:text-emerald-700 transition-colors">
                     {p.name}
                   </h3>
 
                   <div className="flex items-center justify-between mt-1 mb-3">
-                    <div className="flex items-center space-x-1.5 text-xs text-slate-500 font-medium">
-                      <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <span><strong className="text-slate-800">{client ? client.name : 'Cliente não encontrado'}</strong></span>
+                    <div className="flex items-center space-x-1.5 text-xs text-slate-800 font-bold">
+                      <Building2 className="w-3.5 h-3.5 text-slate-600 shrink-0 stroke-[2.2]" />
+                      <span><strong className="text-slate-950 font-black">{client ? client.name : 'Cliente não encontrado'}</strong></span>
                       {client?.company && (
-                        <span className="text-slate-400">({client.company})</span>
+                        <span className="text-slate-700 font-bold">({client.company})</span>
                       )}
                     </div>
                   </div>
 
                   {/* Star Rating Bar */}
-                  <div className="flex items-center space-x-1 mb-4 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200/80 w-fit">
-                    <span className="text-[11px] font-bold text-slate-600 mr-1">Avaliação:</span>
+                  <div className="flex items-center space-x-1 mb-4 bg-slate-100 px-2.5 py-1.5 rounded-xl border border-slate-300 w-fit shadow-2xs">
+                    <span className="text-[11px] font-black text-slate-800 mr-1">Avaliação:</span>
                     {[1, 2, 3, 4, 5].map((star) => (
                       <button
                         key={star}
@@ -278,8 +278,8 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                         <Star
                           className={`w-3.5 h-3.5 ${
                             (p.rating || 0) >= star
-                              ? 'fill-amber-400 text-amber-400'
-                              : 'text-slate-300 hover:text-amber-300'
+                              ? 'fill-amber-400 text-amber-500 stroke-[2]'
+                              : 'text-slate-400 hover:text-amber-400'
                           }`}
                         />
                       </button>
@@ -287,90 +287,90 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                   </div>
 
                   {/* Financial Breakdown Card */}
-                  <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 mb-4 space-y-2 text-xs">
+                  <div className="bg-slate-100/90 p-3.5 rounded-xl border border-slate-300 mb-4 space-y-2 text-xs shadow-2xs">
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-500 font-medium">Valor Total:</span>
-                      <strong className="text-slate-900 font-extrabold text-sm">
+                      <span className="text-slate-800 font-extrabold">Valor Total:</span>
+                      <strong className="text-slate-950 font-black text-sm">
                         {formatCurrency(p.totalAmount, p.currency)}
                       </strong>
                     </div>
 
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-500 font-medium">Valor Já Pago:</span>
-                      <span className="text-emerald-700 font-bold">
+                      <span className="text-slate-800 font-extrabold">Valor Já Pago:</span>
+                      <strong className="text-emerald-700 font-black">
                         {formatCurrency(p.paidAmount, p.currency)}
-                      </span>
+                      </strong>
                     </div>
 
-                    <div className="flex items-center justify-between pt-1.5 border-t border-slate-200">
-                      <span className="text-slate-500 font-medium">Valor Restante:</span>
-                      <strong className={`font-extrabold ${remaining > 0 ? 'text-amber-700' : 'text-slate-400'}`}>
+                    <div className="flex items-center justify-between pt-1.5 border-t border-slate-300">
+                      <span className="text-slate-800 font-extrabold">Valor Restante:</span>
+                      <strong className={`font-black ${remaining > 0 ? 'text-amber-800' : 'text-slate-600'}`}>
                         {formatCurrency(remaining, p.currency)}
                       </strong>
                     </div>
 
                     <div className="pt-1.5">
-                      <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                      <div className="w-full bg-slate-300 h-2.5 rounded-full overflow-hidden border border-slate-300">
                         <div
-                          className={`h-full rounded-full transition-all duration-500 ${isFullyPaid ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                          className={`h-full rounded-full transition-all duration-500 ${isFullyPaid ? 'bg-emerald-600' : 'bg-amber-500'}`}
                           style={{ width: `${progressPct}%` }}
                         />
                       </div>
-                      <div className="text-[10px] text-slate-500 text-right mt-1 font-medium">
+                      <div className="text-[11px] text-slate-800 text-right mt-1 font-black">
                         {progressPct}% liquidado
                       </div>
                     </div>
                   </div>
 
                   {/* Dates Details */}
-                  <div className="space-y-1.5 text-xs text-slate-500 font-medium mb-4">
+                  <div className="space-y-2 text-xs text-slate-800 font-bold mb-4">
                     <div className="flex items-center justify-between">
-                      <span className="flex items-center gap-1.5">
-                        <Calendar className="w-3.5 h-3.5 text-slate-400" /> Previsão Entrega:
+                      <span className="flex items-center gap-1.5 text-slate-800 font-extrabold">
+                        <Calendar className="w-3.5 h-3.5 text-slate-700 stroke-[2.2]" /> Previsão Entrega:
                       </span>
-                      <strong className={`font-bold ${isDeliverySoon ? 'text-amber-700' : 'text-slate-700'}`}>
+                      <strong className={`font-black ${isDeliverySoon ? 'text-amber-800' : 'text-slate-900'}`}>
                         {formatDate(p.dueDate)}
                       </strong>
                     </div>
 
                     {!isCompletedOrPaid && p.nextPaymentDate && (
-                      <div className="flex items-center justify-between text-amber-700 font-bold bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-200">
+                      <div className="flex items-center justify-between text-amber-950 font-black bg-amber-100 px-3 py-1.5 rounded-xl border border-amber-300 shadow-2xs">
                         <span>Próximo Pagamento:</span>
-                        <strong>{formatDate(p.nextPaymentDate)}</strong>
+                        <strong className="text-amber-950 text-sm font-black">{formatDate(p.nextPaymentDate)}</strong>
                       </div>
                     )}
 
                     {isCompletedOrPaid && (
-                      <div className="flex items-center justify-between text-emerald-800 font-bold bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-200 text-xs">
+                      <div className="flex items-center justify-between text-emerald-950 font-black bg-emerald-100 px-3 py-1.5 rounded-xl border border-emerald-300 text-xs shadow-2xs">
                         <span className="flex items-center gap-1">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Projeto Liquidado
+                          <CheckCircle2 className="w-4 h-4 text-emerald-700 stroke-[2.5]" /> Projeto Liquidado
                         </span>
-                        <strong className="text-emerald-700">100% Pago</strong>
+                        <strong className="text-emerald-900 font-black">100% Pago</strong>
                       </div>
                     )}
                   </div>
 
                   {/* Project Attachments / Ficheiros */}
                   {p.attachments && p.attachments.length > 0 && (
-                    <div className="mb-4 bg-slate-50 border border-slate-200/80 p-2.5 rounded-xl space-y-1.5 text-xs">
-                      <div className="flex items-center justify-between text-[11px] font-bold text-slate-700">
+                    <div className="mb-4 bg-slate-100 border border-slate-300 p-2.5 rounded-xl space-y-1.5 text-xs shadow-2xs">
+                      <div className="flex items-center justify-between text-[11px] font-black text-slate-900">
                         <span className="flex items-center gap-1">
-                          <Paperclip className="w-3.5 h-3.5 text-blue-600" /> Ficheiros do Projeto ({p.attachments.length})
+                          <Paperclip className="w-3.5 h-3.5 text-blue-700 stroke-[2.2]" /> Ficheiros do Projeto ({p.attachments.length})
                         </span>
                       </div>
                       <div className="space-y-1 max-h-28 overflow-y-auto pr-1">
                         {p.attachments.map((att) => (
-                          <div key={att.id} className="flex items-center justify-between bg-white p-1.5 px-2 rounded-lg border border-slate-200 text-[11px]">
+                          <div key={att.id} className="flex items-center justify-between bg-white p-1.5 px-2 rounded-lg border border-slate-300 text-[11px]">
                             <div className="flex items-center space-x-1.5 min-w-0 flex-1">
-                              <FileText className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                              <span className="font-semibold text-slate-800 truncate" title={att.name}>{att.name}</span>
+                              <FileText className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+                              <span className="font-bold text-slate-900 truncate" title={att.name}>{att.name}</span>
                             </div>
                             <a
                               href={att.url}
                               download={att.name}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors shrink-0 ml-1 flex items-center gap-1 font-bold cursor-pointer"
+                              className="p-1 text-blue-700 hover:bg-blue-100 rounded transition-colors shrink-0 ml-1 flex items-center gap-1 font-black cursor-pointer"
                               title="Baixar ficheiro"
                             >
                               <Download className="w-3.5 h-3.5" />
