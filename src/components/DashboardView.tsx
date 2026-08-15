@@ -223,12 +223,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* 2. Indicadores Financeiros KPI Grid */}
       <div>
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
           <h3 className="text-sm font-black text-slate-900 tracking-tight flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-emerald-600" />
             Indicadores Financeiros
           </h3>
-          <span className="text-xs font-extrabold text-slate-800 bg-slate-100 px-3 py-1 rounded-lg border border-slate-300">
+          <span className="text-xs font-extrabold text-slate-800 bg-slate-100 px-3 py-1 rounded-lg border border-slate-300 w-fit">
             Filtro: <strong className="text-slate-900">{currencyFilter === 'ALL' ? 'Todas as Moedas' : currencyFilter}</strong>
           </span>
         </div>

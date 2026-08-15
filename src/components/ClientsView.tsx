@@ -68,20 +68,20 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
     <div className="space-y-6 pb-12">
       
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-            <Users className="w-5 h-5 text-blue-600" />
-            Base de Clientes
-          </h2>
-          <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Clientes cadastrados com histórico financeiro, projetos e contatos
-          </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs">
+        <div className="flex items-center space-x-3">
+          <div className="p-2.5 rounded-xl bg-blue-100 text-blue-700 border border-blue-200 shrink-0">
+            <Users className="w-5 h-5 stroke-[2.2]" />
+          </div>
+          <div>
+            <h2 className="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight">Base de Clientes</h2>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">Clientes cadastrados com histórico financeiro, projetos e contatos</p>
+          </div>
         </div>
 
         <button
           onClick={onOpenNewClientModal}
-          className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95"
+          className="w-full sm:w-auto px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center space-x-2 cursor-pointer active:scale-95 shrink-0"
         >
           <Plus className="w-4 h-4 stroke-[3]" />
           <span>Cadastrar Cliente</span>
@@ -89,7 +89,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-white border border-slate-200/90 p-4 rounded-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+      <div className="bg-white border border-slate-200/90 p-4 rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shadow-xs">
         
         {/* Search */}
         <div className="relative flex-1">
@@ -99,7 +99,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
             placeholder="Pesquisar por nome, empresa, e-mail, WhatsApp..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-colors"
+            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs font-semibold placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
           />
         </div>
 
@@ -107,7 +107,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
         <select
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value)}
-          className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 text-xs font-semibold focus:outline-none focus:border-blue-500"
+          className="w-full sm:w-auto px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-xs font-bold focus:outline-none cursor-pointer"
         >
           <option value="ALL">Todos os Tipos</option>
           <option value="Tráfego Pago">Tráfego Pago</option>

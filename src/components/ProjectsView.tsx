@@ -133,7 +133,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
         <button
           onClick={onOpenNewProjectModal}
-          className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center space-x-2 cursor-pointer active:scale-95 self-start sm:self-auto"
+          className="w-full sm:w-auto px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center justify-center space-x-2 cursor-pointer active:scale-95 shrink-0"
         >
           <Plus className="w-4 h-4 stroke-[3]" />
           <span>Novo Projeto</span>
@@ -141,10 +141,10 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col md:flex-row gap-3 items-center justify-between">
+      <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
         
         {/* Search */}
-        <div className="relative w-full md:w-72">
+        <div className="relative w-full sm:w-72">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
@@ -156,12 +156,12 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
         </div>
 
         {/* Filters Dropdowns */}
-        <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
+        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
           {/* Status Filter */}
-          <div className="flex items-center space-x-1 bg-slate-50 border border-slate-200 rounded-xl p-1 text-xs">
+          <div className="flex items-center space-x-1 bg-slate-50 border border-slate-200 rounded-xl p-1 text-xs overflow-x-auto">
             <button
               onClick={() => setStatusFilter('ALL')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap ${
                 statusFilter === 'ALL'
                   ? 'bg-white text-slate-900 shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
@@ -171,7 +171,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             </button>
             <button
               onClick={() => setStatusFilter('Em andamento')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap ${
                 statusFilter === 'Em andamento'
                   ? 'bg-blue-600 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
@@ -181,7 +181,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             </button>
             <button
               onClick={() => setStatusFilter('Concluído')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap ${
                 statusFilter === 'Concluído'
                   ? 'bg-emerald-600 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
@@ -195,7 +195,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="bg-slate-50 border border-slate-200 text-slate-800 text-xs font-bold rounded-xl px-3 py-2 focus:outline-none cursor-pointer"
+            className="w-full sm:w-auto bg-slate-50 border border-slate-200 text-slate-800 text-xs font-bold rounded-xl px-3 py-2 focus:outline-none cursor-pointer"
           >
             <option value="ALL">Todas Categorias</option>
             <option value="Tráfego Pago">Tráfego Pago</option>

@@ -53,7 +53,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
 
         <button
           onClick={onOpenNewPartnerModal}
-          className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 px-4 rounded-xl shadow-xs transition-all flex items-center space-x-2 text-xs self-start sm:self-auto cursor-pointer active:scale-95"
+          className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 px-4 rounded-xl shadow-xs transition-all flex items-center justify-center space-x-2 text-xs w-full sm:w-auto cursor-pointer active:scale-95 shrink-0"
         >
           <Plus className="w-4 h-4 stroke-[3]" />
           <span>Novo Parceiro</span>

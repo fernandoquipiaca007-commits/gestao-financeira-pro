@@ -238,21 +238,21 @@ export function CalendarView({
       
       {/* Push Notification Permission Banner */}
       {pushStatus !== 'granted' && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center justify-between shadow-xs">
+        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
           <div className="flex items-center space-x-3">
-            <div className="p-2.5 bg-emerald-100 rounded-xl text-emerald-700">
+            <div className="p-2.5 bg-emerald-100 rounded-xl text-emerald-700 shrink-0">
               <Bell className="w-5 h-5 animate-bounce" />
             </div>
             <div>
               <h4 className="text-sm font-extrabold text-slate-900">Ativar Notificações Web Push do Navegador</h4>
               <p className="text-xs text-slate-600 font-medium">
-                Receba alertas automáticos de cobrança, entregas e alarmes no seu computador mesmo minimizado.
+                Receba alertas automáticos de cobrança, entregas e alarmes no seu computador ou telemóvel.
               </p>
             </div>
           </div>
           <button
             onClick={handleEnablePush}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer whitespace-nowrap"
+            className="w-full sm:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer whitespace-nowrap shrink-0 text-center"
           >
             Ativar Agora
           </button>
@@ -260,22 +260,22 @@ export function CalendarView({
       )}
 
       {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs">
         <div className="flex items-center space-x-3">
-          <div className="p-2.5 bg-emerald-100 rounded-xl text-emerald-700 border border-emerald-200">
+          <div className="p-2.5 bg-emerald-100 rounded-xl text-emerald-700 border border-emerald-200 shrink-0">
             <CalendarIcon className="w-6 h-6" />
           </div>
           <div>
-            <h2 className="text-lg font-extrabold text-slate-900 tracking-tight">Agenda &amp; Calendário Real</h2>
+            <h2 className="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight">Agenda &amp; Calendário Real</h2>
             <p className="text-xs text-slate-500 font-medium mt-0.5">Sincronizado com cobranças, compromissos e prazos de entrega</p>
           </div>
         </div>
 
-        <div className="flex items-center space-x-3 w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
           <button
             onClick={handleTestPush}
             title="Testar Notificação Push no Navegador"
-            className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition-all flex items-center justify-center space-x-1.5 cursor-pointer"
+            className="w-full sm:w-auto px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition-all flex items-center justify-center space-x-1.5 cursor-pointer"
           >
             <Bell className="w-4 h-4 text-emerald-600" />
             <span>Testar Push</span>
@@ -283,7 +283,7 @@ export function CalendarView({
 
           <button
             onClick={() => onOpenNewEventModal(selectedDate)}
-            className="w-full sm:w-auto px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center space-x-2 cursor-pointer active:scale-95"
+            className="w-full sm:w-auto px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center space-x-2 cursor-pointer active:scale-95 shrink-0"
           >
             <Plus className="w-4 h-4 stroke-[3]" />
             <span>Novo Evento / Alarme</span>

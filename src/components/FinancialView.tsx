@@ -200,66 +200,66 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
     <div className="space-y-6 pb-12">
       
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-            <DollarSign className="w-5 h-5 text-emerald-600" />
-            Módulo Financeiro
-          </h2>
-          <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Gestão de receitas, despesas operacionais e agenda financeira unificada
-          </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs">
+        <div className="flex items-center space-x-3">
+          <div className="p-2.5 rounded-xl bg-emerald-100 text-emerald-700 border border-emerald-200 shrink-0">
+            <DollarSign className="w-5 h-5 stroke-[2.5]" />
+          </div>
+          <div>
+            <h2 className="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight">Módulo Financeiro</h2>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">Gestão de receitas, despesas operacionais e agenda financeira unificada</p>
+          </div>
         </div>
 
         {/* Action buttons */}
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="grid grid-cols-1 sm:flex items-center gap-2 w-full sm:w-auto">
           <button
             onClick={onOpenNewIncomeModal}
-            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer"
+            className="w-full sm:w-auto px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center justify-center space-x-1.5 transition-all shadow-xs active:scale-95 cursor-pointer"
           >
             <Plus className="w-4 h-4 stroke-[3]" />
             <span>Nova Receita</span>
           </button>
           <button
             onClick={onOpenNewExpenseModal}
-            className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer"
+            className="w-full sm:w-auto px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-bold text-xs rounded-xl flex items-center justify-center space-x-1.5 transition-all shadow-xs active:scale-95 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Nova Despesa</span>
           </button>
           <button
             onClick={onOpenNewExpenseModal}
-            className="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer"
+            className="w-full sm:w-auto px-3.5 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-xs rounded-xl flex items-center justify-center space-x-1.5 transition-all shadow-xs active:scale-95 cursor-pointer"
             title="Registrar retirada própria ou saída de caixa do saldo real"
           >
             <Receipt className="w-4 h-4 text-amber-600" />
-            <span>Registrar Saída / Retirada</span>
+            <span>Registrar Retirada</span>
           </button>
         </div>
       </div>
 
       {/* Sub-Tab Navigation Bar */}
-      <div className="flex items-center gap-1 bg-slate-100 border border-slate-200/80 p-1 rounded-xl w-fit">
+      <div className="flex items-center gap-1 bg-slate-100 border border-slate-200/80 p-1 rounded-xl w-full sm:w-fit overflow-x-auto">
         <button
           onClick={() => setSubTab('receitas')}
-          className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+          className={`px-3.5 sm:px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center space-x-2 whitespace-nowrap cursor-pointer ${
             subTab === 'receitas'
-              ? 'bg-white text-emerald-700 shadow-sm border border-slate-200/80'
-              : 'text-slate-500 hover:text-slate-900'
+              ? 'bg-white text-emerald-700 shadow-xs border border-slate-200/80 font-extrabold'
+              : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          <ArrowUpRight className="w-4 h-4" /> Receitas ({filteredIncomes.length})
+          <ArrowUpRight className="w-4 h-4 text-emerald-600" /> Receitas ({filteredIncomes.length})
         </button>
 
         <button
           onClick={() => setSubTab('despesas')}
-          className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+          className={`px-3.5 sm:px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center space-x-2 whitespace-nowrap cursor-pointer ${
             subTab === 'despesas'
-              ? 'bg-white text-emerald-700 shadow-sm border border-slate-200/80'
-              : 'text-slate-500 hover:text-slate-900'
+              ? 'bg-white text-rose-700 shadow-xs border border-slate-200/80 font-extrabold'
+              : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          <ArrowDownRight className="w-4 h-4" /> Despesas ({filteredExpenses.length})
+          <ArrowDownRight className="w-4 h-4 text-rose-600" /> Despesas ({filteredExpenses.length})
         </button>
 
         <button
