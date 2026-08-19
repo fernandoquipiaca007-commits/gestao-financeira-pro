@@ -123,31 +123,47 @@ export async function fetchProjectsFromDb(): Promise<Project[]> {
   try {
     const { data, error } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
     if (error) throw error;
-    const formatted: Project[] = (data || []).map((item) => ({
-      id: item.id,
-      name: item.name,
-      clientId: item.client_id || '',
-      category: item.category || 'Outro',
-      totalAmount: Number(item.total_amount) || 0,
-      paidAmount: Number(item.paid_amount) || 0,
-      currency: item.currency || 'BRL',
-      startDate: item.start_date || '',
-      dueDate: item.due_date || '',
-      nextPaymentDate: item.next_payment_date || undefined,
-      status: item.status || 'Em andamento',
-      notes: item.notes || '',
-      rating: Number(item.rating) || 0,
-      attachments: Array.isArray(item.attachments) ? item.attachments : [],
-      partnerId: item.partner_id || undefined,
-      partnerName: item.partner_name || undefined,
-      commissionType: item.commission_type || 'percent',
-      commissionValue: Number(item.commission_value) || 0,
-      commissionAmount: Number(item.commission_amount) || 0,
-      commissionPaid: item.commission_paid || false,
-      createdAt: item.created_at ? item.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
-    }));
-    saveProjects(formatted);
-    return formatted;
+    
+    const storedLocal = getStoredProjects();
+    const storedMap = new Map(storedLocal.map((p) => [p.id, p]));
+
+    const formatted: Project[] = (data || []).map((item) => {
+      const stored = storedMap.get(item.id);
+      const parsedClientIds: string[] = Array.isArray(item.client_ids)
+        ? item.client_ids
+        : (item.client_id ? [item.client_id] : (stored?.clientIds || []));
+
+      return {
+        id: item.id,
+        name: item.name,
+        clientId: item.client_id || (parsedClientIds[0] || ''),
+        clientIds: parsedClientIds.length > 0 ? parsedClientIds : (item.client_id ? [item.client_id] : []),
+        category: item.category || 'Outro',
+        totalAmount: Number(item.total_amount) || 0,
+        paidAmount: Number(item.paid_amount) || 0,
+        currency: item.currency || 'BRL',
+        startDate: item.start_date || '',
+        dueDate: item.due_date || '',
+        nextPaymentDate: item.next_payment_date || undefined,
+        status: item.status || 'Em andamento',
+        notes: item.notes || '',
+        rating: Number(item.rating) || 0,
+        attachments: Array.isArray(item.attachments) ? item.attachments : (stored?.attachments || []),
+        partnerId: item.partner_id || undefined,
+        partnerName: item.partner_name || undefined,
+        commissionType: item.commission_type || 'percent',
+        commissionValue: Number(item.commission_value) || 0,
+        commissionAmount: Number(item.commission_amount) || 0,
+        commissionPaid: item.commission_paid || false,
+        createdAt: item.created_at ? item.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
+      };
+    });
+
+    const fetchedIds = new Set(formatted.map((p) => p.id));
+    const merged = [...formatted, ...storedLocal.filter((p) => !fetchedIds.has(p.id))];
+
+    saveProjects(merged);
+    return merged;
   } catch (err) {
     console.warn('Supabase fetch projects failed, using local cache:', err);
     return getStoredProjects();
@@ -155,12 +171,16 @@ export async function fetchProjectsFromDb(): Promise<Project[]> {
 }
 
 export async function upsertProjectToDb(project: Project): Promise<void> {
-  saveProjects([project, ...getStoredProjects().filter(p => p.id !== project.id)]);
+  const allProjects = getStoredProjects();
+  const updatedProjects = [project, ...allProjects.filter((p) => p.id !== project.id)];
+  saveProjects(updatedProjects);
+
   try {
-    await supabase.from('projects').upsert({
+    const payloadWithClientIds = {
       id: project.id,
       name: project.name,
       client_id: project.clientId,
+      client_ids: project.clientIds && project.clientIds.length > 0 ? project.clientIds : [project.clientId],
       category: project.category,
       total_amount: project.totalAmount,
       paid_amount: project.paidAmount,
@@ -178,7 +198,19 @@ export async function upsertProjectToDb(project: Project): Promise<void> {
       commission_value: project.commissionValue,
       commission_amount: project.commissionAmount,
       commission_paid: project.commissionPaid,
-    });
+    };
+
+    const { error } = await supabase.from('projects').upsert(payloadWithClientIds);
+
+    if (error) {
+      console.warn('Supabase upsert project with client_ids failed, retrying without client_ids:', error);
+      const payloadLegacy = { ...payloadWithClientIds };
+      delete (payloadLegacy as any).client_ids;
+      const { error: err2 } = await supabase.from('projects').upsert(payloadLegacy);
+      if (err2) {
+        console.error('Supabase legacy upsert project error:', err2);
+      }
+    }
   } catch (err) {
     console.warn('Failed to sync project to Supabase:', err);
   }

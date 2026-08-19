@@ -25,6 +25,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
 }) => {
   const [name, setName] = useState('');
   const [clientId, setClientId] = useState('');
+  const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
   const [category, setCategory] = useState<ProjectCategory>('Website');
   const [totalAmount, setTotalAmount] = useState<number>(1200);
   const [paidAmount, setPaidAmount] = useState<number>(600);
@@ -48,6 +49,10 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
     if (projectToEdit) {
       setName(projectToEdit.name);
       setClientId(projectToEdit.clientId);
+      const initialClientIds = projectToEdit.clientIds && projectToEdit.clientIds.length > 0
+        ? projectToEdit.clientIds
+        : (projectToEdit.clientId ? [projectToEdit.clientId] : []);
+      setSelectedClientIds(initialClientIds);
       setCategory(projectToEdit.category);
       setTotalAmount(projectToEdit.totalAmount);
       setPaidAmount(projectToEdit.paidAmount);
@@ -68,9 +73,11 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       const firstClient = clients[0];
       if (firstClient) {
         setClientId(firstClient.id);
+        setSelectedClientIds([firstClient.id]);
         setCurrency(firstClient.currency || defaultCurrency);
       } else {
         setClientId('');
+        setSelectedClientIds([]);
         setCurrency(defaultCurrency);
       }
       setCategory('Website');
@@ -125,10 +132,21 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
 
   const handleClientChange = (cId: string) => {
     setClientId(cId);
+    setSelectedClientIds((prev) => {
+      const rest = prev.filter((id) => id !== cId);
+      return [cId, ...rest];
+    });
     const client = clients.find((c) => c.id === cId);
     if (client) {
       setCurrency(client.currency);
     }
+  };
+
+  const handleToggleAdditionalClient = (cId: string) => {
+    if (cId === clientId) return; // Primary client is always selected
+    setSelectedClientIds((prev) =>
+      prev.includes(cId) ? prev.filter((id) => id !== cId) : [...prev, cId]
+    );
   };
 
   const handlePartnerChange = (pId: string) => {
@@ -162,11 +180,13 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
     if (!name.trim() || !clientId) return;
 
     const selectedPartner = partners.find((p) => p.id === partnerId);
+    const finalClientIds = Array.from(new Set([clientId, ...selectedClientIds])).filter(Boolean);
 
     onSave({
       id: projectToEdit?.id,
       name: name.trim(),
-      clientId,
+      clientId: finalClientIds[0] || clientId,
+      clientIds: finalClientIds,
       category,
       totalAmount: numTotal,
       paidAmount: numPaid,
@@ -234,16 +254,16 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
-                Cliente *
+              <label className="block text-[10px] font-black text-slate-800 uppercase tracking-widest mb-1.5">
+                Cliente Principal *
               </label>
               <select
                 required
                 value={clientId}
                 onChange={(e) => handleClientChange(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:outline-none transition-all"
+                className="w-full bg-slate-50 border border-slate-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 focus:outline-none transition-all"
               >
-                <option value="">Selecione um cliente...</option>
+                <option value="">Selecione o cliente principal...</option>
                 {clients.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name} {c.company ? `(${c.company})` : ''} - [{c.currency}]
@@ -252,6 +272,51 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               </select>
             </div>
           </div>
+
+          {/* Multiple Clients Selection Box */}
+          {clients.length > 1 && (
+            <div className="bg-slate-100/90 border border-slate-300 p-3.5 rounded-xl space-y-2 text-xs shadow-2xs">
+              <div className="flex items-center justify-between">
+                <span className="font-black text-slate-900 flex items-center gap-1.5">
+                  <UserCheck className="w-4 h-4 text-blue-600 stroke-[2.5]" />
+                  Clientes Participantes do Projeto ({selectedClientIds.length})
+                </span>
+                <span className="text-[11px] font-bold text-slate-600">
+                  Marque se o projeto envolve múltiplos clientes
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 max-h-36 overflow-y-auto">
+                {clients.map((c) => {
+                  const isPrimary = c.id === clientId;
+                  const isChecked = selectedClientIds.includes(c.id);
+
+                  return (
+                    <label
+                      key={c.id}
+                      className={`flex items-center space-x-2.5 p-2 rounded-lg border text-xs font-bold cursor-pointer transition-all ${
+                        isPrimary
+                          ? 'bg-blue-100 text-blue-950 border-blue-300 shadow-2xs'
+                          : isChecked
+                          ? 'bg-white text-slate-900 border-slate-400 shadow-2xs font-black'
+                          : 'bg-white/60 text-slate-700 border-slate-200 hover:bg-white'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        disabled={isPrimary}
+                        onChange={() => handleToggleAdditionalClient(c.id)}
+                        className="rounded border-slate-400 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                      />
+                      <span className="truncate">
+                        {c.name} {isPrimary ? '👑 (Principal)' : ''}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>

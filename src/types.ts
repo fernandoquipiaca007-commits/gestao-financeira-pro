@@ -70,6 +70,7 @@ export interface Project {
   id: string;
   name: string;
   clientId: string;
+  clientIds?: string[];
   category: ProjectCategory;
   totalAmount: number;
   paidAmount: number;

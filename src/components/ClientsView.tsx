@@ -136,7 +136,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredClients.map((c) => {
             // Compute Client Stats:
-            const clientProjects = projects.filter((p) => p.clientId === c.id);
+            const clientProjects = projects.filter((p) => p.clientId === c.id || (p.clientIds && p.clientIds.includes(c.id)));
             const projectsCount = clientProjects.length;
             const clientIncomes = incomes.filter((i) => i.clientId === c.id);
             const totalPaid = clientIncomes

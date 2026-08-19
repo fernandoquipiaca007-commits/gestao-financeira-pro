@@ -230,6 +230,10 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
             const isDeliverySoon = diffDays >= 0 && diffDays <= 2 && p.status !== 'Concluído';
 
+            const linkedClientIds = p.clientIds && p.clientIds.length > 0 ? p.clientIds : [p.clientId];
+            const linkedClients = linkedClientIds.map((id) => clientMap.get(id)).filter(Boolean) as Client[];
+            const primaryClient = linkedClients[0] || clientMap.get(p.clientId);
+
             return (
               <div
                 key={p.id}
@@ -251,13 +255,28 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                     {p.name}
                   </h3>
 
-                  <div className="flex items-center justify-between mt-1 mb-3">
-                    <div className="flex items-center space-x-1.5 text-xs text-slate-800 font-bold">
-                      <Building2 className="w-3.5 h-3.5 text-slate-600 shrink-0 stroke-[2.2]" />
-                      <span><strong className="text-slate-950 font-black">{client ? client.name : 'Cliente não encontrado'}</strong></span>
-                      {client?.company && (
-                        <span className="text-slate-700 font-bold">({client.company})</span>
-                      )}
+                  <div className="flex items-center justify-between mt-1.5 mb-3">
+                    <div className="flex items-start space-x-1.5 text-xs text-slate-800 font-bold">
+                      <Building2 className="w-3.5 h-3.5 text-slate-600 shrink-0 stroke-[2.2] mt-0.5" />
+                      <div>
+                        {linkedClients.length > 1 ? (
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <strong className="text-slate-950 font-black">
+                              {linkedClients.map((c) => c.name).join(' & ')}
+                            </strong>
+                            <span className="px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-900 text-[10px] font-black border border-blue-300 shadow-2xs">
+                              {linkedClients.length} Clientes
+                            </span>
+                          </div>
+                        ) : (
+                          <span>
+                            <strong className="text-slate-950 font-black">{primaryClient ? primaryClient.name : 'Cliente não encontrado'}</strong>
+                            {primaryClient?.company && (
+                              <span className="text-slate-700 font-bold ml-1">({primaryClient.company})</span>
+                            )}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
