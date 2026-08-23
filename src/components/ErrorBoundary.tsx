@@ -1,4 +1,4 @@
-import React, { Component, ReactNode } from 'react';
+import { Component, ReactNode, ErrorInfo } from 'react';
 
 interface Props {
   children: ReactNode;
@@ -10,8 +10,12 @@ interface State {
 }
 
 export class ErrorBoundary extends Component<Props, State> {
+  props: Props;
+  state: State;
+
   constructor(props: Props) {
     super(props);
+    this.props = props;
     this.state = { hasError: false, error: null };
   }
 
@@ -19,7 +23,7 @@ export class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, info: React.ErrorInfo) {
+  componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('App crashed:', error, info);
   }
 
@@ -29,41 +33,42 @@ export class ErrorBoundary extends Component<Props, State> {
         <div
           style={{
             minHeight: '100vh',
-            background: '#0f172a',
-            color: '#f1f5f9',
+            background: '#fcf8f8',
+            color: '#1c1b1b',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
             padding: '2rem',
-            fontFamily: 'sans-serif',
+            fontFamily: 'Inter, system-ui, sans-serif',
           }}
         >
           <div
             style={{
               maxWidth: '600px',
               width: '100%',
-              background: '#1e293b',
-              border: '1px solid #334155',
-              borderRadius: '1rem',
+              background: '#ffffff',
+              border: '1px solid rgba(196, 199, 199, 0.4)',
+              borderRadius: '1.5rem',
               padding: '2rem',
+              boxShadow: '0 8px 40px rgba(0, 0, 0, 0.06)',
             }}
           >
-            <h1 style={{ color: '#f87171', fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>
+            <h1 style={{ color: '#ba1a1a', fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>
               ⚠️ Erro ao Carregar o Sistema
             </h1>
-            <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
+            <p style={{ color: '#747878', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
               Ocorreu um erro inesperado. Por favor, recarregue a página ou limpe o cache do browser.
             </p>
             {this.state.error && (
               <pre
                 style={{
-                  background: '#0f172a',
-                  border: '1px solid #ef4444',
-                  borderRadius: '0.5rem',
+                  background: '#f7f3f2',
+                  border: '1px solid rgba(186, 26, 26, 0.2)',
+                  borderRadius: '0.75rem',
                   padding: '1rem',
                   fontSize: '0.75rem',
-                  color: '#fca5a5',
+                  color: '#93000a',
                   overflowX: 'auto',
                   whiteSpace: 'pre-wrap',
                   wordBreak: 'break-word',
@@ -76,12 +81,12 @@ export class ErrorBoundary extends Component<Props, State> {
               <button
                 onClick={() => window.location.reload()}
                 style={{
-                  background: '#10b981',
-                  color: '#0f172a',
+                  background: '#000000',
+                  color: '#ffffff',
                   border: 'none',
-                  borderRadius: '0.5rem',
+                  borderRadius: '1.8125rem',
                   padding: '0.625rem 1.25rem',
-                  fontWeight: 'bold',
+                  fontWeight: 500,
                   fontSize: '0.875rem',
                   cursor: 'pointer',
                 }}
@@ -94,12 +99,12 @@ export class ErrorBoundary extends Component<Props, State> {
                   window.location.reload();
                 }}
                 style={{
-                  background: '#334155',
-                  color: '#f1f5f9',
-                  border: '1px solid #475569',
-                  borderRadius: '0.5rem',
+                  background: '#f1edec',
+                  color: '#1c1b1b',
+                  border: '1px solid rgba(196, 199, 199, 0.45)',
+                  borderRadius: '1.8125rem',
                   padding: '0.625rem 1.25rem',
-                  fontWeight: 'bold',
+                  fontWeight: 500,
                   fontSize: '0.875rem',
                   cursor: 'pointer',
                 }}

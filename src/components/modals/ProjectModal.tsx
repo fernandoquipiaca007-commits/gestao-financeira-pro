@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, FolderKanban, Save, DollarSign, Calendar, Handshake, Percent, UserCheck, Paperclip, Upload, FileText, Download, Trash2 } from 'lucide-react';
+import { X, FolderKanban, Save, UserCheck, Paperclip, Upload, FileText, Download, Trash2 } from 'lucide-react';
 import { Project, Client, ProjectCategory, ProjectStatus, CurrencyCode, CURRENCIES, Partner, ProjectAttachment } from '../../types';
 import { getTodayIso, addDaysIso } from '../../lib/storage';
 import { formatCurrency } from '../../lib/formatters';
@@ -143,7 +143,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   };
 
   const handleToggleAdditionalClient = (cId: string) => {
-    if (cId === clientId) return; // Primary client is always selected
+    if (cId === clientId) return;
     setSelectedClientIds((prev) =>
       prev.includes(cId) ? prev.filter((id) => id !== cId) : [...prev, cId]
     );
@@ -164,7 +164,6 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   const numPaid = Number(paidAmount) || 0;
   const remainingAmount = Math.max(0, numTotal - numPaid);
 
-  // Commission Calculation
   let calculatedCommission = 0;
   if (hasPartner && partnerId) {
     if (commissionType === 'percent') {
@@ -173,7 +172,6 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       calculatedCommission = Number(commissionValue) || 0;
     }
   }
-  const netStudioAmount = Math.max(0, numTotal - calculatedCommission);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -209,27 +207,27 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-[2px]">
-      <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-2xl shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm font-sans">
+      <div className="bg-white border border-[#c4c7c7]/30 rounded-[24px] w-full max-w-2xl shadow-[0_8px_40px_rgba(0,0,0,0.06)] overflow-hidden max-h-[90vh] flex flex-col">
         
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-white shrink-0">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-[#c4c7c7]/40 bg-[#f7f3f2] shrink-0">
           <div className="flex items-center space-x-3">
-            <div className="p-2.5 rounded-lg bg-blue-50 text-blue-600">
-              <FolderKanban className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-full bg-[#f1edec] text-[#444747] flex items-center justify-center">
+              <FolderKanban className="w-4 h-4 stroke-[2]" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900">
+              <h3 className="text-base font-semibold text-[#1c1b1b]">
                 {projectToEdit ? 'Editar Projeto' : 'Novo Projeto'}
               </h3>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-[#747878]">
                 Gerencie os detalhes, finanças e arquivos do seu projeto
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+            className="p-1.5 rounded-full text-[#747878] hover:bg-[#f1edec] hover:text-[#1c1b1b] transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -240,7 +238,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
+              <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
                 Nome do Projeto *
               </label>
               <input
@@ -249,19 +247,19 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Ex: Identidade Visual"
-                className="w-full bg-slate-50 border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 rounded-lg px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none transition-all"
+                className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-sm text-[#1c1b1b] placeholder-[#747878] focus:outline-none focus:border-[#000000] focus:bg-white transition-all"
               />
             </div>
 
             <div>
-              <label className="block text-[10px] font-black text-slate-800 uppercase tracking-widest mb-1.5">
+              <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
                 Cliente Principal *
               </label>
               <select
                 required
                 value={clientId}
                 onChange={(e) => handleClientChange(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 focus:outline-none transition-all"
+                className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-sm font-medium text-[#1c1b1b] focus:outline-none focus:border-[#000000] focus:bg-white transition-all"
               >
                 <option value="">Selecione o cliente principal...</option>
                 {clients.map((c) => (
@@ -275,13 +273,13 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
 
           {/* Multiple Clients Selection Box */}
           {clients.length > 1 && (
-            <div className="bg-slate-100/90 border border-slate-300 p-3.5 rounded-xl space-y-2 text-xs shadow-2xs">
+            <div className="bg-[#f7f3f2] border border-[#c4c7c7]/30 p-3.5 rounded-[16px] space-y-2 text-xs">
               <div className="flex items-center justify-between">
-                <span className="font-black text-slate-900 flex items-center gap-1.5">
-                  <UserCheck className="w-4 h-4 text-blue-600 stroke-[2.5]" />
+                <span className="font-semibold text-[#1c1b1b] flex items-center gap-1.5">
+                  <UserCheck className="w-4 h-4 text-[#0050d7]" />
                   Clientes Participantes do Projeto ({selectedClientIds.length})
                 </span>
-                <span className="text-[11px] font-bold text-slate-600">
+                <span className="text-[11px] text-[#747878]">
                   Marque se o projeto envolve múltiplos clientes
                 </span>
               </div>
@@ -293,12 +291,12 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                   return (
                     <label
                       key={c.id}
-                      className={`flex items-center space-x-2.5 p-2 rounded-lg border text-xs font-bold cursor-pointer transition-all ${
+                      className={`flex items-center space-x-2.5 p-2 rounded-xl border text-xs font-medium cursor-pointer transition-all ${
                         isPrimary
-                          ? 'bg-blue-100 text-blue-950 border-blue-300 shadow-2xs'
+                          ? 'bg-[#dbe1ff] text-[#003da9] border-[#003da9]/20'
                           : isChecked
-                          ? 'bg-white text-slate-900 border-slate-400 shadow-2xs font-black'
-                          : 'bg-white/60 text-slate-700 border-slate-200 hover:bg-white'
+                          ? 'bg-white text-[#1c1b1b] border-[#c4c7c7] font-semibold'
+                          : 'bg-white/60 text-[#444747] border-[#c4c7c7]/30 hover:bg-white'
                       }`}
                     >
                       <input
@@ -306,7 +304,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                         checked={isChecked}
                         disabled={isPrimary}
                         onChange={() => handleToggleAdditionalClient(c.id)}
-                        className="rounded border-slate-400 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                        className="rounded border-[#c4c7c7] text-[#000000] focus:ring-0 w-4 h-4 cursor-pointer accent-[#000000]"
                       />
                       <span className="truncate">
                         {c.name} {isPrimary ? '👑 (Principal)' : ''}
@@ -320,13 +318,13 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
+              <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
                 Categoria
               </label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value as ProjectCategory)}
-                className="w-full bg-slate-50 border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:outline-none transition-all"
+                className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-sm text-[#1c1b1b] focus:outline-none focus:border-[#000000] focus:bg-white transition-all"
               >
                 <option value="Website">Website</option>
                 <option value="Landing Page">Landing Page</option>
@@ -338,13 +336,13 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
+              <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
                 Moeda
               </label>
               <select
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
-                className="w-full bg-slate-50 border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:outline-none transition-all"
+                className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-sm text-[#1c1b1b] focus:outline-none focus:border-[#000000] focus:bg-white transition-all"
               >
                 {Object.values(CURRENCIES).map((c) => (
                   <option key={c.code} value={c.code}>
@@ -355,13 +353,13 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
+              <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
                 Status
               </label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as ProjectStatus)}
-                className="w-full bg-slate-50 border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:outline-none transition-all"
+                className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-sm text-[#1c1b1b] focus:outline-none focus:border-[#000000] focus:bg-white transition-all"
               >
                 <option value="Em andamento">Em andamento</option>
                 <option value="Aguardando cliente">Aguardando cliente</option>
@@ -371,9 +369,9 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-slate-50 border border-slate-100 rounded-xl">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-[#f7f3f2] border border-[#c4c7c7]/30 rounded-[16px]">
             <div>
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
+              <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
                 Valor Total ({CURRENCIES[currency]?.symbol})
               </label>
               <input
@@ -383,12 +381,12 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                 required
                 value={totalAmount}
                 onChange={(e) => setTotalAmount(parseFloat(e.target.value) || 0)}
-                className="w-full bg-white border border-slate-200 focus:border-blue-500 rounded-lg px-4 py-2.5 text-sm font-bold text-slate-900 focus:outline-none"
+                className="w-full bg-white border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-sm font-medium text-[#1c1b1b] focus:outline-none focus:border-[#000000]"
               />
             </div>
 
             <div>
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
+              <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
                 Já Pago ({CURRENCIES[currency]?.symbol})
               </label>
               <input
@@ -397,13 +395,13 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                 step="any"
                 value={paidAmount}
                 onChange={(e) => setPaidAmount(parseFloat(e.target.value) || 0)}
-                className="w-full bg-white border border-slate-200 focus:border-blue-500 rounded-lg px-4 py-2.5 text-sm font-bold text-slate-900 focus:outline-none"
+                className="w-full bg-white border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-sm font-medium text-[#1c1b1b] focus:outline-none focus:border-[#000000]"
               />
             </div>
 
-            <div className="sm:col-span-2 flex items-center justify-between border-t border-slate-200 pt-3">
-              <span className="text-xs font-semibold text-slate-500">Saldo Restante:</span>
-              <span className="text-sm font-black text-slate-900">
+            <div className="sm:col-span-2 flex items-center justify-between border-t border-[#c4c7c7]/40 pt-3">
+              <span className="text-xs text-[#747878]">Saldo Restante:</span>
+              <span className="text-sm font-medium text-[#000000]">
                 {formatCurrency(remainingAmount, currency)}
               </span>
             </div>
@@ -411,7 +409,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
+              <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
                 Início
               </label>
               <input
@@ -419,12 +417,12 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                 required
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:outline-none"
+                className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-sm text-[#1c1b1b] focus:outline-none focus:border-[#000000]"
               />
             </div>
 
             <div>
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
+              <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
                 Entrega
               </label>
               <input
@@ -432,30 +430,30 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                 required
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:outline-none"
+                className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-sm text-[#1c1b1b] focus:outline-none focus:border-[#000000]"
               />
             </div>
 
             <div>
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
+              <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
                 Próx. Pagamento
               </label>
               <input
                 type="date"
                 value={nextPaymentDate}
                 onChange={(e) => setNextPaymentDate(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:outline-none"
+                className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-sm text-[#1c1b1b] focus:outline-none focus:border-[#000000]"
               />
             </div>
           </div>
 
           {/* Section: File Attachments / Anexos */}
-          <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+          <div className="p-4 bg-[#f7f3f2] border border-[#c4c7c7]/30 rounded-[16px] space-y-3">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                <Paperclip className="w-4 h-4 text-blue-600" /> Ficheiros &amp; Anexos do Projeto ({attachments.length})
+              <label className="text-xs font-semibold text-[#1c1b1b] flex items-center gap-1.5">
+                <Paperclip className="w-4 h-4 text-[#0050d7]" /> Ficheiros &amp; Anexos do Projeto ({attachments.length})
               </label>
-              <label className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold flex items-center space-x-1 cursor-pointer transition-all">
+              <label className="px-3 py-1.5 bg-white hover:bg-[#f1edec] text-[#1c1b1b] border border-[#c4c7c7]/40 rounded-full text-xs font-medium flex items-center space-x-1 cursor-pointer transition-all">
                 <Upload className="w-3.5 h-3.5" />
                 <span>Anexar Ficheiro</span>
                 <input
@@ -469,7 +467,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
             </div>
 
             {attachments.length === 0 ? (
-              <p className="text-xs text-slate-400 italic">
+              <p className="text-xs text-[#747878] italic">
                 Nenhum ficheiro anexado. Adicione listas de inscritos, relatórios, PDFs ou documentos do projeto.
               </p>
             ) : (
@@ -477,13 +475,13 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                 {attachments.map((att) => (
                   <div
                     key={att.id}
-                    className="flex items-center justify-between p-2.5 bg-white border border-slate-200 rounded-lg text-xs"
+                    className="flex items-center justify-between p-2.5 bg-white border border-[#c4c7c7]/30 rounded-xl text-xs"
                   >
                     <div className="flex items-center space-x-2 min-w-0 flex-1">
-                      <FileText className="w-4 h-4 text-slate-400 shrink-0" />
-                      <span className="font-bold text-slate-800 truncate">{att.name}</span>
+                      <FileText className="w-4 h-4 text-[#747878] shrink-0" />
+                      <span className="font-medium text-[#1c1b1b] truncate">{att.name}</span>
                       {att.size && (
-                        <span className="text-[10px] text-slate-400 shrink-0">
+                        <span className="text-[10px] text-[#747878] shrink-0">
                           ({(att.size / 1024).toFixed(0)} KB)
                         </span>
                       )}
@@ -495,7 +493,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                         download={att.name}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                        className="p-1.5 text-[#0050d7] hover:bg-[#f1edec] rounded-full transition-colors"
                         title="Baixar Ficheiro"
                       >
                         <Download className="w-3.5 h-3.5" />
@@ -503,7 +501,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                       <button
                         type="button"
                         onClick={() => handleRemoveAttachment(att.id)}
-                        className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
+                        className="p-1.5 text-[#ba1a1a] hover:bg-[#ffdad6] rounded-full transition-colors cursor-pointer"
                         title="Remover Ficheiro"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -515,31 +513,31 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
             )}
           </div>
 
-          <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+          <div className="p-4 bg-[#f7f3f2] border border-[#c4c7c7]/30 rounded-[16px] space-y-3">
             <label className="flex items-center space-x-2 cursor-pointer">
               <input
                 type="checkbox"
                 checked={hasPartner}
                 onChange={(e) => setHasPartner(e.target.checked)}
-                className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                className="w-4 h-4 text-[#000000] rounded border-[#c4c7c7] focus:ring-0 accent-[#000000]"
               />
-              <span className="text-xs font-bold text-slate-700">Projeto com parceiro/comissão</span>
+              <span className="text-xs font-medium text-[#1c1b1b]">Projeto com parceiro/comissão</span>
             </label>
 
             {hasPartner && (
-              <div className="space-y-3 border-t border-slate-200 pt-3">
+              <div className="space-y-3 border-t border-[#c4c7c7]/40 pt-3">
                 <select
                   required
                   value={partnerId}
                   onChange={(e) => handlePartnerChange(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs"
+                  className="w-full bg-white border border-[#c4c7c7]/35 rounded-xl px-3 py-2 text-xs text-[#1c1b1b] focus:outline-none focus:border-[#000000]"
                 >
                   <option value="">Selecione o parceiro...</option>
                   {partners.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
                 <div className="grid grid-cols-2 gap-2">
-                  <input type="number" placeholder="Comissão" value={commissionValue} onChange={(e) => setCommissionValue(Number(e.target.value))} className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs" />
-                  <select value={commissionType} onChange={(e) => setCommissionType(e.target.value as any)} className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs">
+                  <input type="number" placeholder="Comissão" value={commissionValue} onChange={(e) => setCommissionValue(Number(e.target.value))} className="w-full bg-white border border-[#c4c7c7]/35 rounded-xl px-3 py-2 text-xs text-[#1c1b1b] focus:outline-none focus:border-[#000000]" />
+                  <select value={commissionType} onChange={(e) => setCommissionType(e.target.value as any)} className="w-full bg-white border border-[#c4c7c7]/35 rounded-xl px-3 py-2 text-xs text-[#1c1b1b] focus:outline-none focus:border-[#000000]">
                     <option value="percent">%</option>
                     <option value="fixed">Fixo</option>
                   </select>
@@ -548,9 +546,9 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
             )}
           </div>
 
-          <div className="flex items-center justify-end space-x-3 pt-4">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-900 cursor-pointer">Cancelar</button>
-            <button type="submit" className="px-6 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 shadow-md cursor-pointer">
+          <div className="flex items-center justify-end space-x-3 pt-4 border-t border-[#c4c7c7]/40">
+            <button type="button" onClick={onClose} className="px-4 py-2 rounded-[29px] bg-[#f1edec] text-sm font-medium text-[#1c1b1b] hover:bg-[#e5e2e1] cursor-pointer transition-colors">Cancelar</button>
+            <button type="submit" className="px-5 py-2 bg-[#000000] text-white text-sm font-medium rounded-[29px] hover:opacity-85 cursor-pointer active:scale-95 transition-all">
               {projectToEdit ? 'Atualizar Projeto' : 'Criar Projeto'}
             </button>
           </div>

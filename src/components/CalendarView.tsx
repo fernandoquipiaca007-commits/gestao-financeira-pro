@@ -9,9 +9,7 @@ import {
   Clock,
   Trash2,
   Edit2,
-  AlertCircle,
   Filter,
-  Search,
 } from 'lucide-react';
 import { AgendaEvent, AgendaEventType, Client, Project, Income, Expense } from '../types';
 import { requestNotificationPermission, sendWebPushNotification } from '../lib/webpush';
@@ -46,7 +44,7 @@ export function CalendarView({
     new Date().toISOString().split('T')[0]
   );
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm] = useState('');
   const [pushStatus, setPushStatus] = useState<string>(
     'Notification' in window ? Notification.permission : 'unsupported'
   );
@@ -107,8 +105,6 @@ export function CalendarView({
 
     // Auto events from Incomes
     incomes.forEach((inc) => {
-      const client = clients.find((c) => c.id === inc.clientId);
-      const isOverdue = inc.status === 'Atrasado' || (inc.status === 'Pendente' && inc.dueDate < todayIso);
       list.push({
         id: `auto-inc-${inc.id}`,
         title: `Cobrança: ${inc.description}`,
@@ -156,7 +152,7 @@ export function CalendarView({
     });
 
     return list;
-  }, [agendaEvents, incomes, projects, expenses, clients, todayIso]);
+  }, [agendaEvents, incomes, projects, expenses]);
 
   // Calendar Grid Days Calculation
   const firstDayOfMonth = new Date(year, month, 1).getDay();
@@ -221,15 +217,15 @@ export function CalendarView({
   const getTypeBadgeStyle = (type: AgendaEventType) => {
     switch (type) {
       case 'cobranca':
-        return 'bg-amber-100 text-amber-800 border-amber-300 font-extrabold';
+        return 'bg-[#fff3d6] text-[#7a5400]';
       case 'pagamento':
-        return 'bg-rose-100 text-rose-800 border-rose-300 font-extrabold';
+        return 'bg-[#ffdad6] text-[#93000a]';
       case 'entrega':
-        return 'bg-blue-100 text-blue-800 border-blue-300 font-extrabold';
+        return 'bg-[#dbe1ff] text-[#003da9]';
       case 'alarme':
-        return 'bg-purple-100 text-purple-800 border-purple-300 font-extrabold';
+        return 'bg-[#f1edec] text-[#444747]';
       default:
-        return 'bg-emerald-100 text-emerald-800 border-emerald-300 font-extrabold';
+        return 'bg-[#d4eddf] text-[#1a6b3a]';
     }
   };
 
@@ -238,21 +234,21 @@ export function CalendarView({
       
       {/* Push Notification Permission Banner */}
       {pushStatus !== 'granted' && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+        <div className="bg-white border border-[#c4c7c7]/40 rounded-[22px] p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
           <div className="flex items-center space-x-3">
-            <div className="p-2.5 bg-emerald-100 rounded-xl text-emerald-700 shrink-0">
-              <Bell className="w-5 h-5 animate-bounce" />
+            <div className="w-10 h-10 rounded-full bg-[#f1edec] text-[#1c1b1b] flex items-center justify-center shrink-0">
+              <Bell className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="text-sm font-extrabold text-slate-900">Ativar Notificações Web Push do Navegador</h4>
-              <p className="text-xs text-slate-600 font-medium">
+              <h4 className="text-sm font-semibold text-[#1c1b1b]">Ativar Notificações Web Push do Navegador</h4>
+              <p className="text-xs text-[#747878] mt-0.5">
                 Receba alertas automáticos de cobrança, entregas e alarmes no seu computador ou telemóvel.
               </p>
             </div>
           </div>
           <button
             onClick={handleEnablePush}
-            className="w-full sm:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer whitespace-nowrap shrink-0 text-center"
+            className="w-full sm:w-auto px-5 py-2.5 bg-[#000000] hover:opacity-85 text-white text-xs font-medium rounded-[29px] transition-all cursor-pointer whitespace-nowrap shrink-0 text-center"
           >
             Ativar Agora
           </button>
@@ -260,14 +256,14 @@ export function CalendarView({
       )}
 
       {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-5 rounded-[22px] border border-[#c4c7c7]/40 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
         <div className="flex items-center space-x-3">
-          <div className="p-2.5 bg-emerald-100 rounded-xl text-emerald-700 border border-emerald-200 shrink-0">
-            <CalendarIcon className="w-6 h-6" />
+          <div className="w-10 h-10 rounded-full bg-[#f1edec] text-[#1c1b1b] flex items-center justify-center shrink-0">
+            <CalendarIcon className="w-5 h-5 stroke-[1.5]" />
           </div>
           <div>
-            <h2 className="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight">Agenda &amp; Calendário Real</h2>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">Sincronizado com cobranças, compromissos e prazos de entrega</p>
+            <h2 className="text-lg font-semibold text-[#1c1b1b] tracking-tight">Agenda &amp; Calendário Real</h2>
+            <p className="text-xs text-[#747878] mt-0.5">Sincronizado com cobranças, compromissos e prazos de entrega</p>
           </div>
         </div>
 
@@ -275,18 +271,18 @@ export function CalendarView({
           <button
             onClick={handleTestPush}
             title="Testar Notificação Push no Navegador"
-            className="w-full sm:w-auto px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition-all flex items-center justify-center space-x-1.5 cursor-pointer"
+            className="w-full sm:w-auto px-4 py-2.5 bg-[#f1edec] hover:bg-[#e5e2e1] text-[#1c1b1b] font-medium text-xs rounded-[29px] transition-all flex items-center justify-center space-x-1.5 cursor-pointer"
           >
-            <Bell className="w-4 h-4 text-emerald-600" />
+            <Bell className="w-4 h-4 text-[#747878]" />
             <span>Testar Push</span>
           </button>
 
           <button
             onClick={() => onOpenNewEventModal(selectedDate)}
-            className="w-full sm:w-auto px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center space-x-2 cursor-pointer active:scale-95 shrink-0"
+            className="w-full sm:w-auto px-5 py-2.5 bg-[#000000] hover:opacity-85 text-white font-medium text-sm rounded-[29px] transition-all flex items-center justify-center space-x-2 cursor-pointer active:scale-95 shrink-0"
           >
-            <Plus className="w-4 h-4 stroke-[3]" />
-            <span>Novo Evento / Alarme</span>
+            <Plus className="w-4 h-4 stroke-[2]" />
+            <span>Novo Evento</span>
           </button>
         </div>
       </div>
@@ -295,30 +291,30 @@ export function CalendarView({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* Calendar Grid (7 cols) */}
-        <div className="lg:col-span-7 bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
+        <div className="lg:col-span-7 bg-white border border-[#c4c7c7]/40 rounded-[22px] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
           
           {/* Calendar Header Controls */}
-          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
-            <h3 className="text-base font-extrabold text-slate-900">
-              {monthNames[month]} <span className="text-emerald-700">{year}</span>
+          <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#c4c7c7]/40">
+            <h3 className="text-base font-semibold text-[#1c1b1b]">
+              {monthNames[month]} <span className="text-[#0050d7]">{year}</span>
             </h3>
 
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1.5">
               <button
                 onClick={() => setSelectedDate(todayIso)}
-                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-lg transition-all border border-slate-200"
+                className="px-3.5 py-1.5 bg-[#f1edec] hover:bg-[#e5e2e1] text-[#1c1b1b] text-xs font-medium rounded-full transition-all cursor-pointer"
               >
                 Hoje
               </button>
               <button
                 onClick={prevMonth}
-                className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-all border border-slate-200"
+                className="p-1.5 bg-[#f1edec] hover:bg-[#e5e2e1] text-[#747878] rounded-full transition-all cursor-pointer"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <button
                 onClick={nextMonth}
-                className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-all border border-slate-200"
+                className="p-1.5 bg-[#f1edec] hover:bg-[#e5e2e1] text-[#747878] rounded-full transition-all cursor-pointer"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -328,7 +324,7 @@ export function CalendarView({
           {/* Weekday Labels */}
           <div className="grid grid-cols-7 gap-1 text-center mb-2">
             {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((d) => (
-              <span key={d} className="text-[11px] font-extrabold text-slate-600 uppercase tracking-widest py-1">
+              <span key={d} className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest py-1">
                 {d}
               </span>
             ))}
@@ -345,31 +341,31 @@ export function CalendarView({
                 <button
                   key={idx}
                   onClick={() => setSelectedDate(cell.dateIso)}
-                  className={`min-h-[68px] p-2 rounded-xl border flex flex-col justify-between text-left transition-all relative cursor-pointer ${
+                  className={`min-h-[68px] p-2 rounded-[14px] border flex flex-col justify-between text-left transition-all relative cursor-pointer ${
                     isSelected
-                      ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-500/20 shadow-xs'
+                      ? 'bg-[#f1edec] border-[#000000] shadow-[0_2px_8px_rgba(0,0,0,0.04)]'
                       : cell.isCurrentMonth
-                      ? 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/60'
-                      : 'bg-slate-50/60 border-slate-100 text-slate-400'
+                      ? 'bg-white border-[#c4c7c7]/30 hover:border-[#c4c7c7] hover:bg-[#f7f3f2]'
+                      : 'bg-[#f7f3f2]/60 border-[#c4c7c7]/20 text-[#c4c7c7]'
                   }`}
                 >
                   <div className="flex items-center justify-between w-full">
                     <span
-                      className={`text-xs font-black ${
+                      className={`text-xs ${
                         isToday
-                          ? 'w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs shadow-xs'
+                          ? 'w-5 h-5 rounded-full bg-[#000000] text-white flex items-center justify-center text-xs font-semibold'
                           : isSelected
-                          ? 'text-emerald-800 text-sm'
+                          ? 'text-[#000000] font-semibold'
                           : cell.isCurrentMonth
-                          ? 'text-slate-900'
-                          : 'text-slate-400'
+                          ? 'text-[#1c1b1b] font-medium'
+                          : 'text-[#c4c7c7]'
                       }`}
                     >
                       {cell.dayNum}
                     </span>
 
                     {dayEvents.length > 0 && (
-                      <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#e5e2e1] text-[#444747]">
                         {dayEvents.length}
                       </span>
                     )}
@@ -380,14 +376,14 @@ export function CalendarView({
                     {dayEvents.slice(0, 3).map((ev, i) => (
                       <span
                         key={i}
-                        className={`w-2 h-2 rounded-full ${
+                        className={`w-1.5 h-1.5 rounded-full ${
                           ev.type === 'cobranca'
-                            ? 'bg-amber-500'
+                            ? 'bg-[#7a5400]'
                             : ev.type === 'pagamento'
-                            ? 'bg-rose-500'
+                            ? 'bg-[#ba1a1a]'
                             : ev.type === 'entrega'
-                            ? 'bg-blue-600'
-                            : 'bg-emerald-600'
+                            ? 'bg-[#0050d7]'
+                            : 'bg-[#000000]'
                         }`}
                       />
                     ))}
@@ -400,27 +396,27 @@ export function CalendarView({
         </div>
 
         {/* Event Details List (5 cols) */}
-        <div className="lg:col-span-5 bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs flex flex-col">
+        <div className="lg:col-span-5 bg-white border border-[#c4c7c7]/40 rounded-[22px] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col">
           
           {/* Header & Filter */}
-          <div className="pb-4 border-b border-slate-200 space-y-3">
+          <div className="pb-4 border-b border-[#c4c7c7]/40 space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-extrabold text-slate-900 flex items-center space-x-2">
+              <h3 className="text-sm font-semibold text-[#1c1b1b] flex items-center space-x-2">
                 <span>Eventos de</span>
-                <span className="text-emerald-700">{selectedDate.split('-').reverse().join('/')}</span>
+                <span className="text-[#0050d7]">{selectedDate.split('-').reverse().join('/')}</span>
               </h3>
-              <span className="text-xs text-slate-600 font-bold bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+              <span className="text-xs text-[#747878] font-medium bg-[#f1edec] px-2.5 py-0.5 rounded-full">
                 {selectedDateEvents.length} {selectedDateEvents.length === 1 ? 'item' : 'itens'}
               </span>
             </div>
 
             {/* Type Filter dropdown */}
             <div className="flex items-center space-x-2">
-              <Filter className="w-3.5 h-3.5 text-slate-500" />
+              <Filter className="w-3.5 h-3.5 text-[#747878]" />
               <select
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}
-                className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 font-semibold focus:outline-none focus:border-emerald-500"
+                className="bg-[#f1edec] border border-[#c4c7c7]/35 rounded-full px-3.5 py-1.5 text-xs text-[#1c1b1b] font-medium focus:outline-none cursor-pointer"
               >
                 <option value="ALL">Todos os Tipos</option>
                 <option value="cobranca">🔔 Cobranças</option>
@@ -435,14 +431,14 @@ export function CalendarView({
           {/* Events List Scrollable */}
           <div className="flex-1 overflow-y-auto space-y-3 pt-4 max-h-[420px] pr-1">
             {selectedDateEvents.length === 0 ? (
-              <div className="text-center py-12 px-4 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
-                <CalendarIcon className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                <p className="text-xs text-slate-600 font-bold">Nenhum evento para este dia.</p>
+              <div className="text-center py-12 px-4 border border-dashed border-[#c4c7c7] rounded-[16px] bg-[#f7f3f2]/50">
+                <CalendarIcon className="w-8 h-8 text-[#c4c7c7] mx-auto mb-2" />
+                <p className="text-xs text-[#747878]">Nenhum evento para este dia.</p>
                 <button
                   onClick={() => onOpenNewEventModal(selectedDate)}
-                  className="mt-3 inline-flex items-center space-x-1.5 text-xs text-emerald-700 hover:text-emerald-800 font-extrabold cursor-pointer"
+                  className="mt-3 inline-flex items-center space-x-1.5 text-xs text-[#0050d7] font-medium hover:underline cursor-pointer"
                 >
-                  <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                  <Plus className="w-3.5 h-3.5" />
                   <span>Cadastrar evento para {selectedDate.split('-').reverse().join('/')}</span>
                 </button>
               </div>
@@ -453,17 +449,17 @@ export function CalendarView({
                 return (
                   <div
                     key={ev.id}
-                    className={`p-3.5 rounded-xl border transition-all ${
+                    className={`p-3.5 rounded-[16px] border transition-all ${
                       ev.status === 'completed'
-                        ? 'bg-slate-50 border-slate-200'
-                        : 'bg-white border-slate-200/90 shadow-xs hover:border-slate-300'
+                        ? 'bg-[#f7f3f2] border-[#c4c7c7]/20 opacity-70'
+                        : 'bg-[#f7f3f2] border-[#c4c7c7]/30 hover:bg-[#f1edec]'
                     }`}
                   >
                     <div className="flex items-start justify-between">
                       <div className="space-y-1">
                         <div className="flex items-center space-x-2">
                           <span
-                            className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold border uppercase tracking-wider ${getTypeBadgeStyle(
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${getTypeBadgeStyle(
                               ev.type
                             )}`}
                           >
@@ -471,28 +467,28 @@ export function CalendarView({
                           </span>
 
                           {ev.time && (
-                            <span className="text-[11px] font-bold text-slate-600 flex items-center space-x-1">
-                              <Clock className="w-3 h-3 text-slate-500" />
+                            <span className="text-[11px] text-[#747878] flex items-center space-x-1">
+                              <Clock className="w-3 h-3 text-[#747878]" />
                               <span>{ev.time}</span>
                             </span>
                           )}
                         </div>
 
                         <h4
-                          className={`text-sm font-extrabold text-slate-900 ${
-                            ev.status === 'completed' ? 'line-through text-slate-500' : ''
+                          className={`text-sm font-semibold text-[#1c1b1b] ${
+                            ev.status === 'completed' ? 'line-through text-[#747878]' : ''
                           }`}
                         >
                           {ev.title}
                         </h4>
 
                         {ev.description && (
-                          <p className="text-xs text-slate-600 font-medium line-clamp-2">{ev.description}</p>
+                          <p className="text-xs text-[#747878] line-clamp-2">{ev.description}</p>
                         )}
 
                         {client && (
                           <div className="flex items-center space-x-2 pt-1">
-                            <span className="text-[11px] text-slate-600 font-bold">Cliente: {client.name}</span>
+                            <span className="text-[11px] text-[#747878]">Cliente: {client.name}</span>
                             {client.whatsapp && (
                               <button
                                 onClick={() =>
@@ -501,7 +497,7 @@ export function CalendarView({
                                     `Olá ${client.name}! Lembrete sobre: ${ev.title}`
                                   )
                                 }
-                                className="text-[11px] font-extrabold text-emerald-700 hover:underline cursor-pointer"
+                                className="text-[11px] font-medium text-[#0050d7] hover:underline cursor-pointer"
                               >
                                 WhatsApp
                               </button>
@@ -516,10 +512,10 @@ export function CalendarView({
                           <>
                             <button
                               onClick={() => onToggleEventStatus(ev.id)}
-                              className={`p-1.5 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
+                              className={`p-1.5 rounded-full border text-xs transition-all cursor-pointer ${
                                 ev.status === 'completed'
-                                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                                  : 'bg-slate-100 text-slate-600 hover:text-slate-900 border-slate-200'
+                                  ? 'bg-[#d4eddf] text-[#1a6b3a] border-[#1a6b3a]/20'
+                                  : 'bg-[#f1edec] text-[#444747] hover:text-[#1c1b1b] border-[#c4c7c7]/35'
                               }`}
                               title={ev.status === 'completed' ? 'Marcar como pendente' : 'Marcar como concluído'}
                             >
@@ -528,7 +524,7 @@ export function CalendarView({
 
                             <button
                               onClick={() => onEditEvent(ev)}
-                              className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                              className="p-1.5 text-[#747878] hover:text-[#1c1b1b] hover:bg-[#f1edec] rounded-full transition-colors cursor-pointer"
                               title="Editar"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
@@ -536,7 +532,7 @@ export function CalendarView({
 
                             <button
                               onClick={() => onDeleteEvent(ev.id)}
-                              className="p-1.5 text-slate-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                              className="p-1.5 text-[#747878] hover:text-[#ba1a1a] hover:bg-[#ffdad6] rounded-full transition-colors cursor-pointer"
                               title="Excluir"
                             >
                               <Trash2 className="w-3.5 h-3.5" />

@@ -5,10 +5,8 @@ import {
   Calendar as CalendarIcon,
   Plus,
   Search,
-  Filter,
   CheckCircle2,
   Clock,
-  AlertTriangle,
   MessageCircle,
   Edit3,
   Trash2,
@@ -16,7 +14,6 @@ import {
   ChevronRight,
   ArrowUpRight,
   ArrowDownRight,
-  Building2,
   Check,
 } from 'lucide-react';
 import {
@@ -25,15 +22,11 @@ import {
   Client,
   Project,
   CurrencyCode,
-  IncomeStatus,
-  ExpenseCategory,
-  PaymentMethod,
 } from '../types';
 import {
   formatCurrency,
   formatDate,
   getDaysDiff,
-  generateWhatsAppLink,
 } from '../lib/formatters';
 
 interface FinancialViewProps {
@@ -132,19 +125,16 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
   const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
   const firstDayOfWeek = new Date(calendarYear, calendarMonth, 1).getDay();
 
-  // Helper to format date YYYY-MM-DD
   const formatDateKey = (dayNum: number) => {
     const m = String(calendarMonth + 1).padStart(2, '0');
     const d = String(dayNum).padStart(2, '0');
     return `${calendarYear}-${m}-${d}`;
   };
 
-  // Collect calendar events for the active month
   const getCalendarEventsForDay = (dayNum: number) => {
     const key = formatDateKey(dayNum);
     const events: { id: string; type: 'income' | 'expense' | 'project'; text: string; color: string }[] = [];
 
-    // Incomes due or received on this day
     incomes.forEach((inc) => {
       if (currencyFilter !== 'ALL' && inc.currency !== currencyFilter) return;
       if (inc.dueDate === key) {
@@ -155,12 +145,11 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
           id: `inc-${inc.id}`,
           type: 'income',
           text: `💰 Vence: ${name} (${formatCurrency(inc.amount, inc.currency)})`,
-          color: isPaid ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+          color: isPaid ? 'bg-[#d4eddf] text-[#1a6b3a] border-[#1a6b3a]/20' : 'bg-[#fff3d6] text-[#7a5400] border-[#7a5400]/20',
         });
       }
     });
 
-    // Expenses due on this day
     expenses.forEach((exp) => {
       if (currencyFilter !== 'ALL' && exp.currency !== currencyFilter) return;
       if (exp.date === key) {
@@ -168,12 +157,11 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
           id: `exp-${exp.id}`,
           type: 'expense',
           text: `💸 Despesa: ${exp.description} (${formatCurrency(exp.amount, exp.currency)})`,
-          color: exp.paid ? 'bg-slate-700 text-slate-300 border-slate-600' : 'bg-rose-500/20 text-rose-300 border-rose-500/30',
+          color: exp.paid ? 'bg-[#e5e2e1] text-[#444747] border-[#c4c7c7]/30' : 'bg-[#ffdad6] text-[#93000a] border-[#93000a]/20',
         });
       }
     });
 
-    // Projects due on this day
     projects.forEach((proj) => {
       if (currencyFilter !== 'ALL' && proj.currency !== currencyFilter) return;
       if (proj.dueDate === key) {
@@ -183,7 +171,7 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
           id: `proj-${proj.id}`,
           type: 'project',
           text: `🚀 Entrega: ${proj.name} (${name})`,
-          color: proj.status === 'Concluído' ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' : 'bg-blue-500/20 text-blue-300 border-blue-500/30',
+          color: proj.status === 'Concluído' ? 'bg-[#f1edec] text-[#444747] border-[#c4c7c7]/30' : 'bg-[#dbe1ff] text-[#003da9] border-[#003da9]/20',
         });
       }
     });
@@ -200,14 +188,14 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
     <div className="space-y-6 pb-12">
       
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-[22px] border border-[#c4c7c7]/40 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
         <div className="flex items-center space-x-3">
-          <div className="p-2.5 rounded-xl bg-emerald-100 text-emerald-700 border border-emerald-200 shrink-0">
-            <DollarSign className="w-5 h-5 stroke-[2.5]" />
+          <div className="w-10 h-10 rounded-full bg-[#f1edec] text-[#1c1b1b] flex items-center justify-center shrink-0">
+            <DollarSign className="w-5 h-5 stroke-[1.5]" />
           </div>
           <div>
-            <h2 className="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight">Módulo Financeiro</h2>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">Gestão de receitas, despesas operacionais e agenda financeira unificada</p>
+            <h2 className="text-lg font-semibold text-[#1c1b1b] tracking-tight">Módulo Financeiro</h2>
+            <p className="text-xs text-[#747878] mt-0.5">Gestão de receitas, despesas operacionais e agenda financeira unificada</p>
           </div>
         </div>
 
@@ -215,62 +203,62 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
         <div className="grid grid-cols-1 sm:flex items-center gap-2 w-full sm:w-auto">
           <button
             onClick={onOpenNewIncomeModal}
-            className="w-full sm:w-auto px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center justify-center space-x-1.5 transition-all shadow-xs active:scale-95 cursor-pointer"
+            className="w-full sm:w-auto px-4 py-2.5 bg-[#000000] hover:opacity-85 text-white font-medium text-sm rounded-[29px] flex items-center justify-center space-x-1.5 transition-all cursor-pointer active:scale-95"
           >
-            <Plus className="w-4 h-4 stroke-[3]" />
+            <Plus className="w-4 h-4 stroke-[2]" />
             <span>Nova Receita</span>
           </button>
           <button
             onClick={onOpenNewExpenseModal}
-            className="w-full sm:w-auto px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-bold text-xs rounded-xl flex items-center justify-center space-x-1.5 transition-all shadow-xs active:scale-95 cursor-pointer"
+            className="w-full sm:w-auto px-4 py-2.5 bg-[#f1edec] hover:bg-[#e5e2e1] text-[#1c1b1b] border border-[#c4c7c7]/40 font-medium text-sm rounded-[29px] flex items-center justify-center space-x-1.5 transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Nova Despesa</span>
           </button>
           <button
             onClick={onOpenNewExpenseModal}
-            className="w-full sm:w-auto px-3.5 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-xs rounded-xl flex items-center justify-center space-x-1.5 transition-all shadow-xs active:scale-95 cursor-pointer"
+            className="w-full sm:w-auto px-4 py-2.5 bg-[#fff3d6] hover:opacity-85 text-[#7a5400] font-medium text-sm rounded-[29px] flex items-center justify-center space-x-1.5 transition-all cursor-pointer"
             title="Registrar retirada própria ou saída de caixa do saldo real"
           >
-            <Receipt className="w-4 h-4 text-amber-600" />
+            <Receipt className="w-4 h-4" />
             <span>Registrar Retirada</span>
           </button>
         </div>
       </div>
 
       {/* Sub-Tab Navigation Bar */}
-      <div className="flex items-center gap-1 bg-slate-100 border border-slate-200/80 p-1 rounded-xl w-full sm:w-fit overflow-x-auto">
+      <div className="flex items-center gap-1 bg-[#f1edec] border border-[#c4c7c7]/35 p-1 rounded-full w-full sm:w-fit overflow-x-auto">
         <button
           onClick={() => setSubTab('receitas')}
-          className={`px-3.5 sm:px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center space-x-2 whitespace-nowrap cursor-pointer ${
+          className={`px-4 py-2 rounded-full text-xs font-medium transition-all flex items-center justify-center space-x-1.5 whitespace-nowrap cursor-pointer ${
             subTab === 'receitas'
-              ? 'bg-white text-emerald-700 shadow-xs border border-slate-200/80 font-extrabold'
-              : 'text-slate-600 hover:text-slate-900'
+              ? 'bg-[#000000] text-white'
+              : 'text-[#444747] hover:text-[#1c1b1b]'
           }`}
         >
-          <ArrowUpRight className="w-4 h-4 text-emerald-600" /> Receitas ({filteredIncomes.length})
+          <ArrowUpRight className="w-3.5 h-3.5" /> <span>Receitas ({filteredIncomes.length})</span>
         </button>
 
         <button
           onClick={() => setSubTab('despesas')}
-          className={`px-3.5 sm:px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center space-x-2 whitespace-nowrap cursor-pointer ${
+          className={`px-4 py-2 rounded-full text-xs font-medium transition-all flex items-center justify-center space-x-1.5 whitespace-nowrap cursor-pointer ${
             subTab === 'despesas'
-              ? 'bg-white text-rose-700 shadow-xs border border-slate-200/80 font-extrabold'
-              : 'text-slate-600 hover:text-slate-900'
+              ? 'bg-[#000000] text-white'
+              : 'text-[#444747] hover:text-[#1c1b1b]'
           }`}
         >
-          <ArrowDownRight className="w-4 h-4 text-rose-600" /> Despesas ({filteredExpenses.length})
+          <ArrowDownRight className="w-3.5 h-3.5" /> <span>Despesas ({filteredExpenses.length})</span>
         </button>
 
         <button
           onClick={() => setSubTab('agenda')}
-          className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+          className={`px-4 py-2 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
             subTab === 'agenda'
-              ? 'bg-white text-emerald-700 shadow-sm border border-slate-200/80'
-              : 'text-slate-500 hover:text-slate-900'
+              ? 'bg-[#000000] text-white'
+              : 'text-[#444747] hover:text-[#1c1b1b]'
           }`}
         >
-          <CalendarIcon className="w-4 h-4" /> Agenda Financeira
+          <CalendarIcon className="w-3.5 h-3.5" /> <span>Agenda Financeira</span>
         </button>
       </div>
 
@@ -279,22 +267,22 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
         <div className="space-y-4">
           
           {/* Filters */}
-          <div className="bg-white border border-slate-200/90 p-4 rounded-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+          <div className="bg-white border border-[#c4c7c7]/40 p-4 rounded-[22px] flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
             <div className="relative flex-1">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-[#747878] absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 placeholder="Pesquisar por cliente ou descrição..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30"
+                className="w-full pl-10 pr-4 py-2 bg-[#f1edec] border border-[#c4c7c7]/35 rounded-full text-[#1c1b1b] text-sm placeholder-[#747878] focus:outline-none focus:border-[#000000] focus:bg-white transition-all"
               />
             </div>
 
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 text-xs font-semibold focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30"
+              className="px-4 py-2 bg-[#f1edec] border border-[#c4c7c7]/35 rounded-full text-[#1c1b1b] text-sm font-medium focus:outline-none cursor-pointer"
             >
               <option value="ALL">Todos os Status</option>
               <option value="Pendente">Pendente</option>
@@ -306,32 +294,32 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
 
           {/* Receitas List */}
           {filteredIncomes.length === 0 ? (
-            <div className="bg-white border border-slate-200/90 rounded-2xl p-12 text-center space-y-3">
-              <DollarSign className="w-10 h-10 text-slate-300 mx-auto" />
-              <h3 className="text-sm font-bold text-slate-700">Nenhuma receita encontrada</h3>
+            <div className="bg-white border border-[#c4c7c7]/40 rounded-[22px] p-12 text-center space-y-3">
+              <DollarSign className="w-10 h-10 text-[#c4c7c7] mx-auto" />
+              <h3 className="text-sm font-semibold text-[#1c1b1b]">Nenhuma receita encontrada</h3>
               <button
                 onClick={onOpenNewIncomeModal}
-                className="px-4 py-2 bg-emerald-600 text-white font-bold text-xs rounded-xl inline-flex items-center gap-1.5 hover:bg-emerald-700 transition-colors"
+                className="px-5 py-2 bg-[#000000] text-white font-medium text-xs rounded-[29px] inline-flex items-center gap-1.5 hover:opacity-85 transition-all"
               >
                 <Plus className="w-4 h-4" /> Cadastrar Nova Receita
               </button>
             </div>
           ) : (
-            <div className="bg-white border border-slate-200/90 rounded-2xl overflow-hidden">
+            <div className="bg-white border border-[#c4c7c7]/40 rounded-[22px] overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-100 text-slate-950 font-black uppercase tracking-wider text-[11px] border-b border-slate-300">
+                  <thead className="bg-[#f7f3f2] text-[#747878] font-semibold uppercase tracking-widest text-[11px] border-b border-[#c4c7c7]/40">
                     <tr>
-                      <th className="px-4 py-3.5">Cliente &amp; Projeto</th>
-                      <th className="px-4 py-3.5">Descrição</th>
-                      <th className="px-4 py-3.5">Valor</th>
-                      <th className="px-4 py-3.5">Data Prevista</th>
-                      <th className="px-4 py-3.5">Forma Pgt</th>
-                      <th className="px-4 py-3.5">Status</th>
-                      <th className="px-4 py-3.5 text-right">Ações</th>
+                      <th className="px-5 py-4">Cliente &amp; Projeto</th>
+                      <th className="px-5 py-4">Descrição</th>
+                      <th className="px-5 py-4">Valor</th>
+                      <th className="px-5 py-4">Data Prevista</th>
+                      <th className="px-5 py-4">Forma Pgt</th>
+                      <th className="px-5 py-4">Status</th>
+                      <th className="px-5 py-4 text-right">Ações</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-200">
+                  <tbody className="divide-y divide-[#c4c7c7]/30">
                     {filteredIncomes.map((inc) => {
                       const client = clientMap.get(inc.clientId);
                       const project = inc.projectId ? projectMap.get(inc.projectId) : null;
@@ -339,60 +327,60 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
                       const isOverdue = inc.status !== 'Recebido' && diffDays < 0;
 
                       return (
-                        <tr key={inc.id} className="hover:bg-slate-50 transition-colors">
-                          <td className="px-4 py-3.5">
-                            <div className="font-black text-slate-950 text-sm">
+                        <tr key={inc.id} className="hover:bg-[#f7f3f2] transition-colors">
+                          <td className="px-5 py-4">
+                            <div className="font-semibold text-[#1c1b1b] text-sm">
                               {client ? client.name : 'Cliente'}
                             </div>
                             {project && (
-                              <div className="text-xs text-slate-800 font-bold">
+                              <div className="text-xs text-[#747878]">
                                 {project.name}
                               </div>
                             )}
                           </td>
 
-                          <td className="px-4 py-3.5 font-bold text-slate-900">
+                          <td className="px-5 py-4 font-medium text-[#1c1b1b]">
                             {inc.description}
                           </td>
 
-                          <td className="px-4 py-3.5 font-black text-emerald-700 text-sm">
+                          <td className="px-5 py-4 font-semibold text-[#1a6b3a] text-sm">
                             {formatCurrency(inc.amount, inc.currency)}
                           </td>
 
-                          <td className="px-4 py-3.5">
-                            <span className={isOverdue ? 'text-rose-700 font-black' : 'text-slate-900 font-bold'}>
+                          <td className="px-5 py-4">
+                            <span className={isOverdue ? 'text-[#ba1a1a] font-semibold' : 'text-[#1c1b1b]'}>
                               {formatDate(inc.dueDate)}
                             </span>
                           </td>
 
-                          <td className="px-4 py-3.5">
-                            <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-950 font-black border border-slate-300 text-[11px] shadow-2xs">
+                          <td className="px-5 py-4">
+                            <span className="px-2.5 py-0.5 rounded-full bg-[#f1edec] text-[#444747] font-medium text-[11px]">
                               {inc.paymentMethod || 'PIX'}
                             </span>
                           </td>
 
-                          <td className="px-4 py-3.5">
+                          <td className="px-5 py-4">
                             <button
                               onClick={() => onToggleIncomeStatus(inc)}
-                              className={`px-2.5 py-1 rounded-lg font-black text-[11px] transition-all flex items-center gap-1 border shadow-2xs ${
+                              className={`px-2.5 py-1 rounded-full font-semibold text-[11px] transition-all flex items-center gap-1 cursor-pointer ${
                                 inc.status === 'Recebido'
-                                  ? 'bg-emerald-100 text-emerald-950 border-emerald-300'
+                                  ? 'bg-[#d4eddf] text-[#1a6b3a]'
                                   : isOverdue
-                                  ? 'bg-rose-100 text-rose-950 border-rose-300'
-                                  : 'bg-amber-100 text-amber-950 border-amber-300'
+                                  ? 'bg-[#ffdad6] text-[#93000a]'
+                                  : 'bg-[#fff3d6] text-[#7a5400]'
                               }`}
                               title="Clique para alterar status"
                             >
                               {inc.status === 'Recebido' ? (
-                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700 stroke-[2.5]" />
+                                <CheckCircle2 className="w-3 h-3 text-[#1a6b3a]" />
                               ) : (
-                                <Clock className="w-3.5 h-3.5 stroke-[2.5]" />
+                                <Clock className="w-3 h-3" />
                               )}
                               <span>{isOverdue && inc.status !== 'Recebido' ? `Atrasado (${Math.abs(diffDays)}d)` : inc.status}</span>
                             </button>
                           </td>
 
-                          <td className="px-4 py-3.5 text-right">
+                          <td className="px-5 py-4 text-right">
                             <div className="flex items-center justify-end space-x-1">
                               {client?.whatsapp && inc.status !== 'Recebido' && (
                                 <button
@@ -400,7 +388,7 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
                                     const text = `Olá, ${client.name}! Tudo bem? Passando para lembrar do valor referentes a "${inc.description}" (${formatCurrency(inc.amount, inc.currency)}) com vencimento em ${formatDate(inc.dueDate)}. Obrigado!`;
                                     onOpenWhatsAppCharge(client.whatsapp, text);
                                   }}
-                                  className="p-1.5 text-amber-500 hover:bg-amber-50 rounded-lg transition-colors border border-amber-200"
+                                  className="p-1.5 text-[#7a5400] hover:bg-[#fff3d6] rounded-full transition-colors"
                                   title="Cobrar via WhatsApp"
                                 >
                                   <MessageCircle className="w-4 h-4" />
@@ -408,14 +396,14 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
                               )}
                               <button
                                 onClick={() => onEditIncome(inc)}
-                                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                                className="p-1.5 text-[#747878] hover:text-[#1c1b1b] hover:bg-[#f1edec] rounded-full transition-colors cursor-pointer"
                                 title="Editar"
                               >
                                 <Edit3 className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={() => onDeleteIncome(inc.id)}
-                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                                className="p-1.5 text-[#747878] hover:text-[#ba1a1a] hover:bg-[#ffdad6] rounded-full transition-colors cursor-pointer"
                                 title="Excluir"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -438,22 +426,22 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
         <div className="space-y-4">
           
           {/* Filters */}
-          <div className="bg-white border border-slate-200/90 p-4 rounded-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+          <div className="bg-white border border-[#c4c7c7]/40 p-4 rounded-[22px] flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
             <div className="relative flex-1">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-[#747878] absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 placeholder="Pesquisar por descrição de despesa..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30"
+                className="w-full pl-10 pr-4 py-2 bg-[#f1edec] border border-[#c4c7c7]/35 rounded-full text-[#1c1b1b] text-sm placeholder-[#747878] focus:outline-none focus:border-[#000000] focus:bg-white transition-all"
               />
             </div>
 
             <select
               value={expenseCategoryFilter}
               onChange={(e) => setExpenseCategoryFilter(e.target.value)}
-              className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 text-xs font-semibold focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30"
+              className="px-4 py-2 bg-[#f1edec] border border-[#c4c7c7]/35 rounded-full text-[#1c1b1b] text-sm font-medium focus:outline-none cursor-pointer"
             >
               <option value="ALL">Todas as Categorias</option>
               <option value="Internet">Internet</option>
@@ -468,82 +456,82 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
 
           {/* Expenses List */}
           {filteredExpenses.length === 0 ? (
-            <div className="bg-white border border-slate-200/90 rounded-2xl p-12 text-center space-y-3">
-              <Receipt className="w-10 h-10 text-slate-300 mx-auto" />
-              <h3 className="text-sm font-bold text-slate-700">Nenhuma despesa cadastrada</h3>
+            <div className="bg-white border border-[#c4c7c7]/40 rounded-[22px] p-12 text-center space-y-3">
+              <Receipt className="w-10 h-10 text-[#c4c7c7] mx-auto" />
+              <h3 className="text-sm font-semibold text-[#1c1b1b]">Nenhuma despesa cadastrada</h3>
               <button
                 onClick={onOpenNewExpenseModal}
-                className="px-4 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-bold text-xs rounded-xl inline-flex items-center gap-1.5 shadow-sm"
+                className="px-5 py-2 bg-[#000000] text-white font-medium text-xs rounded-[29px] inline-flex items-center gap-1.5 hover:opacity-85 transition-all"
               >
                 <Plus className="w-4 h-4" /> Cadastrar Nova Despesa
               </button>
             </div>
           ) : (
-            <div className="bg-white border border-slate-200/90 rounded-2xl overflow-hidden">
+            <div className="bg-white border border-[#c4c7c7]/40 rounded-[22px] overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 text-slate-500 font-extrabold uppercase tracking-wider text-[10px] border-b border-slate-200">
+                  <thead className="bg-[#f7f3f2] text-[#747878] font-semibold uppercase tracking-widest text-[11px] border-b border-[#c4c7c7]/40">
                     <tr>
-                      <th className="px-4 py-3.5">Categoria</th>
-                      <th className="px-4 py-3.5">Descrição</th>
-                      <th className="px-4 py-3.5">Valor</th>
-                      <th className="px-4 py-3.5">Data Vencimento</th>
-                      <th className="px-4 py-3.5">Pago?</th>
-                      <th className="px-4 py-3.5 text-right">Ações</th>
+                      <th className="px-5 py-4">Categoria</th>
+                      <th className="px-5 py-4">Descrição</th>
+                      <th className="px-5 py-4">Valor</th>
+                      <th className="px-5 py-4">Data Vencimento</th>
+                      <th className="px-5 py-4">Pago?</th>
+                      <th className="px-5 py-4 text-right">Ações</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-[#c4c7c7]/30">
                     {filteredExpenses.map((exp) => {
                       const diffDays = getDaysDiff(exp.date);
                       const isOverdue = !exp.paid && diffDays < 0;
 
                       return (
-                        <tr key={exp.id} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="px-4 py-3.5">
-                            <span className="px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 font-bold border border-slate-200 text-[11px]">
+                        <tr key={exp.id} className="hover:bg-[#f7f3f2] transition-colors">
+                          <td className="px-5 py-4">
+                            <span className="px-2.5 py-0.5 rounded-full bg-[#f1edec] text-[#444747] font-medium text-[11px]">
                               {exp.category}
                             </span>
                           </td>
 
-                          <td className="px-4 py-3.5 font-medium text-slate-700">
+                          <td className="px-5 py-4 font-medium text-[#1c1b1b]">
                             {exp.description}
                           </td>
 
-                          <td className="px-4 py-3.5 font-extrabold text-slate-900 text-sm">
+                          <td className="px-5 py-4 font-semibold text-[#ba1a1a] text-sm">
                             {formatCurrency(exp.amount, exp.currency)}
                           </td>
 
-                          <td className="px-4 py-3.5">
-                            <span className={isOverdue ? 'text-rose-600 font-bold' : 'text-slate-600 font-medium'}>
+                          <td className="px-5 py-4">
+                            <span className={isOverdue ? 'text-[#ba1a1a] font-semibold' : 'text-[#747878]'}>
                               {formatDate(exp.date)}
                             </span>
                           </td>
 
-                          <td className="px-4 py-3.5">
+                          <td className="px-5 py-4">
                             <button
                               onClick={() => onToggleExpensePaid(exp)}
-                              className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all flex items-center gap-1 border ${
+                              className={`px-2.5 py-1 rounded-full font-semibold text-[11px] transition-all flex items-center gap-1 cursor-pointer ${
                                 exp.paid
-                                  ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
-                                  : 'bg-amber-100 text-amber-700 border-amber-200'
+                                  ? 'bg-[#d4eddf] text-[#1a6b3a]'
+                                  : 'bg-[#fff3d6] text-[#7a5400]'
                               }`}
                             >
-                              {exp.paid ? <Check className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />}
+                              {exp.paid ? <Check className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
                               <span>{exp.paid ? 'Pago' : 'Pendente'}</span>
                             </button>
                           </td>
 
-                          <td className="px-4 py-3.5 text-right">
+                          <td className="px-5 py-4 text-right">
                             <div className="flex items-center justify-end space-x-1">
                               <button
                                 onClick={() => onEditExpense(exp)}
-                                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                                className="p-1.5 text-[#747878] hover:text-[#1c1b1b] hover:bg-[#f1edec] rounded-full transition-colors cursor-pointer"
                               >
                                 <Edit3 className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={() => onDeleteExpense(exp.id)}
-                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                                className="p-1.5 text-[#747878] hover:text-[#ba1a1a] hover:bg-[#ffdad6] rounded-full transition-colors cursor-pointer"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
@@ -562,33 +550,33 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
 
       {/* TAB 3: AGENDA FINANCEIRA (CALENDÁRIO) */}
       {subTab === 'agenda' && (
-        <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs space-y-6">
+        <div className="bg-white border border-[#c4c7c7]/40 rounded-[22px] p-6 shadow-[0_2px_8px_rgba(0,0,0,0.02)] space-y-6">
           
           {/* Calendar Month Selector Header */}
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-              <CalendarIcon className="w-5 h-5 text-emerald-600" />
+            <h3 className="text-base font-semibold text-[#1c1b1b] tracking-tight flex items-center gap-2">
+              <CalendarIcon className="w-5 h-5 text-[#0050d7]" />
               {monthNamesPT[calendarMonth]} {calendarYear}
             </h3>
 
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => setCurrentCalendarDate(new Date(calendarYear, calendarMonth - 1, 1))}
-                className="p-2 rounded-xl bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200 border border-slate-200 transition-colors"
+                className="p-2 rounded-full bg-[#f1edec] text-[#444747] hover:text-[#1c1b1b] hover:bg-[#e5e2e1] transition-colors cursor-pointer"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
 
               <button
                 onClick={() => setCurrentCalendarDate(new Date())}
-                className="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 hover:text-slate-900 hover:bg-slate-200 text-xs font-bold border border-slate-200 transition-colors"
+                className="px-3.5 py-1.5 rounded-full bg-[#f1edec] text-[#1c1b1b] hover:bg-[#e5e2e1] text-xs font-medium transition-colors cursor-pointer"
               >
                 Hoje
               </button>
 
               <button
                 onClick={() => setCurrentCalendarDate(new Date(calendarYear, calendarMonth + 1, 1))}
-                className="p-2 rounded-xl bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200 border border-slate-200 transition-colors"
+                className="p-2 rounded-full bg-[#f1edec] text-[#444747] hover:text-[#1c1b1b] hover:bg-[#e5e2e1] transition-colors cursor-pointer"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -596,7 +584,7 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
           </div>
 
           {/* Calendar Grid Header (Days of week) */}
-          <div className="grid grid-cols-7 gap-2 text-center text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">
+          <div className="grid grid-cols-7 gap-2 text-center text-[11px] font-semibold text-[#747878] uppercase tracking-widest">
             <div>Dom</div>
             <div>Seg</div>
             <div>Ter</div>
@@ -608,12 +596,10 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
 
           {/* Calendar Days */}
           <div className="grid grid-cols-7 gap-2">
-            {/* Empty slots before first day */}
             {Array.from({ length: firstDayOfWeek }).map((_, idx) => (
-              <div key={`empty-${idx}`} className="h-28 bg-slate-50 rounded-xl border border-slate-100 opacity-40" />
+              <div key={`empty-${idx}`} className="h-28 bg-[#f7f3f2] rounded-[16px] border border-[#c4c7c7]/20 opacity-40" />
             ))}
 
-            {/* Days of month */}
             {Array.from({ length: daysInMonth }).map((_, idx) => {
               const dayNum = idx + 1;
               const events = getCalendarEventsForDay(dayNum);
@@ -624,24 +610,24 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
               return (
                 <div
                   key={`day-${dayNum}`}
-                  className={`h-28 p-1.5 rounded-xl border text-xs flex flex-col justify-between overflow-hidden transition-all ${
+                  className={`h-28 p-2 rounded-[16px] border text-xs flex flex-col justify-between overflow-hidden transition-all ${
                     isTodayDay
-                      ? 'bg-emerald-50 border-emerald-400 shadow-sm'
-                      : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-xs'
+                      ? 'bg-white border-[#000000] shadow-[0_2px_8px_rgba(0,0,0,0.06)]'
+                      : 'bg-white border-[#c4c7c7]/30 hover:border-[#c4c7c7] hover:bg-[#f7f3f2]'
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <span
-                      className={`font-extrabold text-xs ${
+                      className={`text-xs ${
                         isTodayDay
-                          ? 'w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center'
-                          : 'text-slate-700'
+                          ? 'w-6 h-6 rounded-full bg-[#000000] text-white flex items-center justify-center font-semibold'
+                          : 'font-medium text-[#1c1b1b]'
                       }`}
                     >
                       {dayNum}
                     </span>
                     {events.length > 0 && (
-                      <span className="text-[9px] text-slate-400 font-bold">
+                      <span className="text-[10px] text-[#747878] font-medium">
                         {events.length}x
                       </span>
                     )}
@@ -652,7 +638,7 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
                     {events.map((ev) => (
                       <div
                         key={ev.id}
-                        className={`text-[10px] p-1 rounded font-bold border truncate ${ev.color}`}
+                        className={`text-[10px] p-1 rounded-md font-medium border truncate ${ev.color}`}
                         title={ev.text}
                       >
                         {ev.text}

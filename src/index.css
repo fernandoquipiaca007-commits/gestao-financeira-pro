@@ -1,26 +1,331 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
+/* ============================================================
+   BORO UI — DESIGN TOKENS (Tailwind v4 @theme)
+   Source: stitch_buro_fintech_app/boro_ui/DESIGN.md
+   ============================================================ */
+@theme {
+  /* --- Colors --- */
+  --color-boro-bg:                 #fcf8f8;
+  --color-boro-surface:            #fcf8f8;
+  --color-boro-surface-low:        #f7f3f2;
+  --color-boro-surface-container:  #f1edec;
+  --color-boro-surface-high:       #ebe7e7;
+  --color-boro-surface-highest:    #e5e2e1;
+  --color-boro-surface-variant:    #e5e2e1;
+  --color-boro-surface-dim:        #ddd9d8;
+  --color-boro-card:               #ffffff;
+
+  --color-boro-on-surface:         #1c1b1b;
+  --color-boro-on-surface-muted:   #444747;
+  --color-boro-outline:            #747878;
+  --color-boro-outline-variant:    #c4c7c7;
+
+  --color-boro-primary:            #000000;
+  --color-boro-on-primary:         #ffffff;
+  --color-boro-primary-container:  #1b1c1c;
+  --color-boro-inverse-primary:    #c7c6c6;
+
+  --color-boro-secondary:          #0050d7;
+  --color-boro-secondary-dark:     #003da9;
+  --color-boro-secondary-light:    #dbe1ff;
+  --color-boro-on-secondary:       #ffffff;
+  --color-boro-secondary-container:#2469ff;
+
+  --color-boro-error:              #ba1a1a;
+  --color-boro-error-bg:           #ffdad6;
+  --color-boro-on-error:           #ffffff;
+
+  --color-boro-inverse-surface:    #313030;
+  --color-boro-inverse-on-surface: #f4f0ef;
+
+  /* Functional semantic colors */
+  --color-boro-success:            #1a6b3a;
+  --color-boro-success-bg:         #d4eddf;
+  --color-boro-warning:            #7a5400;
+  --color-boro-warning-bg:         #fff3d6;
+
+  /* --- Typography --- */
+  --font-sans: 'Inter', system-ui, sans-serif;
+
+  /* --- Border Radius --- */
+  --radius-boro-sm:   0.5rem;   /* 8px */
+  --radius-boro:      0.75rem;  /* 12px — inputs */
+  --radius-boro-md:   1rem;     /* 16px — DEFAULT */
+  --radius-boro-card: 1.375rem; /* 22px — cards/panels */
+  --radius-boro-lg:   1.5rem;   /* 24px — modal panels */
+  --radius-boro-pill: 1.8125rem;/* 29px — buttons */
+  --radius-boro-xl:   2rem;     /* 32px — large panels */
+  --radius-boro-2xl:  3rem;     /* 48px */
+  --radius-boro-full: 9999px;
+}
+
+/* ============================================================
+   BASE LAYER
+   ============================================================ */
 @layer base {
   body {
-    @apply bg-slate-50 text-slate-900 antialiased selection:bg-emerald-500 selection:text-white;
+    background-color: #fcf8f8;
+    color: #1c1b1b;
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background-color: #0050d7;
+    color: #ffffff;
   }
 }
 
-/* Custom scrollbar for modern corporate clean UI */
+/* ============================================================
+   COMPONENT UTILITIES — Boro Design System
+   ============================================================ */
+
+/* --- Scrollbar --- */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f8fafc;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #c4c7c7;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #747878;
+}
+
+/* --- Boro Card Panel --- */
+.boro-card {
+  background-color: #ffffff;
+  border: 1px solid rgba(196, 199, 199, 0.4);
+  border-radius: 1.375rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+/* --- Boro Input Style (bottom-border focus) --- */
+.boro-input {
+  background-color: transparent;
+  border: none;
+  border-bottom: 1.5px solid #c4c7c7;
+  border-radius: 0;
+  padding: 0.5rem 0;
+  font-size: 0.9375rem;
+  color: #1c1b1b;
+  outline: none;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+  width: 100%;
+}
+
+.boro-input:focus {
+  border-bottom-color: #000000;
+  background-color: transparent;
+}
+
+.boro-input::placeholder {
+  color: #747878;
+}
+
+/* --- Boro Input (boxed variant for forms) --- */
+.boro-input-box {
+  background-color: #f1edec;
+  border: 1px solid rgba(196, 199, 199, 0.35);
+  border-radius: 0.75rem;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.9375rem;
+  color: #1c1b1b;
+  outline: none;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+  width: 100%;
+}
+
+.boro-input-box:focus {
+  border-color: #000000;
+  background-color: #ffffff;
+}
+
+.boro-input-box::placeholder {
+  color: #747878;
+}
+
+/* --- Boro Button Primary --- */
+.boro-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  background-color: #000000;
+  color: #ffffff;
+  border: none;
+  border-radius: 1.8125rem;
+  padding: 0 1.5rem;
+  height: 2.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+  white-space: nowrap;
+}
+
+.boro-btn-primary:hover {
+  opacity: 0.88;
+}
+
+.boro-btn-primary:active {
+  transform: scale(0.98);
+}
+
+.boro-btn-primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* --- Boro Button Secondary --- */
+.boro-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  background-color: #f1edec;
+  color: #1c1b1b;
+  border: 1px solid rgba(196, 199, 199, 0.45);
+  border-radius: 1.8125rem;
+  padding: 0 1.25rem;
+  height: 2.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+  white-space: nowrap;
+}
+
+.boro-btn-secondary:hover {
+  background-color: #e5e2e1;
+}
+
+.boro-btn-secondary:active {
+  transform: scale(0.98);
+}
+
+/* --- Boro Badge --- */
+.boro-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.boro-badge-primary {
+  background-color: #1c1b1b;
+  color: #f4f0ef;
+}
+
+.boro-badge-secondary {
+  background-color: #dbe1ff;
+  color: #003da9;
+}
+
+.boro-badge-muted {
+  background-color: #e5e2e1;
+  color: #444747;
+}
+
+.boro-badge-success {
+  background-color: #d4eddf;
+  color: #1a6b3a;
+}
+
+.boro-badge-error {
+  background-color: #ffdad6;
+  color: #93000a;
+}
+
+.boro-badge-warning {
+  background-color: #fff3d6;
+  color: #7a5400;
+}
+
+/* --- Nav Item Active State --- */
+.boro-nav-active {
+  background-color: #000000;
+  color: #ffffff;
+  border-radius: 9999px;
+}
+
+.boro-nav-idle {
+  color: #444747;
+  border-radius: 9999px;
+}
+
+.boro-nav-idle:hover {
+  background-color: #f1edec;
+  color: #1c1b1b;
+}
+
+/* --- Section Label --- */
+.boro-section-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #747878;
+}
+
+/* --- Numeric Data Display --- */
+.boro-numeric {
+  font-size: 1.5rem;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.055em;
+  color: #000000;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Modal Backdrop --- */
+.boro-backdrop {
+  background-color: rgba(0, 0, 0, 0.38);
+  backdrop-filter: blur(4px);
+}
+
+/* --- Table styles --- */
+.boro-table-header {
+  background-color: #f7f3f2;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #747878;
+}
+
+.boro-table-row {
+  border-bottom: 1px solid rgba(196, 199, 199, 0.3);
+  transition: background-color 0.1s ease;
+}
+
+.boro-table-row:hover {
+  background-color: #f7f3f2;
+}
+
+/* --- Page Header --- */
+.boro-page-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: #1c1b1b;
+}
+
+/* --- Divider --- */
+.boro-divider {
+  border-color: rgba(196, 199, 199, 0.4);
 }

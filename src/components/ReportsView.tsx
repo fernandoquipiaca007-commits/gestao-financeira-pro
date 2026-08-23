@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   PieChart,
   Download,
-  Filter,
   Users,
   DollarSign,
   Receipt,
@@ -11,8 +10,8 @@ import {
   Printer,
   Sparkles,
 } from 'lucide-react';
-import { Client, Project, Income, Expense, CurrencyCode, AppSettings, CURRENCIES } from '../types';
-import { formatCurrency, formatDate, convertCurrency } from '../lib/formatters';
+import { Client, Project, Income, Expense, CurrencyCode, AppSettings } from '../types';
+import { formatCurrency, convertCurrency } from '../lib/formatters';
 
 interface ReportsViewProps {
   clients: Client[];
@@ -104,7 +103,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
     currencyFilter === 'ALL' ? true : c.currency === currencyFilter
   ).length;
 
-  // 5. Ticket Médio (Total Revenue / Received Incomes Count or Client Count)
+  // 5. Ticket Médio
   const ticketMedio = receivedIncomes.length > 0 ? totalRevenue / receivedIncomes.length : 0;
 
   // 6. Clientes inadimplentes
@@ -160,14 +159,14 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
   return (
     <div className="space-y-6 pb-12">
-         {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-[22px] border border-[#c4c7c7]/40 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
         <div>
-          <h2 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
-            <PieChart className="w-5 h-5 text-purple-600" />
+          <h2 className="text-lg font-semibold text-[#1c1b1b] tracking-tight flex items-center gap-2">
+            <PieChart className="w-5 h-5 text-[#0050d7]" />
             Relatórios Gerenciais
           </h2>
-          <p className="text-xs text-slate-600 font-bold mt-0.5">
+          <p className="text-xs text-[#747878] mt-0.5">
             Análise consolidada por período, serviço, cliente e taxas de adimplência
           </p>
         </div>
@@ -175,14 +174,14 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
         <div className="grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto">
           <button
             onClick={() => window.print()}
-            className="w-full sm:w-auto px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-300 font-bold text-xs rounded-xl flex items-center justify-center space-x-1.5 transition-all cursor-pointer"
+            className="w-full sm:w-auto px-4 py-2.5 bg-[#f1edec] hover:bg-[#e5e2e1] text-[#1c1b1b] font-medium text-xs rounded-[29px] flex items-center justify-center space-x-1.5 transition-all cursor-pointer"
           >
-            <Printer className="w-4 h-4 text-slate-700" />
+            <Printer className="w-4 h-4 text-[#747878]" />
             <span>Imprimir</span>
           </button>
           <button
             onClick={handleExportCSV}
-            className="w-full sm:w-auto px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center justify-center space-x-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
+            className="w-full sm:w-auto px-4 py-2.5 bg-[#000000] hover:opacity-85 text-white font-medium text-xs rounded-[29px] flex items-center justify-center space-x-1.5 transition-all cursor-pointer active:scale-95"
           >
             <Download className="w-4 h-4" />
             <span>Exportar CSV</span>
@@ -191,15 +190,15 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-white border border-slate-200/90 p-4 rounded-2xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 shadow-xs">
+      <div className="bg-white border border-[#c4c7c7]/40 p-4 rounded-[22px] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
         
         {/* Year Filter */}
         <div>
-          <label className="text-xs font-black text-slate-800 block mb-1">Ano</label>
+          <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">Ano</label>
           <select
             value={selectedYear}
             onChange={(e) => setSelectedYear(e.target.value)}
-            className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-bold focus:outline-none focus:border-purple-500"
+            className="w-full px-3.5 py-2 bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl text-[#1c1b1b] text-xs font-medium focus:outline-none focus:border-[#000000]"
           >
             <option value="ALL">Todos os Anos</option>
             <option value="2026">2026</option>
@@ -210,11 +209,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
         {/* Month Filter */}
         <div>
-          <label className="text-xs font-black text-slate-800 block mb-1">Mês</label>
+          <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">Mês</label>
           <select
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
-            className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-bold focus:outline-none focus:border-purple-500"
+            className="w-full px-3.5 py-2 bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl text-[#1c1b1b] text-xs font-medium focus:outline-none focus:border-[#000000]"
           >
             <option value="ALL">Todos os Meses</option>
             <option value="01">Janeiro</option>
@@ -234,11 +233,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
         {/* Client Filter */}
         <div>
-          <label className="text-xs font-black text-slate-800 block mb-1">Cliente</label>
+          <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">Cliente</label>
           <select
             value={selectedClient}
             onChange={(e) => setSelectedClient(e.target.value)}
-            className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-bold focus:outline-none focus:border-purple-500"
+            className="w-full px-3.5 py-2 bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl text-[#1c1b1b] text-xs font-medium focus:outline-none focus:border-[#000000]"
           >
             <option value="ALL">Todos os Clientes</option>
             {clients.map((c) => (
@@ -251,11 +250,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
         {/* Service/Category Filter */}
         <div>
-          <label className="text-xs font-black text-slate-800 block mb-1">Serviço / Categoria</label>
+          <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">Serviço / Categoria</label>
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-bold focus:outline-none focus:border-purple-500"
+            className="w-full px-3.5 py-2 bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl text-[#1c1b1b] text-xs font-medium focus:outline-none focus:border-[#000000]"
           >
             <option value="ALL">Todas as Categorias</option>
             <option value="Tráfego Pago">Tráfego Pago</option>
@@ -273,97 +272,97 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         
         {/* Receita Total */}
-        <div className="bg-white border border-slate-300 p-5 rounded-2xl shadow-xs">
-          <div className="flex items-center justify-between text-xs text-slate-800 font-black uppercase tracking-wider">
+        <div className="bg-white border border-[#c4c7c7]/40 p-5 rounded-[22px] shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+          <div className="flex items-center justify-between text-[11px] text-[#747878] font-semibold uppercase tracking-widest">
             <span>Receita Total</span>
-            <div className="p-1.5 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-200">
-              <DollarSign className="w-4 h-4 stroke-[2.5]" />
+            <div className="p-1.5 rounded-full bg-[#d4eddf] text-[#1a6b3a]">
+              <DollarSign className="w-4 h-4 stroke-[2]" />
             </div>
           </div>
-          <div className="text-2xl font-black text-emerald-700 mt-2">
+          <div className="text-2xl font-medium text-[#1a6b3a] mt-2 tracking-[-0.04em]" style={{ letterSpacing: '-0.055em' }}>
             {formatCurrency(totalRevenue, mainCurrency)}
           </div>
-          <p className="text-xs text-slate-600 font-bold mt-1">
+          <p className="text-xs text-[#747878] mt-1">
             {receivedIncomes.length} faturas liquidadas no período
           </p>
         </div>
 
         {/* Despesas */}
-        <div className="bg-white border border-slate-300 p-5 rounded-2xl shadow-xs">
-          <div className="flex items-center justify-between text-xs text-slate-800 font-black uppercase tracking-wider">
+        <div className="bg-white border border-[#c4c7c7]/40 p-5 rounded-[22px] shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+          <div className="flex items-center justify-between text-[11px] text-[#747878] font-semibold uppercase tracking-widest">
             <span>Despesas Totais</span>
-            <div className="p-1.5 rounded-lg bg-slate-100 text-slate-800 border border-slate-300">
-              <Receipt className="w-4 h-4 stroke-[2.5]" />
+            <div className="p-1.5 rounded-full bg-[#f1edec] text-[#444747]">
+              <Receipt className="w-4 h-4 stroke-[2]" />
             </div>
           </div>
-          <div className="text-2xl font-black text-slate-900 mt-2">
+          <div className="text-2xl font-medium text-[#000000] mt-2 tracking-[-0.04em]" style={{ letterSpacing: '-0.055em' }}>
             {formatCurrency(totalExpenses, mainCurrency)}
           </div>
-          <p className="text-xs text-slate-600 font-bold mt-1">
+          <p className="text-xs text-[#747878] mt-1">
             {filteredExpenses.length} custos computados
           </p>
         </div>
 
         {/* Lucro Líquido */}
-        <div className="bg-white border border-slate-300 p-5 rounded-2xl shadow-xs">
-          <div className="flex items-center justify-between text-xs text-slate-800 font-black uppercase tracking-wider">
+        <div className="bg-white border border-[#c4c7c7]/40 p-5 rounded-[22px] shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+          <div className="flex items-center justify-between text-[11px] text-[#747878] font-semibold uppercase tracking-widest">
             <span>Lucro Líquido</span>
-            <div className={`p-1.5 rounded-lg border ${netProfit >= 0 ? 'bg-teal-100 text-teal-800 border-teal-200' : 'bg-rose-100 text-rose-800 border-rose-200'}`}>
-              <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
+            <div className={`p-1.5 rounded-full ${netProfit >= 0 ? 'bg-[#d4eddf] text-[#1a6b3a]' : 'bg-[#ffdad6] text-[#ba1a1a]'}`}>
+              <CheckCircle2 className="w-4 h-4 stroke-[2]" />
             </div>
           </div>
-          <div className={`text-2xl font-black mt-2 ${netProfit >= 0 ? 'text-teal-700' : 'text-rose-700'}`}>
+          <div className={`text-2xl font-medium mt-2 tracking-[-0.04em] ${netProfit >= 0 ? 'text-[#1a6b3a]' : 'text-[#ba1a1a]'}`} style={{ letterSpacing: '-0.055em' }}>
             {formatCurrency(netProfit, mainCurrency)}
           </div>
-          <p className="text-xs text-slate-600 font-bold mt-1">
+          <p className="text-xs text-[#747878] mt-1">
             Margem de lucro calculada
           </p>
         </div>
 
         {/* Quantidade de Clientes */}
-        <div className="bg-white border border-slate-300 p-5 rounded-2xl shadow-xs">
-          <div className="flex items-center justify-between text-xs text-slate-800 font-black uppercase tracking-wider">
+        <div className="bg-white border border-[#c4c7c7]/40 p-5 rounded-[22px] shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+          <div className="flex items-center justify-between text-[11px] text-[#747878] font-semibold uppercase tracking-widest">
             <span>Quantidade de Clientes</span>
-            <div className="p-1.5 rounded-lg bg-blue-100 text-blue-800 border border-blue-200">
-              <Users className="w-4 h-4 stroke-[2.5]" />
+            <div className="p-1.5 rounded-full bg-[#dbe1ff] text-[#003da9]">
+              <Users className="w-4 h-4 stroke-[2]" />
             </div>
           </div>
-          <div className="text-2xl font-black text-slate-900 mt-2">
+          <div className="text-2xl font-medium text-[#000000] mt-2 tracking-[-0.04em]" style={{ letterSpacing: '-0.055em' }}>
             {totalClientsCount} clientes
           </div>
-          <p className="text-xs text-slate-600 font-bold mt-1">
+          <p className="text-xs text-[#747878] mt-1">
             Base ativa cadastrada
           </p>
         </div>
 
         {/* Ticket Médio */}
-        <div className="bg-white border border-slate-300 p-5 rounded-2xl shadow-xs">
-          <div className="flex items-center justify-between text-xs text-slate-800 font-black uppercase tracking-wider">
+        <div className="bg-white border border-[#c4c7c7]/40 p-5 rounded-[22px] shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+          <div className="flex items-center justify-between text-[11px] text-[#747878] font-semibold uppercase tracking-widest">
             <span>Ticket Médio por Fatura</span>
-            <div className="p-1.5 rounded-lg bg-purple-100 text-purple-800 border border-purple-200">
-              <Sparkles className="w-4 h-4 stroke-[2.5]" />
+            <div className="p-1.5 rounded-full bg-[#f1edec] text-[#444747]">
+              <Sparkles className="w-4 h-4 stroke-[2]" />
             </div>
           </div>
-          <div className="text-2xl font-black text-purple-700 mt-2">
+          <div className="text-2xl font-medium text-[#000000] mt-2 tracking-[-0.04em]" style={{ letterSpacing: '-0.055em' }}>
             {formatCurrency(ticketMedio, mainCurrency)}
           </div>
-          <p className="text-xs text-slate-600 font-bold mt-1">
+          <p className="text-xs text-[#747878] mt-1">
             Valor médio por projeto/receita
           </p>
         </div>
 
         {/* Clientes Inadimplentes */}
-        <div className="bg-white border border-slate-300 p-5 rounded-2xl shadow-xs">
-          <div className="flex items-center justify-between text-xs text-slate-800 font-black uppercase tracking-wider">
+        <div className="bg-white border border-[#c4c7c7]/40 p-5 rounded-[22px] shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+          <div className="flex items-center justify-between text-[11px] text-[#747878] font-semibold uppercase tracking-widest">
             <span>Clientes Inadimplentes</span>
-            <div className="p-1.5 rounded-lg bg-rose-100 text-rose-800 border border-rose-200">
-              <AlertTriangle className="w-4 h-4 stroke-[2.5]" />
+            <div className="p-1.5 rounded-full bg-[#ffdad6] text-[#ba1a1a]">
+              <AlertTriangle className="w-4 h-4 stroke-[2]" />
             </div>
           </div>
-          <div className="text-2xl font-black text-rose-700 mt-2">
+          <div className="text-2xl font-medium text-[#ba1a1a] mt-2 tracking-[-0.04em]" style={{ letterSpacing: '-0.055em' }}>
             {defaultorClientsCount} cliente(s)
           </div>
-          <p className="text-xs text-slate-600 font-bold mt-1">
+          <p className="text-xs text-[#747878] mt-1">
             Atraso registrado em pagamentos
           </p>
         </div>

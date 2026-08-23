@@ -617,10 +617,10 @@ export default function App() {
   // ROUTE GUARD: Wait for auth check, then redirect if unauthenticated
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-[#fcf8f8] flex items-center justify-center" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
         <div className="text-center space-y-4">
-          <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-slate-400 text-sm font-medium">A carregar...</p>
+          <div className="w-10 h-10 border-2 border-[#000000] border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-[#747878] text-sm font-normal">A carregar...</p>
         </div>
       </div>
     );
@@ -643,7 +643,7 @@ export default function App() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50/70 text-slate-900 font-sans flex flex-col selection:bg-emerald-600 selection:text-white">
+    <div className="min-h-screen bg-[#fcf8f8] text-[#1c1b1b] flex flex-col" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
       
       {/* Top Header */}
       <Header
@@ -665,13 +665,13 @@ export default function App() {
       />
 
       {/* Main App Container */}
-      <div className="flex-1 w-full max-w-[1700px] mx-auto px-4 sm:px-6 lg:px-8 py-7 flex gap-8">
+      <div className="flex-1 w-full max-w-[1700px] mx-auto px-4 sm:px-6 lg:px-8 py-6 flex gap-6">
         
         {/* Desktop Sidebar Navigation */}
-        <aside className="hidden lg:block w-60 shrink-0">
-          <nav className="sticky top-24 space-y-1 bg-white p-3.5 rounded-2xl border border-slate-300 shadow-2xs">
-            <div className="px-3 py-2 text-[11px] font-black tracking-widest text-slate-900 uppercase">
-              Menu Executivo
+        <aside className="hidden lg:block w-56 shrink-0">
+          <nav className="sticky top-20 space-y-0.5 bg-white p-3 rounded-[22px] border border-[#c4c7c7]/40 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+            <div className="px-3 py-2 text-[10px] font-semibold tracking-[0.08em] text-[#747878] uppercase mb-1">
+              Menu Principal
             </div>
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -681,23 +681,23 @@ export default function App() {
                 <button
                   key={item.id}
                   onClick={() => handleNavigateTab(item.id)}
-                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-full text-sm transition-all cursor-pointer ${
                     isActive
-                      ? 'bg-slate-950 text-white shadow-xs'
-                      : 'text-slate-900 hover:text-slate-950 hover:bg-slate-100 font-extrabold'
+                      ? 'bg-[#000000] text-white'
+                      : 'text-[#444747] hover:text-[#1c1b1b] hover:bg-[#f1edec]'
                   }`}
                 >
-                  <div className="flex items-center space-x-3">
-                    <Icon className={`w-4 h-4 stroke-[2.5] ${isActive ? 'text-emerald-400' : 'text-slate-800'}`} />
-                    <span>{item.label}</span>
+                  <div className="flex items-center space-x-2.5">
+                    <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-[#747878]'}`} strokeWidth={1.5} />
+                    <span className={`font-medium text-[13px] ${isActive ? '' : ''}`}>{item.label}</span>
                   </div>
 
                   {item.badge !== undefined && item.badge > 0 && (
                     <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
                         isActive
-                          ? 'bg-slate-800 text-emerald-300'
-                          : 'bg-slate-200 text-slate-950 border border-slate-300'
+                          ? 'bg-white/20 text-white'
+                          : 'bg-[#e5e2e1] text-[#444747]'
                       }`}
                     >
                       {item.badge}
@@ -713,24 +713,26 @@ export default function App() {
         {isMobileMenuOpen && (
           <div className="fixed inset-0 z-40 lg:hidden flex">
             <div
-              className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs"
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm"
               onClick={() => setIsMobileMenuOpen(false)}
             />
-            <div className="relative w-72 bg-white border-r border-slate-200 p-5 h-full flex flex-col z-50 shadow-2xl">
-              <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200">
-                <div className="flex items-center space-x-2">
-                  <Sparkles className="w-5 h-5 text-emerald-600" />
-                  <span className="font-black text-slate-900 text-base">Menu Principal</span>
+            <div className="relative w-72 bg-white border-r border-[#c4c7c7]/40 p-5 h-full flex flex-col z-50 shadow-[4px_0_24px_rgba(0,0,0,0.06)]">
+              <div className="flex items-center justify-between mb-6 pb-4 border-b border-[#c4c7c7]/40">
+                <div className="flex items-center space-x-2.5">
+                  <div className="w-8 h-8 rounded-full bg-[#000000] flex items-center justify-center text-white shrink-0">
+                    <span className="text-sm font-semibold">G</span>
+                  </div>
+                  <span className="font-semibold text-[#1c1b1b] text-base">Gestão<span className="text-[#0050d7]">FO</span></span>
                 </div>
                 <button
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 cursor-pointer"
+                  className="p-1.5 rounded-full text-[#747878] hover:text-[#1c1b1b] hover:bg-[#f1edec] cursor-pointer"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-5 h-5" strokeWidth={1.5} />
                 </button>
               </div>
 
-              <nav className="space-y-1.5 flex-1">
+              <nav className="space-y-0.5 flex-1">
                 {navItems.map((item) => {
                   const Icon = item.icon;
                   const isActive = activeTab === item.id;
@@ -739,18 +741,18 @@ export default function App() {
                     <button
                       key={item.id}
                       onClick={() => handleNavigateTab(item.id)}
-                      className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-full text-sm transition-all cursor-pointer ${
                         isActive
-                          ? 'bg-slate-900 text-white'
-                          : 'text-slate-800 hover:text-slate-950 hover:bg-slate-100'
+                          ? 'bg-[#000000] text-white'
+                          : 'text-[#444747] hover:text-[#1c1b1b] hover:bg-[#f1edec]'
                       }`}
                     >
-                      <div className="flex items-center space-x-3">
-                        <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-400' : 'text-slate-700'}`} />
-                        <span>{item.label}</span>
+                      <div className="flex items-center space-x-2.5">
+                        <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-[#747878]'}`} strokeWidth={1.5} />
+                        <span className="font-medium text-[13px]">{item.label}</span>
                       </div>
                       {item.badge !== undefined && item.badge > 0 && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-slate-100 text-slate-900 border border-slate-300">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${isActive ? 'bg-white/20 text-white' : 'bg-[#e5e2e1] text-[#444747]'}`}>
                           {item.badge}
                         </span>
                       )}
@@ -761,9 +763,9 @@ export default function App() {
 
               <button
                 onClick={handleLogout}
-                className="mt-auto w-full flex items-center justify-center space-x-2 py-3 rounded-xl bg-rose-50 text-rose-600 border border-rose-200 text-xs font-bold hover:bg-rose-100 transition-all cursor-pointer"
+                className="mt-auto w-full flex items-center justify-center space-x-2 py-2.5 rounded-full bg-[#ffdad6] text-[#93000a] text-sm font-medium hover:opacity-85 transition-all cursor-pointer"
               >
-                <LogOut className="w-4 h-4" />
+                <LogOut className="w-4 h-4" strokeWidth={1.5} />
                 <span>Sair do Sistema</span>
               </button>
             </div>
