@@ -31,6 +31,7 @@ interface ProjectsViewProps {
   onDuplicateProject?: (project: Project) => void;
   onRateProject?: (project: Project, rating: number) => void;
   onDeleteProject: (projectId: string) => void;
+  onMarkProjectAsPaid?: (project: Project) => void;
   onOpenWhatsAppCharge: (phone: string, text: string) => void;
 }
 
@@ -44,6 +45,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   onDuplicateProject,
   onRateProject,
   onDeleteProject,
+  onMarkProjectAsPaid,
   onOpenWhatsAppCharge,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -435,18 +437,31 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                     </button>
                   </div>
 
-                  {client?.whatsapp && remaining > 0 && (
-                    <button
-                      onClick={() => {
-                        const msg = `Olá, ${client.name}! Tudo bem? Gostaria de atualizar sobre o projeto "${p.name}". O valor restante pendente é de ${formatCurrency(remaining, p.currency)}. Próximo vencimento: ${p.nextPaymentDate ? formatDate(p.nextPaymentDate) : formatDate(p.dueDate)}. Obrigado!`;
-                        onOpenWhatsAppCharge(client.whatsapp, msg);
-                      }}
-                      className="px-3.5 py-1.5 bg-[#fff3d6] hover:opacity-85 text-[#7a5400] rounded-full text-xs font-semibold flex items-center space-x-1 transition-all cursor-pointer"
-                    >
-                      <MessageCircle className="w-3.5 h-3.5" />
-                      <span>Cobrar</span>
-                    </button>
-                  )}
+                  <div className="flex items-center space-x-1.5 flex-wrap gap-y-1">
+                    {onMarkProjectAsPaid && remaining > 0 && (
+                      <button
+                        onClick={() => onMarkProjectAsPaid(p)}
+                        className="px-3 py-1.5 bg-[#d4eddf] hover:bg-[#b8e3c9] text-[#1a6b3a] rounded-full text-xs font-medium flex items-center space-x-1 transition-all cursor-pointer"
+                        title="Marcar projeto como 100% pago e liquidar receita"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Marcar como Pago</span>
+                      </button>
+                    )}
+
+                    {client?.whatsapp && remaining > 0 && (
+                      <button
+                        onClick={() => {
+                          const msg = `Olá, ${client.name}! Tudo bem? Gostaria de atualizar sobre o projeto "${p.name}". O valor restante pendente é de ${formatCurrency(remaining, p.currency)}. Próximo vencimento: ${p.nextPaymentDate ? formatDate(p.nextPaymentDate) : formatDate(p.dueDate)}. Obrigado!`;
+                          onOpenWhatsAppCharge(client.whatsapp, msg);
+                        }}
+                        className="px-3.5 py-1.5 bg-[#fff3d6] hover:opacity-85 text-[#7a5400] rounded-full text-xs font-semibold flex items-center space-x-1 transition-all cursor-pointer"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        <span>Cobrar</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
 
               </div>

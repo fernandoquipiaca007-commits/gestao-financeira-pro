@@ -198,9 +198,32 @@ export default function App() {
         fetchLiveExchangeRates(),
       ]);
 
+      // Reconcile and calculate paid amount for each project from linked incomes!
+      const reconciledProjects = fetchedProjects.map((proj) => {
+        const linkedIncomes = fetchedIncomes.filter((inc) => inc.projectId === proj.id);
+        if (linkedIncomes.length > 0) {
+          const totalReceived = linkedIncomes
+            .filter((inc) => inc.status === 'Recebido')
+            .reduce((sum, inc) => sum + (Number(inc.amount) || 0), 0);
+
+          const finalPaid = Math.max(Number(proj.paidAmount) || 0, totalReceived);
+          const isFullyPaid = finalPaid >= proj.totalAmount && proj.totalAmount > 0;
+          const status: ProjectStatus = isFullyPaid
+            ? 'Concluído'
+            : (proj.status === 'Concluído' && !isFullyPaid ? 'Em andamento' : proj.status);
+
+          return {
+            ...proj,
+            paidAmount: finalPaid,
+            status,
+          };
+        }
+        return proj;
+      });
+
       // Always use DB data as source of truth
       setClients(fetchedClients);
-      setProjects(fetchedProjects);
+      setProjects(reconciledProjects);
       setIncomes(fetchedIncomes);
       setExpenses(fetchedExpenses);
       setAgendaEvents(fetchedEvents);
@@ -304,6 +327,7 @@ export default function App() {
 
   // PROJECT CRUD
   const handleSaveProject = async (projectData: Omit<Project, 'id' | 'createdAt'> & { id?: string }) => {
+    const isNew = !projectData.id;
     const targetId = projectData.id || `proj-${Date.now()}`;
     const newProj: Project = {
       ...projectData,
@@ -313,8 +337,7 @@ export default function App() {
     await upsertProjectToDb(newProj);
     setProjects((prev) => [newProj, ...prev.filter((p) => p.id !== targetId)]);
 
-    // Automatically create/sync Income entries for Project
-    if (!projectData.id) {
+    if (isNew) {
       const createdIncomes: Income[] = [];
 
       // 1. Paid portion (if any)
@@ -358,6 +381,111 @@ export default function App() {
       if (createdIncomes.length > 0) {
         setIncomes((prev) => [...createdIncomes, ...prev]);
       }
+    } else {
+      // EDITING EXISTING PROJECT:
+      const existingIncomes = incomes.filter((i) => i.projectId === targetId);
+
+      if (existingIncomes.length > 0) {
+        if (newProj.paidAmount >= newProj.totalAmount && newProj.totalAmount > 0) {
+          const updatedIncomesList: Income[] = [];
+          for (const inc of existingIncomes) {
+            if (inc.status !== 'Recebido') {
+              const upd: Income = {
+                ...inc,
+                status: 'Recebido',
+                receivedDate: inc.receivedDate || new Date().toISOString().split('T')[0],
+              };
+              await upsertIncomeToDb(upd);
+              updatedIncomesList.push(upd);
+            }
+          }
+          if (updatedIncomesList.length > 0) {
+            const updatedMap = new Map(updatedIncomesList.map((i) => [i.id, i]));
+            setIncomes((prev) => prev.map((i) => updatedMap.get(i.id) || i));
+          }
+        }
+      } else {
+        const createdIncomes: Income[] = [];
+        if (newProj.paidAmount > 0) {
+          const paidInc: Income = {
+            id: `inc-paid-${Date.now()}`,
+            clientId: newProj.clientId,
+            projectId: newProj.id,
+            description: `Pagamento - ${newProj.name}`,
+            amount: newProj.paidAmount,
+            currency: newProj.currency,
+            dueDate: newProj.startDate || new Date().toISOString().split('T')[0],
+            receivedDate: newProj.startDate || new Date().toISOString().split('T')[0],
+            paymentMethod: 'PIX',
+            status: 'Recebido',
+            createdAt: new Date().toISOString().split('T')[0],
+          };
+          await upsertIncomeToDb(paidInc);
+          createdIncomes.push(paidInc);
+        }
+        const remainingAmount = newProj.totalAmount - newProj.paidAmount;
+        if (remainingAmount > 0) {
+          const pendingInc: Income = {
+            id: `inc-pend-${Date.now()}`,
+            clientId: newProj.clientId,
+            projectId: newProj.id,
+            description: `Saldo Restante - ${newProj.name}`,
+            amount: remainingAmount,
+            currency: newProj.currency,
+            dueDate: newProj.nextPaymentDate || newProj.dueDate || newProj.startDate || new Date().toISOString().split('T')[0],
+            paymentMethod: 'PIX',
+            status: 'Pendente',
+            createdAt: new Date().toISOString().split('T')[0],
+          };
+          await upsertIncomeToDb(pendingInc);
+          createdIncomes.push(pendingInc);
+        }
+        if (createdIncomes.length > 0) {
+          setIncomes((prev) => [...createdIncomes, ...prev]);
+        }
+      }
+    }
+  };
+
+  const handleMarkProjectAsPaid = async (project: Project) => {
+    const updatedProj: Project = {
+      ...project,
+      paidAmount: project.totalAmount,
+      status: 'Concluído',
+    };
+    await upsertProjectToDb(updatedProj);
+    setProjects((prev) => prev.map((p) => (p.id === project.id ? updatedProj : p)));
+
+    const linkedIncomes = incomes.filter((i) => i.projectId === project.id);
+    if (linkedIncomes.length > 0) {
+      const updatedIncomesList: Income[] = [];
+      for (const inc of linkedIncomes) {
+        const upd: Income = {
+          ...inc,
+          status: 'Recebido',
+          receivedDate: inc.receivedDate || new Date().toISOString().split('T')[0],
+        };
+        await upsertIncomeToDb(upd);
+        updatedIncomesList.push(upd);
+      }
+      const updatedMap = new Map(updatedIncomesList.map((i) => [i.id, i]));
+      setIncomes((prev) => prev.map((i) => updatedMap.get(i.id) || i));
+    } else {
+      const newInc: Income = {
+        id: `inc-paid-${Date.now()}`,
+        clientId: project.clientId,
+        projectId: project.id,
+        description: `Pagamento Total - ${project.name}`,
+        amount: project.totalAmount,
+        currency: project.currency,
+        dueDate: project.startDate || new Date().toISOString().split('T')[0],
+        receivedDate: new Date().toISOString().split('T')[0],
+        paymentMethod: 'PIX',
+        status: 'Recebido',
+        createdAt: new Date().toISOString().split('T')[0],
+      };
+      await upsertIncomeToDb(newInc);
+      setIncomes((prev) => [newInc, ...prev]);
     }
   };
 
@@ -817,6 +945,7 @@ export default function App() {
               onDuplicateProject={handleDuplicateProject}
               onRateProject={handleRateProject}
               onDeleteProject={handleDeleteProject}
+              onMarkProjectAsPaid={handleMarkProjectAsPaid}
               onOpenWhatsAppCharge={handleOpenWhatsAppCharge}
             />
           )}

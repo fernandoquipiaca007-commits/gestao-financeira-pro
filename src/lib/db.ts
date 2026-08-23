@@ -179,36 +179,71 @@ export async function upsertProjectToDb(project: Project): Promise<void> {
     const payloadWithClientIds = {
       id: project.id,
       name: project.name,
-      client_id: project.clientId,
+      client_id: project.clientId || null,
       client_ids: project.clientIds && project.clientIds.length > 0 ? project.clientIds : [project.clientId],
       category: project.category,
-      total_amount: project.totalAmount,
-      paid_amount: project.paidAmount,
+      total_amount: Number(project.totalAmount) || 0,
+      paid_amount: Number(project.paidAmount) || 0,
       currency: project.currency,
-      start_date: project.startDate,
-      due_date: project.dueDate,
-      next_payment_date: project.nextPaymentDate,
+      start_date: project.startDate || null,
+      due_date: project.dueDate || null,
+      next_payment_date: project.nextPaymentDate || null,
       status: project.status,
-      notes: project.notes,
-      rating: project.rating || 0,
+      notes: project.notes || null,
+      rating: Number(project.rating) || 0,
       attachments: project.attachments || [],
-      partner_id: project.partnerId,
-      partner_name: project.partnerName,
-      commission_type: project.commissionType,
-      commission_value: project.commissionValue,
-      commission_amount: project.commissionAmount,
-      commission_paid: project.commissionPaid,
+      partner_id: project.partnerId || null,
+      partner_name: project.partnerName || null,
+      commission_type: project.commissionType || 'percent',
+      commission_value: Number(project.commissionValue) || 0,
+      commission_amount: Number(project.commissionAmount) || 0,
+      commission_paid: Boolean(project.commissionPaid),
     };
 
     const { error } = await supabase.from('projects').upsert(payloadWithClientIds);
 
     if (error) {
-      console.warn('Supabase upsert project with client_ids failed, retrying without client_ids:', error);
-      const payloadLegacy = { ...payloadWithClientIds };
-      delete (payloadLegacy as any).client_ids;
-      const { error: err2 } = await supabase.from('projects').upsert(payloadLegacy);
+      console.warn('Supabase upsert project with client_ids failed, retrying standard schema:', error);
+      const payloadStandard = {
+        id: project.id,
+        name: project.name,
+        client_id: project.clientId || null,
+        category: project.category,
+        total_amount: Number(project.totalAmount) || 0,
+        paid_amount: Number(project.paidAmount) || 0,
+        currency: project.currency,
+        start_date: project.startDate || null,
+        due_date: project.dueDate || null,
+        next_payment_date: project.nextPaymentDate || null,
+        status: project.status,
+        notes: project.notes || null,
+        partner_id: project.partnerId || null,
+        partner_name: project.partnerName || null,
+        commission_type: project.commissionType || 'percent',
+        commission_value: Number(project.commissionValue) || 0,
+        commission_amount: Number(project.commissionAmount) || 0,
+        commission_paid: Boolean(project.commissionPaid),
+      };
+      const { error: err2 } = await supabase.from('projects').upsert(payloadStandard);
       if (err2) {
-        console.error('Supabase legacy upsert project error:', err2);
+        console.warn('Supabase standard upsert project failed, retrying core schema:', err2);
+        const payloadCore = {
+          id: project.id,
+          name: project.name,
+          client_id: project.clientId || null,
+          category: project.category,
+          total_amount: Number(project.totalAmount) || 0,
+          paid_amount: Number(project.paidAmount) || 0,
+          currency: project.currency,
+          start_date: project.startDate || null,
+          due_date: project.dueDate || null,
+          status: project.status,
+          notes: project.notes || null,
+        };
+        const { error: err3 } = await supabase.from('projects').upsert(payloadCore);
+        if (err3) {
+          console.error('CRITICAL: Supabase core upsert project error:', err3);
+        }
       }
     }
   } catch (err) {
@@ -258,23 +293,45 @@ export async function fetchIncomesFromDb(): Promise<Income[]> {
 export async function upsertIncomeToDb(income: Income): Promise<void> {
   saveIncomes([income, ...getStoredIncomes().filter(i => i.id !== income.id)]);
   try {
-    await supabase.from('incomes').upsert({
+    const payload = {
       id: income.id,
-      client_id: income.clientId,
-      project_id: income.projectId,
+      client_id: income.clientId || null,
+      project_id: income.projectId || null,
       description: income.description,
-      amount: income.amount,
+      amount: Number(income.amount) || 0,
       currency: income.currency,
       due_date: income.dueDate,
-      received_date: income.receivedDate,
-      payment_method: income.paymentMethod,
+      received_date: income.receivedDate || null,
+      payment_method: income.paymentMethod || 'PIX',
       status: income.status,
-      notes: income.notes,
-      partner_id: income.partnerId,
-      partner_name: income.partnerName,
-      commission_amount: income.commissionAmount,
-      commission_paid: income.commissionPaid,
-    });
+      notes: income.notes || null,
+      partner_id: income.partnerId || null,
+      partner_name: income.partnerName || null,
+      commission_amount: Number(income.commissionAmount) || 0,
+      commission_paid: Boolean(income.commissionPaid),
+    };
+
+    const { error } = await supabase.from('incomes').upsert(payload);
+    if (error) {
+      console.warn('Supabase upsert income failed with full payload, retrying core schema:', error);
+      const payloadCore = {
+        id: income.id,
+        client_id: income.clientId || null,
+        project_id: income.projectId || null,
+        description: income.description,
+        amount: Number(income.amount) || 0,
+        currency: income.currency,
+        due_date: income.dueDate,
+        received_date: income.receivedDate || null,
+        payment_method: income.paymentMethod || 'PIX',
+        status: income.status,
+        notes: income.notes || null,
+      };
+      const { error: err2 } = await supabase.from('incomes').upsert(payloadCore);
+      if (err2) {
+        console.error('CRITICAL: Supabase core upsert income error:', err2);
+      }
+    }
   } catch (err) {
     console.warn('Failed to sync income to Supabase:', err);
   }
