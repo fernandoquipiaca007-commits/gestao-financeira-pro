@@ -611,6 +611,17 @@ export default function App() {
     };
     await upsertExpenseToDb(newExp);
     setExpenses((prev) => [newExp, ...prev.filter((e) => e.id !== targetId)]);
+
+    // If this is a commission payment to a partner and it's marked as paid, sync partner projects!
+    if (newExp.category === 'Comissão Parceiro' && newExp.partnerId && newExp.paid) {
+      const partnerProjects = projects.filter((p) => p.partnerId === newExp.partnerId && !p.commissionPaid);
+      if (partnerProjects.length > 0) {
+        const projToUpdate = partnerProjects[0];
+        const updatedProj: Project = { ...projToUpdate, commissionPaid: true };
+        await upsertProjectToDb(updatedProj);
+        setProjects((prev) => prev.map((p) => (p.id === updatedProj.id ? updatedProj : p)));
+      }
+    }
   };
 
   const handleDeleteExpense = async (expenseId: string) => {
@@ -624,6 +635,56 @@ export default function App() {
     const updated: Expense = { ...expense, paid: !expense.paid };
     await upsertExpenseToDb(updated);
     setExpenses((prev) => prev.map((e) => (e.id === expense.id ? updated : e)));
+
+    if (updated.category === 'Comissão Parceiro' && updated.partnerId) {
+      const partnerProjects = projects.filter((p) => p.partnerId === updated.partnerId);
+      if (partnerProjects.length > 0) {
+        const projToUpdate = partnerProjects[0];
+        const updatedProj: Project = { ...projToUpdate, commissionPaid: updated.paid };
+        await upsertProjectToDb(updatedProj);
+        setProjects((prev) => prev.map((p) => (p.id === updatedProj.id ? updatedProj : p)));
+      }
+    }
+  };
+
+  const handleToggleProjectCommissionPaid = async (project: Project) => {
+    const nextPaid = !project.commissionPaid;
+    const updatedProj: Project = {
+      ...project,
+      commissionPaid: nextPaid,
+    };
+    await upsertProjectToDb(updatedProj);
+    setProjects((prev) => prev.map((p) => (p.id === project.id ? updatedProj : p)));
+
+    const commAmt = project.commissionAmount || (project.commissionValue ? (project.commissionType === 'percent' ? (project.totalAmount * project.commissionValue) / 100 : project.commissionValue) : 0);
+
+    if (nextPaid && commAmt > 0 && project.partnerId) {
+      const existingExpense = expenses.find(
+        (e) => e.partnerId === project.partnerId && e.description.includes(project.name)
+      );
+      if (existingExpense) {
+        if (!existingExpense.paid) {
+          const updExp = { ...existingExpense, paid: true };
+          await upsertExpenseToDb(updExp);
+          setExpenses((prev) => prev.map((e) => (e.id === updExp.id ? updExp : e)));
+        }
+      } else {
+        const newExp: Expense = {
+          id: `exp-comm-${Date.now()}`,
+          category: 'Comissão Parceiro',
+          description: `Comissão - ${project.partnerName || 'Parceiro'} (${project.name})`,
+          amount: commAmt,
+          currency: project.currency,
+          date: new Date().toISOString().split('T')[0],
+          paid: true,
+          partnerId: project.partnerId,
+          partnerName: project.partnerName,
+          createdAt: new Date().toISOString().split('T')[0],
+        };
+        await upsertExpenseToDb(newExp);
+        setExpenses((prev) => [newExp, ...prev]);
+      }
+    }
   };
 
   // CATEGORY CRUD
@@ -996,11 +1057,14 @@ export default function App() {
             <PartnersView
               partners={partners}
               projects={projects}
+              expenses={expenses}
               settings={settings}
               currencyFilter={currencyFilter}
               onOpenNewPartnerModal={() => { setPartnerToEdit(null); setIsPartnerModalOpen(true); }}
               onEditPartner={(partner) => { setPartnerToEdit(partner); setIsPartnerModalOpen(true); }}
               onDeletePartner={handleDeletePartner}
+              onToggleProjectCommissionPaid={handleToggleProjectCommissionPaid}
+              onOpenNewExpenseModal={() => { setExpenseToEdit(null); setIsExpenseModalOpen(true); }}
               onOpenWhatsAppCharge={handleOpenWhatsAppCharge}
             />
           )}

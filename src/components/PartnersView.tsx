@@ -1,30 +1,37 @@
 import React, { useState } from 'react';
-import { Handshake, Plus, Phone, Mail, Trash2, Edit2, MessageCircle } from 'lucide-react';
-import { Partner, Project, CurrencyCode, AppSettings } from '../types';
+import { Handshake, Plus, Phone, Mail, Trash2, Edit2, MessageCircle, CheckCircle2, Clock, DollarSign, FolderKanban, Check } from 'lucide-react';
+import { Partner, Project, Expense, CurrencyCode, AppSettings } from '../types';
 import { formatCurrency } from '../lib/formatters';
 
 interface PartnersViewProps {
   partners: Partner[];
   projects: Project[];
+  expenses?: Expense[];
   settings: AppSettings;
   currencyFilter: CurrencyCode | 'ALL';
   onOpenNewPartnerModal: () => void;
   onEditPartner: (partner: Partner) => void;
   onDeletePartner: (partnerId: string) => void;
+  onToggleProjectCommissionPaid?: (project: Project) => void;
+  onOpenNewExpenseModal?: () => void;
   onOpenWhatsAppCharge: (phone: string, text: string) => void;
 }
 
 export const PartnersView: React.FC<PartnersViewProps> = ({
   partners,
   projects,
+  expenses = [],
   settings,
   currencyFilter,
   onOpenNewPartnerModal,
   onEditPartner,
   onDeletePartner,
+  onToggleProjectCommissionPaid,
+  onOpenNewExpenseModal,
   onOpenWhatsAppCharge,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [expandedPartnerId, setExpandedPartnerId] = useState<string | null>(null);
 
   const filteredPartners = partners.filter(
     (p) =>
@@ -51,13 +58,25 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
           </div>
         </div>
 
-        <button
-          onClick={onOpenNewPartnerModal}
-          className="bg-[#000000] hover:opacity-85 text-white font-medium py-2.5 px-5 rounded-[29px] transition-all flex items-center justify-center space-x-2 text-sm w-full sm:w-auto cursor-pointer active:scale-95 shrink-0"
-        >
-          <Plus className="w-4 h-4 stroke-[2]" />
-          <span>Novo Parceiro</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {onOpenNewExpenseModal && (
+            <button
+              onClick={onOpenNewExpenseModal}
+              className="bg-[#f1edec] hover:bg-[#e5e2e1] text-[#1c1b1b] border border-[#c4c7c7]/40 font-medium py-2.5 px-4 rounded-[29px] transition-all flex items-center justify-center space-x-1.5 text-sm cursor-pointer"
+            >
+              <DollarSign className="w-4 h-4 text-[#747878]" />
+              <span>Lançar Despesa de Comissão</span>
+            </button>
+          )}
+
+          <button
+            onClick={onOpenNewPartnerModal}
+            className="bg-[#000000] hover:opacity-85 text-white font-medium py-2.5 px-5 rounded-[29px] transition-all flex items-center justify-center space-x-2 text-sm cursor-pointer active:scale-95 shrink-0"
+          >
+            <Plus className="w-4 h-4 stroke-[2]" />
+            <span>Novo Parceiro</span>
+          </button>
+        </div>
       </div>
 
       {/* Partners List & Cards */}
@@ -79,17 +98,36 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {filteredPartners.map((partner) => {
             const partnerProjects = projects.filter((p) => p.partnerId === partner.id);
-            const totalCommissionPending = partnerProjects
-              .filter((p) => !p.commissionPaid && (p.commissionAmount || 0) > 0)
-              .reduce((sum, p) => sum + (p.commissionAmount || 0), 0);
-            const totalCommissionPaid = partnerProjects
-              .filter((p) => p.commissionPaid && (p.commissionAmount || 0) > 0)
-              .reduce((sum, p) => sum + (p.commissionAmount || 0), 0);
+            const partnerExpenses = expenses.filter(
+              (e) => (e.category === 'Comissão Parceiro' || e.partnerId === partner.id) && e.partnerId === partner.id
+            );
 
-            const sampleCurrency = partnerProjects[0]?.currency || settings.defaultCurrency;
+            // Calculate commission amounts
+            const totalCommissionPending = partnerProjects
+              .filter((p) => !p.commissionPaid && (p.commissionAmount || (p.commissionValue && p.commissionType === 'percent' ? (p.totalAmount * p.commissionValue) / 100 : p.commissionValue) || 0) > 0)
+              .reduce((sum, p) => {
+                const amt = p.commissionAmount || (p.commissionValue && p.commissionType === 'percent' ? (p.totalAmount * p.commissionValue) / 100 : p.commissionValue) || 0;
+                return sum + amt;
+              }, 0);
+
+            const totalCommissionPaidProjects = partnerProjects
+              .filter((p) => p.commissionPaid)
+              .reduce((sum, p) => {
+                const amt = p.commissionAmount || (p.commissionValue && p.commissionType === 'percent' ? (p.totalAmount * p.commissionValue) / 100 : p.commissionValue) || 0;
+                return sum + amt;
+              }, 0);
+
+            const totalPaidExpenses = partnerExpenses
+              .filter((e) => e.paid)
+              .reduce((sum, e) => sum + e.amount, 0);
+
+            const totalCommissionPaid = Math.max(totalCommissionPaidProjects, totalPaidExpenses);
+            const sampleCurrency = partnerProjects[0]?.currency || partnerExpenses[0]?.currency || settings.defaultCurrency;
+
+            const isExpanded = expandedPartnerId === partner.id || partnerProjects.length <= 2;
 
             return (
               <div
@@ -109,12 +147,14 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                       <button
                         onClick={() => onEditPartner(partner)}
                         className="p-1.5 rounded-full text-[#747878] hover:text-[#1c1b1b] hover:bg-[#f1edec] transition-colors cursor-pointer"
+                        title="Editar Parceiro"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => onDeletePartner(partner.id)}
                         className="p-1.5 rounded-full text-[#747878] hover:text-[#ba1a1a] hover:bg-[#ffdad6] transition-colors cursor-pointer"
+                        title="Excluir Parceiro"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -141,7 +181,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                   </div>
 
                   {/* Summary Box */}
-                  <div className="p-4 bg-[#f7f3f2] border border-[#c4c7c7]/30 rounded-[16px] space-y-2 text-xs">
+                  <div className="p-4 bg-[#f7f3f2] border border-[#c4c7c7]/30 rounded-[16px] space-y-2 text-xs mb-4">
                     <div className="flex justify-between text-[#1c1b1b]">
                       <span className="text-[#747878]">Projetos Indicados:</span>
                       <strong className="font-semibold">{partnerProjects.length}</strong>
@@ -155,21 +195,100 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
                       <strong>{formatCurrency(totalCommissionPaid, sampleCurrency)}</strong>
                     </div>
                   </div>
+
+                  {/* Partner's Projects & Commission Status */}
+                  {partnerProjects.length > 0 && (
+                    <div className="space-y-2 mb-4">
+                      <div className="flex items-center justify-between text-[11px] font-semibold text-[#747878] uppercase tracking-widest">
+                        <span className="flex items-center gap-1">
+                          <FolderKanban className="w-3.5 h-3.5" /> Projetos &amp; Repasses ({partnerProjects.length})
+                        </span>
+                      </div>
+
+                      <div className="space-y-2">
+                        {partnerProjects.map((proj) => {
+                          const commAmount = proj.commissionAmount || (proj.commissionValue && proj.commissionType === 'percent' ? (proj.totalAmount * proj.commissionValue) / 100 : proj.commissionValue) || 0;
+
+                          return (
+                            <div
+                              key={proj.id}
+                              className="p-3 bg-[#f7f3f2] border border-[#c4c7c7]/30 rounded-[14px] flex items-center justify-between gap-3 text-xs"
+                            >
+                              <div className="min-w-0 flex-1">
+                                <span className="font-medium text-[#1c1b1b] block truncate">{proj.name}</span>
+                                <div className="flex items-center gap-2 text-[11px] text-[#747878] mt-0.5">
+                                  <span>Total: {formatCurrency(proj.totalAmount, proj.currency)}</span>
+                                  <span>•</span>
+                                  <span className="font-semibold text-[#1c1b1b]">
+                                    Comissão: {formatCurrency(commAmount, proj.currency)}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {onToggleProjectCommissionPaid && (
+                                <button
+                                  type="button"
+                                  onClick={() => onToggleProjectCommissionPaid(proj)}
+                                  className={`px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                                    proj.commissionPaid
+                                      ? 'bg-[#d4eddf] text-[#1a6b3a] border border-[#1a6b3a]/20 hover:opacity-85'
+                                      : 'bg-[#000000] text-white hover:opacity-85 active:scale-95'
+                                  }`}
+                                  title={proj.commissionPaid ? 'Clique para desmarcar repasse' : 'Clique para marcar comissão como Paga/Repassada'}
+                                >
+                                  {proj.commissionPaid ? (
+                                    <>
+                                      <CheckCircle2 className="w-3.5 h-3.5 stroke-[2.5]" />
+                                      <span>Repassado</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                                      <span>Pagar Comissão</span>
+                                    </>
+                                  )}
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Registered Commission Expenses */}
+                  {partnerExpenses.length > 0 && (
+                    <div className="space-y-1.5 mb-2">
+                      <span className="text-[10px] font-semibold text-[#747878] uppercase tracking-widest block">
+                        Histórico de Despesas de Repasse ({partnerExpenses.length})
+                      </span>
+                      <div className="space-y-1 max-h-24 overflow-y-auto pr-1">
+                        {partnerExpenses.map((exp) => (
+                          <div key={exp.id} className="flex items-center justify-between text-[11px] bg-[#f7f3f2]/80 p-1.5 px-2.5 rounded-lg border border-[#c4c7c7]/20">
+                            <span className="truncate text-[#1c1b1b]">{exp.description}</span>
+                            <span className={`font-semibold shrink-0 ml-2 ${exp.paid ? 'text-[#1a6b3a]' : 'text-[#7a5400]'}`}>
+                              {formatCurrency(exp.amount, exp.currency)} {exp.paid ? '✓' : '(pendente)'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Footer WA Button */}
                 {partner.whatsapp && (
-                  <div className="pt-4 mt-4 border-t border-[#c4c7c7]/40">
+                  <div className="pt-4 mt-2 border-t border-[#c4c7c7]/40">
                     <button
                       onClick={() =>
                         onOpenWhatsAppCharge(
                           partner.whatsapp!,
-                          `Olá, ${partner.name}! Passando para conversar sobre as comissões pendentes.`
+                          `Olá, ${partner.name}! Passando para conversar sobre as comissões dos projetos indicados.`
                         )
                       }
-                      className="w-full py-2 px-3 bg-[#dbe1ff] hover:opacity-85 text-[#003da9] rounded-full text-xs font-semibold flex items-center justify-center space-x-1.5 transition-all cursor-pointer"
+                      className="w-full py-2 px-3 bg-[#f1edec] hover:bg-[#e5e2e1] text-[#1c1b1b] border border-[#c4c7c7]/40 rounded-full text-xs font-medium flex items-center justify-center space-x-1.5 transition-all cursor-pointer"
                     >
-                      <MessageCircle className="w-3.5 h-3.5" />
+                      <MessageCircle className="w-3.5 h-3.5 text-[#0050d7]" />
                       <span>Falar sobre Comissões</span>
                     </button>
                   </div>
