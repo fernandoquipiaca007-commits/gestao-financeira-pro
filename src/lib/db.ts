@@ -748,7 +748,7 @@ export async function updateUserRole(userId: string, role: UserRole): Promise<vo
   }
 }
 
-// Create user via Supabase Admin API (owner creates employees/admins)
+// Create user via Edge Function (uses Service Role Key without affecting owner session)
 export async function createCompanyUser(params: {
   email: string;
   password: string;
@@ -757,57 +757,32 @@ export async function createCompanyUser(params: {
   companyId: string;
 }): Promise<{ success: boolean; userId?: string; error?: string }> {
   try {
-    // Use signUp (we can't use Admin API directly from client SDK without service key)
-    // The user will be created and their profile linked at login, OR:
-    // We create the profile pre-emptively and the user logs in with the temp password
-    const { data, error } = await supabase.auth.admin.createUser({
-      email: params.email,
-      password: params.password,
-      email_confirm: true,
-      user_metadata: { name: params.name },
-    });
-
-    if (error || !data.user) {
-      // Fallback: try signUp
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+    const { data, error } = await supabase.functions.invoke('create-user', {
+      body: {
         email: params.email,
         password: params.password,
-        options: { data: { name: params.name } },
-      });
-      if (signUpError || !signUpData.user) {
-        return { success: false, error: signUpError?.message || 'Erro ao criar utilizador' };
-      }
-      // Create profile
-      await supabase.from('user_profiles').insert({
-        id: signUpData.user.id,
-        company_id: params.companyId,
-        email: params.email,
         name: params.name,
         role: params.role,
-        status: 'active',
-        must_change_password: true,
-      });
-      return { success: true, userId: signUpData.user.id };
-    }
-
-    // Create profile for admin-created user
-    await supabase.from('user_profiles').insert({
-      id: data.user.id,
-      company_id: params.companyId,
-      email: params.email,
-      name: params.name,
-      role: params.role,
-      status: 'active',
-      must_change_password: true,
+        companyId: params.companyId,
+      },
     });
 
-    return { success: true, userId: data.user.id };
+    if (error) {
+      return { success: false, error: error.message || 'Erro ao criar utilizador' };
+    }
+
+    if (!data?.success) {
+      return { success: false, error: data?.error || 'Erro ao criar utilizador' };
+    }
+
+    return { success: true, userId: data.userId };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Erro desconhecido';
     console.warn('[DB] createCompanyUser failed:', err);
     return { success: false, error: message };
   }
 }
+
 
 // ============================================================
 // RBAC — Permissions
