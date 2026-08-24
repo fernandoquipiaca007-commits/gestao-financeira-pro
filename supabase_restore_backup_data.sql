@@ -1,24 +1,53 @@
 -- ========================================================
 -- RESTAURAÇÃO DE DADOS DO BACKUP (23/08/2026)
--- Vincula todos os dados à empresa do Owner (fernandoquipiaca007@gmail.com)
+-- Adiciona colunas necessárias se não existirem e restaura
+-- todos os dados vinculados ao Owner (fernandoquipiaca007@gmail.com)
 -- ========================================================
 
+-- 0. Garantir extensões e colunas adicionais
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+ALTER TABLE public.clients ADD COLUMN IF NOT EXISTS company_id UUID;
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS company_id UUID;
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS rating INT DEFAULT 0;
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS partner_id VARCHAR(64);
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS partner_name VARCHAR(255);
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS commission_type VARCHAR(20) DEFAULT 'percent';
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS commission_value NUMERIC(15,2) DEFAULT 0;
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS commission_amount NUMERIC(15,2) DEFAULT 0;
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS commission_paid BOOLEAN DEFAULT false;
+
+ALTER TABLE public.incomes ADD COLUMN IF NOT EXISTS company_id UUID;
+ALTER TABLE public.incomes ADD COLUMN IF NOT EXISTS partner_id VARCHAR(64);
+ALTER TABLE public.incomes ADD COLUMN IF NOT EXISTS partner_name VARCHAR(255);
+ALTER TABLE public.incomes ADD COLUMN IF NOT EXISTS commission_amount NUMERIC(15,2) DEFAULT 0;
+ALTER TABLE public.incomes ADD COLUMN IF NOT EXISTS commission_paid BOOLEAN DEFAULT false;
+
+ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS company_id UUID;
+ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS partner_id VARCHAR(64);
+ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS partner_name VARCHAR(255);
+ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS receipt_url TEXT;
+
+ALTER TABLE public.partners ADD COLUMN IF NOT EXISTS company_id UUID;
+ALTER TABLE public.agenda_events ADD COLUMN IF NOT EXISTS company_id UUID;
+
+-- 1. Executar bloco de restauração
 DO $$
 DECLARE
   v_company_id UUID;
   v_owner_id UUID;
 BEGIN
-  -- 1. Obter ID do Owner e da Empresa
+  -- Obter ID do Owner
   SELECT id INTO v_owner_id FROM auth.users WHERE email = 'fernandoquipiaca007@gmail.com' LIMIT 1;
   
   IF v_owner_id IS NULL THEN
     RAISE EXCEPTION 'Utilizador fernandoquipiaca007@gmail.com não encontrado no auth.users';
   END IF;
 
+  -- Obter ou Criar Empresa
   SELECT company_id INTO v_company_id FROM public.user_profiles WHERE id = v_owner_id LIMIT 1;
 
   IF v_company_id IS NULL THEN
-    -- Criar empresa caso ainda não exista
     INSERT INTO public.companies (name, created_by)
     VALUES ('Studio Digital', v_owner_id)
     RETURNING id INTO v_company_id;
@@ -31,7 +60,7 @@ BEGIN
   RAISE NOTICE 'Restaurando dados para a Empresa: % (Owner: %)', v_company_id, v_owner_id;
 
   -- ========================================================
-  -- 2. RESTAURAR PARCEIROS
+  -- 2. RESTAURAR PARCEIROS (Jorge Reis)
   -- ========================================================
   INSERT INTO public.partners (id, company_id, name, whatsapp, email, default_commission_percent, notes, created_at)
   VALUES
@@ -86,6 +115,7 @@ BEGIN
     currency = EXCLUDED.currency,
     status = EXCLUDED.status,
     notes = EXCLUDED.notes,
+    rating = EXCLUDED.rating,
     partner_id = EXCLUDED.partner_id,
     partner_name = EXCLUDED.partner_name,
     commission_type = EXCLUDED.commission_type,
