@@ -7,3 +7,4 @@ coverage/
 .env*
 !.env.example
 stitch_buro_fintech_app/
+landing-page/

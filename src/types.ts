@@ -96,6 +96,9 @@ export interface Project {
   assignmentType?: 'company' | 'employee' | 'available';
   assignedTo?: string; // user_id do funcionário responsável
   assignedToName?: string;
+  // Invoice / Stripe
+  invoiceFooter?: string; // Rodapé personalizado da fatura (NIF, dados bancários, etc.)
+  invoiceNotes?: string;  // Descrição do serviço para fatura
 }
 
 export type IncomeStatus = 'Pendente' | 'Recebido' | 'Atrasado';
@@ -120,6 +123,13 @@ export interface Income {
   partnerName?: string;
   commissionAmount?: number;
   commissionPaid?: boolean;
+  // Stripe Invoice fields
+  stripeInvoiceId?: string;
+  stripeCustomerId?: string;
+  stripeInvoiceUrl?: string;   // hosted invoice URL
+  stripeInvoicePdf?: string;   // PDF download URL
+  stripeReceiptUrl?: string;   // receipt URL after payment
+  stripeStatus?: 'none' | 'draft' | 'open' | 'paid' | 'void' | 'uncollectible';
 }
 
 export type ExpenseCategory = 'Internet' | 'Hospedagem' | 'Domínio' | 'Publicidade' | 'Ferramentas' | 'Salário' | 'Retirada Própria' | 'Comissão Parceiro' | 'Outros';
