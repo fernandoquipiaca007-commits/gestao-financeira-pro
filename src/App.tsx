@@ -159,13 +159,13 @@ export default function App() {
   const [currencyFilter, setCurrencyFilter] = useState<CurrencyCode | 'ALL'>('ALL');
 
   // Core Data State
-  const [clients, setClients] = useState<Client[]>(getStoredClients);
-  const [projects, setProjects] = useState<Project[]>(getStoredProjects);
-  const [incomes, setIncomes] = useState<Income[]>(getStoredIncomes);
-  const [expenses, setExpenses] = useState<Expense[]>(getStoredExpenses);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [incomes, setIncomes] = useState<Income[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [categories, setCategories] = useState<CategoryItem[]>(getStoredCategories);
   const [agendaEvents, setAgendaEvents] = useState<AgendaEvent[]>([]);
-  const [partners, setPartners] = useState<Partner[]>(getStoredPartners);
+  const [partners, setPartners] = useState<Partner[]>([]);
   const [settings, setSettings] = useState<AppSettings>(getStoredSettings);
 
   // RBAC Data State
@@ -354,15 +354,20 @@ export default function App() {
       createdAt: isNew ? getTodayIso() : (clients.find((c) => c.id === clientId)?.createdAt || getTodayIso()),
     };
 
+    if (userProfile?.companyId) {
+      const result = await upsertClientToDb(newClient, userProfile.companyId);
+      if (!result.success) {
+        console.error('[App] handleSaveClient failed:', result.error);
+        alert(`Erro ao guardar cliente no servidor: ${result.error || 'Tente novamente.'}`);
+        return;
+      }
+    }
+
     const updated = isNew
       ? [newClient, ...clients]
       : clients.map((c) => (c.id === clientId ? newClient : c));
-
     setClients(updated);
     saveClients(updated);
-    if (userProfile?.companyId) {
-      await upsertClientToDb(newClient, userProfile.companyId);
-    }
 
     if (userProfile) {
       logAction({
@@ -376,6 +381,7 @@ export default function App() {
       });
     }
   };
+
 
   const handleDeleteClient = async (clientId: string) => {
     const client = clients.find((c) => c.id === clientId);
@@ -463,15 +469,20 @@ export default function App() {
         : (projects.find((p) => p.id === projectId)?.createdAt || getTodayIso()),
     };
 
+    if (userProfile?.companyId) {
+      const result = await upsertProjectToDb(newProject, userProfile.companyId);
+      if (!result.success) {
+        console.error('[App] handleSaveProject failed:', result.error);
+        alert(`Erro ao guardar projeto no servidor: ${result.error || 'Tente novamente.'}`);
+        return;
+      }
+    }
+
     const updatedProjects = isNew
       ? [newProject, ...projects]
       : projects.map((p) => (p.id === projectId ? newProject : p));
-
     setProjects(updatedProjects);
     saveProjects(updatedProjects);
-    if (userProfile?.companyId) {
-      await upsertProjectToDb(newProject, userProfile.companyId);
-    }
 
     if (isNew) {
       const initialIncomes: Income[] = [];
@@ -939,15 +950,20 @@ export default function App() {
         : (incomes.find((i) => i.id === incomeId)?.createdAt || getTodayIso()),
     };
 
+    if (userProfile?.companyId) {
+      const result = await upsertIncomeToDb(newIncome, userProfile.companyId);
+      if (!result.success) {
+        console.error('[App] handleSaveIncome failed:', result.error);
+        alert(`Erro ao guardar receita no servidor: ${result.error || 'Tente novamente.'}`);
+        return;
+      }
+    }
+
     const updated = isNew
       ? [newIncome, ...incomes]
       : incomes.map((i) => (i.id === incomeId ? newIncome : i));
-
     setIncomes(updated);
     saveIncomes(updated);
-    if (userProfile?.companyId) {
-      await upsertIncomeToDb(newIncome, userProfile.companyId);
-    }
 
     if (newIncome.projectId) {
       await syncProjectPaidAmountFromIncomes(newIncome.projectId, updated, projects);
@@ -1003,15 +1019,20 @@ export default function App() {
         : (expenses.find((e) => e.id === expenseId)?.createdAt || getTodayIso()),
     };
 
+    if (userProfile?.companyId) {
+      const result = await upsertExpenseToDb(newExpense, userProfile.companyId);
+      if (!result.success) {
+        console.error('[App] handleSaveExpense failed:', result.error);
+        alert(`Erro ao guardar despesa no servidor: ${result.error || 'Tente novamente.'}`);
+        return;
+      }
+    }
+
     const updated = isNew
       ? [newExpense, ...expenses]
       : expenses.map((e) => (e.id === expenseId ? newExpense : e));
-
     setExpenses(updated);
     saveExpenses(updated);
-    if (userProfile?.companyId) {
-      await upsertExpenseToDb(newExpense, userProfile.companyId);
-    }
   };
 
   const handleDeleteExpense = async (expenseId: string) => {
@@ -1117,14 +1138,21 @@ export default function App() {
       id: partnerId,
       createdAt: isNew ? getTodayIso() : (partners.find((p) => p.id === partnerId)?.createdAt || getTodayIso()),
     };
+
+    if (userProfile?.companyId) {
+      const result = await upsertPartnerToDb(newPartner, userProfile.companyId);
+      if (!result.success) {
+        console.error('[App] handleSavePartner failed:', result.error);
+        alert(`Erro ao guardar parceiro no servidor: ${result.error || 'Tente novamente.'}`);
+        return;
+      }
+    }
+
     const updated = isNew
       ? [newPartner, ...partners]
       : partners.map((p) => (p.id === partnerId ? newPartner : p));
     setPartners(updated);
     savePartners(updated);
-    if (userProfile?.companyId) {
-      await upsertPartnerToDb(newPartner, userProfile.companyId);
-    }
   };
 
   const handleDeletePartner = async (partnerId: string) => {

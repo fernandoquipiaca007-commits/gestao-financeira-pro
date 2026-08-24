@@ -13,8 +13,17 @@ import {
   Shield,
   KeyRound,
   Loader2,
+  Mail,
+  Eye,
+  EyeOff,
+  Send,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
 import { AppSettings, CurrencyCode, CURRENCIES } from '../types';
+import { EmailNotificationToggles } from '../types/email';
+import { DEFAULT_EMAIL_SETTINGS } from '../lib/storage';
+import { sendTestEmail } from '../lib/emailTemplates';
 import { ROLE_LABELS, ROLE_COLORS } from '../types/rbac';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -48,13 +57,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [rateUsd, setRateUsd] = useState(settings.exchangeRates?.USD || 0.18);
   const [rateEur, setRateEur] = useState(settings.exchangeRates?.EUR || 0.16);
 
-  const [savedSuccess, setSavedSuccess] = useState(false);
-
-  // Password change state
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [passLoading, setPassLoading] = useState(false);
-  const [passMessage, setPassMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  // Resend Email Settings State
+  const initialEmail = settings.emailSettings || DEFAULT_EMAIL_SETTINGS;
+  const [resendApiKey, setResendApiKey] = useState(initialEmail.apiKey || '');
+  const [resendFromEmail, setResendFromEmail] = useState(initialEmail.fromEmail || 'GestãoFO <notificacoes@resend.dev>');
+  const [resendReplyTo, setResendReplyTo] = useState(initialEmail.replyTo || '');
+  const [resendEnabled, setResendEnabled] = useState(initialEmail.enabled ?? true);
+  const [emailToggles, setEmailToggles] = useState<EmailNotificationToggles>(
+    initialEmail.toggles || DEFAULT_EMAIL_SETTINGS.toggles
+  );
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [testEmailLoading, setTestEmailLoading] = useState(false);
+  const [testEmailStatus, setTestEmailStatus] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,9 +83,47 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         USD: Number(rateUsd) || 0.18,
         EUR: Number(rateEur) || 0.16,
       },
+      emailSettings: {
+        apiKey: resendApiKey.trim(),
+        fromEmail: resendFromEmail.trim(),
+        replyTo: resendReplyTo.trim(),
+        enabled: resendEnabled,
+        toggles: emailToggles,
+      },
     });
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);
+  };
+
+  const handleToggleEvent = (key: keyof EmailNotificationToggles) => {
+    setEmailToggles((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
+  const handleTestEmail = async () => {
+    setTestEmailStatus(null);
+    if (!resendApiKey.trim()) {
+      setTestEmailStatus({ text: 'Por favor, introduza a sua API Key do Resend antes de testar.', type: 'error' });
+      return;
+    }
+
+    setTestEmailLoading(true);
+    try {
+      const adminEmail = userProfile?.email || 'admin@gestaofo.com';
+      const result = await sendTestEmail(adminEmail);
+
+      if (result.success) {
+        setTestEmailStatus({ text: `E-mail de teste enviado com sucesso para ${adminEmail}!`, type: 'success' });
+      } else {
+        setTestEmailStatus({ text: result.error || 'Erro ao enviar e-mail de teste.', type: 'error' });
+      }
+    } catch (err: any) {
+      setTestEmailStatus({ text: err?.message || 'Erro ao conectar com a API do Resend.', type: 'error' });
+    } finally {
+      setTestEmailLoading(false);
+    }
   };
 
   const handlePasswordChange = async (e: React.FormEvent) => {

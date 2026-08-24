@@ -26,6 +26,28 @@ const expensesKey = () => `gfo_expenses_v1_${_currentUserId}`;
 const settingsKey = () => `gfo_settings_v1_${_currentUserId}`;
 const partnersKey = () => `gfo_partners_v1_${_currentUserId}`;
 
+import { ResendEmailSettings } from '../types/email';
+
+export const DEFAULT_EMAIL_SETTINGS: ResendEmailSettings = {
+  apiKey: (import.meta as any).env?.VITE_RESEND_API_KEY || '',
+  fromEmail: 'GestãoFO <notificacoes@resend.dev>',
+  fromName: 'GestãoFO',
+  replyTo: '',
+  enabled: true,
+  toggles: {
+    clientPaymentReminder: true,
+    clientReceipt: true,
+    clientProjectUpdate: true,
+    employeeProjectAssigned: true,
+    employeeTaskAssigned: true,
+    employeeTaskDueAlert: true,
+    employeeWelcome: true,
+    adminBillingRequestAlert: true,
+    employeeBillingStatusAlert: true,
+    systemAlertDueDates: true,
+  },
+};
+
 const DEFAULT_SETTINGS: AppSettings = {
   defaultCurrency: 'BRL',
   userName: 'Gestor',
@@ -36,6 +58,7 @@ const DEFAULT_SETTINGS: AppSettings = {
     USD: 0.18,
     EUR: 0.16,
   },
+  emailSettings: DEFAULT_EMAIL_SETTINGS,
 };
 
 export function getTodayIso(): string {

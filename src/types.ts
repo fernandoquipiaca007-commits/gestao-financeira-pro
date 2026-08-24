@@ -164,6 +164,8 @@ export interface AgendaEvent {
   createdAt: string;
 }
 
+import { ResendEmailSettings } from './types/email';
+
 export interface AppSettings {
   defaultCurrency: CurrencyCode;
   userName: string;
@@ -174,6 +176,7 @@ export interface AppSettings {
     USD: number; // e.g. 0.18 USD per 1 BRL
     EUR: number; // e.g. 0.16 EUR per 1 BRL
   };
+  emailSettings?: ResendEmailSettings;
 }
 
 export interface NotificationItem {

@@ -153,7 +153,9 @@ export const Quick10SecSummary: React.FC<Quick10SecSummaryProps> = ({
   const totalPaidExpensesAllTime = calculateTotalSmart(allPaidExpensesItems).raw;
   const totalPaidCommissionsAllTime = calculateTotalSmart(allPaidCommissionsItems).raw;
   const realCashBalanceRaw = totalReceivedAllTime - totalPaidExpensesAllTime - totalPaidCommissionsAllTime;
-  const realCashBalanceFormatted = formatCurrency(realCashBalanceRaw, dominantCurrency);
+  const isNegativeBalance = realCashBalanceRaw < 0;
+  const displayBalanceRaw = isNegativeBalance ? 0 : realCashBalanceRaw;
+  const realCashBalanceFormatted = formatCurrency(displayBalanceRaw, dominantCurrency);
 
   // 10. Repasses a Parceiros (Comissões Pendentes)
   const pendingCommissionsItems = filteredProjects
@@ -363,9 +365,15 @@ export const Quick10SecSummary: React.FC<Quick10SecSummaryProps> = ({
               <Wallet className="w-3.5 h-3.5" />
             </div>
           </div>
-          <div className={`text-2xl font-medium tracking-[-0.04em] ${realCashBalanceRaw >= 0 ? 'text-[#1a6b3a]' : 'text-[#ba1a1a]'}`} style={{ letterSpacing: '-0.055em' }}>
+          <div className="text-2xl font-medium text-[#1a6b3a] tracking-[-0.04em]" style={{ letterSpacing: '-0.055em' }}>
             {realCashBalanceFormatted}
           </div>
+          {isNegativeBalance && (
+            <p className="text-[11px] text-[#ba1a1a] font-medium mt-1 flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" />
+              Saldo negativo — verifique receitas e despesas
+            </p>
+          )}
           <div className="text-xs text-[#747878] mt-2 flex items-center justify-between border-t border-[#c4c7c7]/30 pt-2">
             <span>Disponível hoje</span>
             {onOpenNewExpenseModal && (
