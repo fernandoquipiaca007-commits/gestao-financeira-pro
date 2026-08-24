@@ -4,6 +4,10 @@
 -- https://supabase.com/dashboard/project/ixwcdkkskhcmwdopexwt/sql
 -- ========================================================
 
+-- Garantir extensão de UUID
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
 -- 1. FUNÇÃO RPC COM SECURITY DEFINER (Bypassa RLS de forma segura para o cadastro público)
 CREATE OR REPLACE FUNCTION public.submit_landing_lead(
   p_name TEXT,
@@ -24,6 +28,7 @@ DECLARE
   v_client_id VARCHAR(64);
   v_notif_id VARCHAR(64);
   v_company_id UUID;
+  v_raw_uuid TEXT;
 BEGIN
   -- Obter a company_id da empresa ativa
   SELECT id INTO v_company_id FROM public.companies ORDER BY created_at ASC LIMIT 1;
@@ -33,8 +38,15 @@ BEGIN
     SELECT company_id INTO v_company_id FROM public.user_profiles WHERE company_id IS NOT NULL LIMIT 1;
   END IF;
 
-  -- Gerar ID único para o cliente
-  v_client_id := 'client_' || replace(uuid_generate_v4()::text, '-', '');
+  -- Gerar identificadores únicos usando gen_random_uuid nativo
+  BEGIN
+    v_raw_uuid := replace(gen_random_uuid()::text, '-', '');
+  EXCEPTION WHEN OTHERS THEN
+    v_raw_uuid := replace(uuid_generate_v4()::text, '-', '');
+  END;
+
+  v_client_id := 'client_' || v_raw_uuid;
+  v_notif_id := 'notif_' || v_raw_uuid;
 
   -- 1. Inserir na tabela de clientes
   INSERT INTO public.clients (
@@ -65,7 +77,6 @@ BEGIN
   );
 
   -- 2. Inserir notificação para o gestor / admin
-  v_notif_id := 'notif_' || replace(uuid_generate_v4()::text, '-', '');
   INSERT INTO public.notifications (
     id,
     company_id,
@@ -85,7 +96,7 @@ BEGIN
     v_company_id,
     'new_lead',
     '🚀 Novo Lead Captado na Landing Page!',
-    'Cliente ' || TRIM(p_name) || COALESCE(' (' || NULLIF(TRIM(p_company), '') || ')', '') || ' solicitou serviço: ' || p_type || '. WhatsApp: ' || TRIM(p_whatsapp),
+    'Cliente ' || TRIM(p_name) || COALESCE(' (' || NULLIF(TRIM(p_company), '') || ')', '') || ' solicitou: ' || p_type || '. WhatsApp: ' || TRIM(p_whatsapp),
     CURRENT_DATE,
     v_client_id,
     'Olá ' || TRIM(p_name) || ', recebemos sua solicitação na Codeengine!',
@@ -98,6 +109,7 @@ BEGIN
   RETURN jsonb_build_object(
     'success', true,
     'client_id', v_client_id,
+    'notification_id', v_notif_id,
     'company_id', v_company_id
   );
 EXCEPTION WHEN OTHERS THEN
@@ -108,7 +120,7 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$;
 
--- Conceder permissão de execução para a chave anon (pública) e authenticated
+-- Conceder permissão de execução para todas as roles
 GRANT EXECUTE ON FUNCTION public.submit_landing_lead(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT) TO anon;
 GRANT EXECUTE ON FUNCTION public.submit_landing_lead(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.submit_landing_lead(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT) TO service_role;

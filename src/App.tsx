@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   LayoutDashboard,
   Calendar as CalendarIcon,
@@ -138,6 +138,23 @@ import { UsersView } from './components/UsersView';
 import { AuditLogView } from './components/AuditLogView';
 import { LandingPageView } from './components/LandingPageView';
 import { NotificationsModal } from './components/NotificationsModal';
+
+const getStoredDismissedNotifs = (): string[] => {
+  try {
+    const raw = localStorage.getItem('gestao_dismissed_notifications');
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveStoredDismissedNotifs = (ids: string[]) => {
+  try {
+    localStorage.setItem('gestao_dismissed_notifications', JSON.stringify(ids));
+  } catch (e) {
+    console.warn('Failed to save dismissed notifications:', e);
+  }
+};
 import { GlobalSearchModal } from './components/GlobalSearchModal';
 import { SendEmailModal } from './components/modals/SendEmailModal';
 
@@ -288,15 +305,38 @@ export default function App() {
   };
 
   const [dbNotifications, setDbNotifications] = useState<NotificationItem[]>([]);
+  const [dismissedNotifIds, setDismissedNotifIds] = useState<string[]>(getStoredDismissedNotifs);
 
   const handleMarkNotificationAsRead = async (notifId: string) => {
+    setDismissedNotifIds((prev) => {
+      const next = Array.from(new Set([...prev, notifId]));
+      saveStoredDismissedNotifs(next);
+      return next;
+    });
     setDbNotifications((prev) => prev.filter((n) => n.id !== notifId));
     await markNotificationAsReadInDb(notifId);
   };
 
-  // Computed & Database Notifications (Landing page leads + Due dates)
-  const computedNotifs = computeNotifications(clients, projects, incomes, expenses);
-  const notifications: NotificationItem[] = [...dbNotifications, ...computedNotifs];
+  const handleMarkAllNotificationsAsRead = async () => {
+    const computedNotifs = computeNotifications(clients, projects, incomes, expenses);
+    const combined = [...dbNotifications, ...computedNotifs];
+    const allIds = combined.map((n) => n.id);
+
+    setDismissedNotifIds(allIds);
+    saveStoredDismissedNotifs(allIds);
+
+    for (const n of dbNotifications) {
+      await markNotificationAsReadInDb(n.id);
+    }
+    setDbNotifications([]);
+  };
+
+  // Active Computed & Database Notifications (filtered by non-dismissed & unread)
+  const notifications: NotificationItem[] = useMemo(() => {
+    const computedNotifs = computeNotifications(clients, projects, incomes, expenses);
+    const combined = [...dbNotifications, ...computedNotifs];
+    return combined.filter((n) => !dismissedNotifIds.includes(n.id) && !n.read);
+  }, [clients, projects, incomes, expenses, dbNotifications, dismissedNotifIds]);
 
   // ------------------------------------------------------------------
   // Initial Data Fetch & Synchronization
@@ -410,22 +450,62 @@ export default function App() {
   useEffect(() => {
     if (!userSession) return;
 
+    // Gracefully ask for browser notification permission
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
+    const playNotificationSound = () => {
+      try {
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioContextClass) return;
+        const ctx = new AudioContextClass();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+        osc.frequency.setValueAtTime(880, ctx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.35);
+      } catch {
+        // audio context not allowed yet
+      }
+    };
+
     const channel = supabase
       .channel('realtime_landing_leads_and_notifs')
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'clients' },
-        (payload) => {
+        (payload: any) => {
           console.log('[Realtime] Novo cliente recebido da Landing Page:', payload);
           loadDbData();
+          playNotificationSound();
+
+          const clientName = payload.new?.name || 'Cliente';
+          const clientType = payload.new?.type || 'Serviço';
+          sendWebPushNotification(`🚀 Novo Lead na Landing Page: ${clientName}`, {
+            body: `Solicitou [${clientType}]. WhatsApp: ${payload.new?.whatsapp || 'Disponível'}`,
+            tag: `client-${payload.new?.id || Date.now()}`,
+          });
         }
       )
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'notifications' },
-        (payload) => {
+        (payload: any) => {
           console.log('[Realtime] Nova notificação recebida:', payload);
           loadDbData();
+          playNotificationSound();
+
+          sendWebPushNotification(payload.new?.title || '🚀 Notificação do Sistema', {
+            body: payload.new?.message || 'Nova notificação recebida da Landing Page.',
+            tag: `notif-${payload.new?.id || Date.now()}`,
+          });
         }
       )
       .subscribe();
@@ -1863,6 +1943,7 @@ export default function App() {
         notifications={notifications}
         onOpenWhatsAppCharge={handleOpenWhatsAppCharge}
         onMarkAsRead={handleMarkNotificationAsRead}
+        onMarkAllAsRead={handleMarkAllNotificationsAsRead}
       />
 
       <GlobalSearchModal
