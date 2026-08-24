@@ -543,6 +543,16 @@ export default function App() {
           loadDbData();
         }
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'user_profiles' },
+        async () => {
+          if (userProfile?.companyId) {
+            const freshUsers = await fetchCompanyUsers(userProfile.companyId);
+            setCompanyUsers(freshUsers);
+          }
+        }
+      )
       .subscribe();
 
     return () => {

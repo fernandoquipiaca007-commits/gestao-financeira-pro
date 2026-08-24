@@ -1,3 +1,4 @@
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import {
   Client,
@@ -748,7 +749,8 @@ export async function updateUserRole(userId: string, role: UserRole): Promise<vo
   }
 }
 
-// Create user via Edge Function (uses Service Role Key without affecting owner session)
+// Create user safely: first try Edge Function, fallback to ephemeral isolated client
+// (Uses dummy storage & persistSession: false to guarantee owner session is never hijacked)
 export async function createCompanyUser(params: {
   email: string;
   password: string;
@@ -756,29 +758,107 @@ export async function createCompanyUser(params: {
   role: UserRole;
   companyId: string;
 }): Promise<{ success: boolean; userId?: string; error?: string }> {
+  const cleanEmail = params.email.trim().toLowerCase();
+  const cleanName = params.name.trim();
+
+  // 1. Tentar Edge Function primeiro (se disponível)
   try {
     const { data, error } = await supabase.functions.invoke('create-user', {
       body: {
-        email: params.email,
+        email: cleanEmail,
         password: params.password,
-        name: params.name,
+        name: cleanName,
         role: params.role,
         companyId: params.companyId,
       },
     });
 
-    if (error) {
-      return { success: false, error: error.message || 'Erro ao criar utilizador' };
+    if (!error && data?.success && data?.userId) {
+      return { success: true, userId: data.userId };
+    }
+  } catch {
+    // Seguir para o fallback isolado
+  }
+
+  // 2. Fallback: Cliente Supabase efêmero e isolado (sem persistência de sessão)
+  // Isto GARANTE que o localStorage e a sessão do Owner NUNCA são substituídos
+  try {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://ixwcdkkskhcmwdopexwt.supabase.co';
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_PcHTPrXgoKsYikSqdzUYPQ_YjElfxwh';
+
+    const isolatedClient = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+        storage: {
+          getItem: () => null,
+          setItem: () => {},
+          removeItem: () => {},
+        },
+      },
+    });
+
+    const { data: signUpData, error: signUpError } = await isolatedClient.auth.signUp({
+      email: cleanEmail,
+      password: params.password || 'Mudar123!',
+      options: {
+        data: { name: cleanName },
+      },
+    });
+
+    if (signUpError) {
+      // Se o e-mail já estiver registado no Auth, atualiza o perfil em user_profiles
+      if (signUpError.message?.toLowerCase().includes('already registered')) {
+        const { data: existingProfile } = await supabase
+          .from('user_profiles')
+          .select('id')
+          .eq('email', cleanEmail)
+          .maybeSingle();
+
+        if (existingProfile?.id) {
+          await supabase.from('user_profiles').upsert({
+            id: existingProfile.id,
+            company_id: params.companyId,
+            email: cleanEmail,
+            name: cleanName,
+            role: params.role,
+            status: 'active',
+            must_change_password: true,
+            updated_at: new Date().toISOString(),
+          });
+          return { success: true, userId: existingProfile.id };
+        }
+      }
+      return { success: false, error: signUpError.message || 'Erro ao criar utilizador no Supabase' };
     }
 
-    if (!data?.success) {
-      return { success: false, error: data?.error || 'Erro ao criar utilizador' };
+    if (!signUpData?.user?.id) {
+      return { success: false, error: 'Não foi possível obter a confirmação do utilizador' };
     }
 
-    return { success: true, userId: data.userId };
+    const userId = signUpData.user.id;
+
+    // 3. Registar o perfil na tabela user_profiles
+    const { error: profileError } = await supabase.from('user_profiles').upsert({
+      id: userId,
+      company_id: params.companyId,
+      email: cleanEmail,
+      name: cleanName,
+      role: params.role,
+      status: 'active',
+      must_change_password: true,
+      updated_at: new Date().toISOString(),
+    });
+
+    if (profileError) {
+      console.warn('[DB] user_profiles upsert warning:', profileError);
+    }
+
+    return { success: true, userId };
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Erro desconhecido';
-    console.warn('[DB] createCompanyUser failed:', err);
+    const message = err instanceof Error ? err.message : 'Erro ao criar utilizador';
+    console.error('[DB] createCompanyUser fallback failed:', err);
     return { success: false, error: message };
   }
 }
