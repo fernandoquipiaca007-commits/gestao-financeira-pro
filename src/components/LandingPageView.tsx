@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import { Navbar } from '../../landing-page/src/components/Navbar';
-import { HeroSection } from '../../landing-page/src/components/HeroSection';
-import { MetricsBar } from '../../landing-page/src/components/MetricsBar';
-import { ServicesSection } from '../../landing-page/src/components/ServicesSection';
-import { LectureFunnelSpotlight } from '../../landing-page/src/components/LectureFunnelSpotlight';
-import { HowItWorksSection } from '../../landing-page/src/components/HowItWorksSection';
-import { FaqSection } from '../../landing-page/src/components/FaqSection';
-import { ContactForm } from '../../landing-page/src/components/ContactForm';
-import { Footer } from '../../landing-page/src/components/Footer';
-import { FloatingWhatsApp } from '../../landing-page/src/components/FloatingWhatsApp';
+import { Navbar } from './landing/Navbar';
+import { HeroSection } from './landing/HeroSection';
+import { MetricsBar } from './landing/MetricsBar';
+import { ServicesSection } from './landing/ServicesSection';
+import { LectureFunnelSpotlight } from './landing/LectureFunnelSpotlight';
+import { HowItWorksSection } from './landing/HowItWorksSection';
+import { FaqSection } from './landing/FaqSection';
+import { ContactForm } from './landing/ContactForm';
+import { Footer } from './landing/Footer';
+import { FloatingWhatsApp } from './landing/FloatingWhatsApp';
 import { ArrowLeft, ExternalLink, Globe, Sparkles, Layers } from 'lucide-react';
 
 interface LandingPageViewProps {
