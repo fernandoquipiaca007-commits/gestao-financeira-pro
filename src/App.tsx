@@ -212,15 +212,16 @@ export default function App() {
   const [userPermsList, setUserPermsList] = useState<
     Array<{ permissionId: string; scope: PermissionScope; granted: boolean }>
   >([]);
+  const [isDataSyncing, setIsDataSyncing] = useState(false);
 
   // Computed Notifications
   const notifications: NotificationItem[] = computeNotifications(clients, projects, incomes, expenses);
 
   // ------------------------------------------------------------------
-  // ------------------------------------------------------------------
   // Initial Data Fetch & Synchronization
   // ------------------------------------------------------------------
   const loadDbData = useCallback(async () => {
+    setIsDataSyncing(true);
     try {
       registerServiceWorker();
 
@@ -296,6 +297,8 @@ export default function App() {
       }
     } catch (err) {
       console.warn('Failed to sync data with Supabase on load:', err);
+    } finally {
+      setIsDataSyncing(false);
     }
   }, [userProfile?.companyId, userProfile?.id, isOwner, isAdmin]);
 
@@ -303,7 +306,7 @@ export default function App() {
     if (userSession) {
       loadDbData();
     }
-  }, [userSession, loadDbData]);
+  }, [userSession, userProfile?.companyId, loadDbData]);
 
   // Background Push Notification Poller
   useEffect(() => {
@@ -1260,6 +1263,8 @@ export default function App() {
         onOpenNewTaskModal={() => { setTaskToEdit(null); setIsTaskModalOpen(true); }}
         onOpenNewUserModal={() => { setUserToEdit(null); setIsUserModalOpen(true); }}
         onOpenNewBillingModal={() => { setBillingRequestToReview(null); setIsBillingModalOpen(true); }}
+        onSync={loadDbData}
+        isSyncing={isDataSyncing}
         activeTab={activeTab}
         setActiveTab={handleNavigateTab}
         toggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}

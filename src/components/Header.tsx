@@ -14,6 +14,7 @@ import {
   CheckSquare,
   UserPlus,
   FileText,
+  RefreshCw,
 } from 'lucide-react';
 import { CurrencyCode, CURRENCIES, UserSession } from '../types';
 import { ROLE_LABELS, ROLE_COLORS } from '../types/rbac';
@@ -33,12 +34,15 @@ interface HeaderProps {
   onOpenNewTaskModal?: () => void;
   onOpenNewUserModal?: () => void;
   onOpenNewBillingModal?: () => void;
+  onSync?: () => void;
+  isSyncing?: boolean;
   activeTab: string;
   setActiveTab: (tab: string) => void;
   toggleMobileMenu: () => void;
   userSession?: UserSession | null;
   onLogout?: () => void;
 }
+
 
 export const Header: React.FC<HeaderProps> = ({
   activeCurrencyFilter,
@@ -54,6 +58,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenNewTaskModal,
   onOpenNewUserModal,
   onOpenNewBillingModal,
+  onSync,
+  isSyncing,
   activeTab,
   setActiveTab,
   toggleMobileMenu,
@@ -187,6 +193,20 @@ export const Header: React.FC<HeaderProps> = ({
                   ))}
                 </select>
               </div>
+            )}
+
+            {/* Sync with Database Button */}
+            {onSync && (
+              <button
+                onClick={onSync}
+                disabled={isSyncing}
+                className={`p-2 rounded-full bg-[#f1edec] border border-[#c4c7c7]/35 hover:bg-[#ebe7e7] text-[#444747] hover:text-[#1c1b1b] transition-all cursor-pointer ${
+                  isSyncing ? 'opacity-60 cursor-not-allowed' : ''
+                }`}
+                title="Sincronizar com a Base de Dados"
+              >
+                <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin text-[#0050d7]' : ''}`} strokeWidth={1.5} />
+              </button>
             )}
 
             {/* Notifications Bell */}
