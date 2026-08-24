@@ -82,9 +82,11 @@ export function saveAgendaEvents(events: AgendaEvent[]): void {
 // SUPABASE SYNC OPERATIONS
 // ----------------------------------------------------
 
-export async function fetchClientsFromDb(): Promise<Client[]> {
+export async function fetchClientsFromDb(companyId?: string): Promise<Client[]> {
   try {
-    const { data, error } = await supabase.from('clients').select('*').order('created_at', { ascending: false });
+    let query = supabase.from('clients').select('*').order('created_at', { ascending: false });
+    if (companyId) query = query.eq('company_id', companyId);
+    const { data, error } = await query;
     if (error) throw error;
     const formatted: Client[] = (data || []).map((item) => ({
       id: item.id,
@@ -101,16 +103,18 @@ export async function fetchClientsFromDb(): Promise<Client[]> {
     saveClients(formatted);
     return formatted;
   } catch (err) {
-    console.warn('Supabase fetch clients failed, using local cache:', err);
+    console.warn('[DB] fetchClientsFromDb failed, using local cache:', err);
     return getStoredClients();
   }
 }
 
-export async function upsertClientToDb(client: Client): Promise<void> {
+
+export async function upsertClientToDb(client: Client, companyId: string): Promise<{ success: boolean; error?: string }> {
   saveClients([client, ...getStoredClients().filter(c => c.id !== client.id)]);
   try {
-    await supabase.from('clients').upsert({
+    const { error } = await supabase.from('clients').upsert({
       id: client.id,
+      company_id: companyId,
       name: client.name,
       company: client.company,
       whatsapp: client.whatsapp,
@@ -120,33 +124,45 @@ export async function upsertClientToDb(client: Client): Promise<void> {
       currency: client.currency,
       notes: client.notes,
     });
+    if (error) {
+      console.error('[DB] upsertClientToDb error:', error.message);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
   } catch (err) {
-    console.warn('Failed to sync client to Supabase:', err);
+    const msg = err instanceof Error ? err.message : 'Erro desconhecido';
+    console.error('[DB] upsertClientToDb exception:', msg);
+    return { success: false, error: msg };
   }
 }
 
-export async function deleteClientFromDb(clientId: string): Promise<void> {
+export async function deleteClientFromDb(clientId: string): Promise<{ success: boolean; error?: string }> {
   saveClients(getStoredClients().filter(c => c.id !== clientId));
   try {
-    await supabase.from('clients').delete().eq('id', clientId);
+    const { error } = await supabase.from('clients').delete().eq('id', clientId);
+    if (error) {
+      console.error('[DB] deleteClientFromDb error:', error.message);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
   } catch (err) {
-    console.warn('Failed to delete client from Supabase:', err);
+    const msg = err instanceof Error ? err.message : 'Erro desconhecido';
+    return { success: false, error: msg };
   }
 }
 
-export async function fetchProjectsFromDb(): Promise<Project[]> {
+
+export async function fetchProjectsFromDb(companyId?: string): Promise<Project[]> {
   try {
-    const { data, error } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
+    let query = supabase.from('projects').select('*').order('created_at', { ascending: false });
+    if (companyId) query = query.eq('company_id', companyId);
+    const { data, error } = await query;
     if (error) throw error;
-    
-    const storedLocal = getStoredProjects();
-    const storedMap = new Map(storedLocal.map((p) => [p.id, p]));
 
     const formatted: Project[] = (data || []).map((item) => {
-      const stored = storedMap.get(item.id);
       const parsedClientIds: string[] = Array.isArray(item.client_ids)
         ? item.client_ids
-        : (item.client_id ? [item.client_id] : (stored?.clientIds || []));
+        : (item.client_id ? [item.client_id] : []);
 
       return {
         id: item.id,
@@ -163,7 +179,7 @@ export async function fetchProjectsFromDb(): Promise<Project[]> {
         status: item.status || 'Em andamento',
         notes: item.notes || '',
         rating: Number(item.rating) || 0,
-        attachments: Array.isArray(item.attachments) ? item.attachments : (stored?.attachments || []),
+        attachments: Array.isArray(item.attachments) ? item.attachments : [],
         partnerId: item.partner_id || undefined,
         partnerName: item.partner_name || undefined,
         commissionType: item.commission_type || 'percent',
@@ -174,25 +190,24 @@ export async function fetchProjectsFromDb(): Promise<Project[]> {
       };
     });
 
-    const fetchedIds = new Set(formatted.map((p) => p.id));
-    const merged = [...formatted, ...storedLocal.filter((p) => !fetchedIds.has(p.id))];
-
-    saveProjects(merged);
-    return merged;
+    // BD é a fonte de verdade — não misturar com dados locais
+    saveProjects(formatted);
+    return formatted;
   } catch (err) {
-    console.warn('Supabase fetch projects failed, using local cache:', err);
+    console.warn('[DB] fetchProjectsFromDb failed, using local cache:', err);
     return getStoredProjects();
   }
 }
 
-export async function upsertProjectToDb(project: Project): Promise<void> {
+export async function upsertProjectToDb(project: Project, companyId: string): Promise<{ success: boolean; error?: string }> {
   const allProjects = getStoredProjects();
   const updatedProjects = [project, ...allProjects.filter((p) => p.id !== project.id)];
   saveProjects(updatedProjects);
 
   try {
-    const payloadWithClientIds = {
+    const payload = {
       id: project.id,
+      company_id: companyId,
       name: project.name,
       client_id: project.clientId || null,
       client_ids: project.clientIds && project.clientIds.length > 0 ? project.clientIds : [project.clientId],
@@ -215,69 +230,47 @@ export async function upsertProjectToDb(project: Project): Promise<void> {
       commission_paid: Boolean(project.commissionPaid),
     };
 
-    const { error } = await supabase.from('projects').upsert(payloadWithClientIds);
-
+    const { error } = await supabase.from('projects').upsert(payload);
     if (error) {
-      console.warn('Supabase upsert project with client_ids failed, retrying standard schema:', error);
-      const payloadStandard = {
-        id: project.id,
-        name: project.name,
-        client_id: project.clientId || null,
-        category: project.category,
-        total_amount: Number(project.totalAmount) || 0,
-        paid_amount: Number(project.paidAmount) || 0,
-        currency: project.currency,
-        start_date: project.startDate || null,
-        due_date: project.dueDate || null,
-        next_payment_date: project.nextPaymentDate || null,
-        status: project.status,
-        notes: project.notes || null,
-        partner_id: project.partnerId || null,
-        partner_name: project.partnerName || null,
-        commission_type: project.commissionType || 'percent',
-        commission_value: Number(project.commissionValue) || 0,
-        commission_amount: Number(project.commissionAmount) || 0,
-        commission_paid: Boolean(project.commissionPaid),
-      };
-      const { error: err2 } = await supabase.from('projects').upsert(payloadStandard);
+      // Retry without client_ids (schema compatibility)
+      const { error: err2 } = await supabase.from('projects').upsert({
+        ...payload,
+        client_ids: undefined,
+      });
       if (err2) {
-        console.warn('Supabase standard upsert project failed, retrying core schema:', err2);
-        const payloadCore = {
-          id: project.id,
-          name: project.name,
-          client_id: project.clientId || null,
-          category: project.category,
-          total_amount: Number(project.totalAmount) || 0,
-          paid_amount: Number(project.paidAmount) || 0,
-          currency: project.currency,
-          start_date: project.startDate || null,
-          due_date: project.dueDate || null,
-          status: project.status,
-          notes: project.notes || null,
-        };
-        const { error: err3 } = await supabase.from('projects').upsert(payloadCore);
-        if (err3) {
-          console.error('CRITICAL: Supabase core upsert project error:', err3);
-        }
+        console.error('[DB] upsertProjectToDb error:', err2.message);
+        return { success: false, error: err2.message };
       }
     }
+    return { success: true };
   } catch (err) {
-    console.warn('Failed to sync project to Supabase:', err);
+    const msg = err instanceof Error ? err.message : 'Erro desconhecido';
+    console.error('[DB] upsertProjectToDb exception:', msg);
+    return { success: false, error: msg };
   }
 }
 
-export async function deleteProjectFromDb(projectId: string): Promise<void> {
+export async function deleteProjectFromDb(projectId: string): Promise<{ success: boolean; error?: string }> {
   saveProjects(getStoredProjects().filter(p => p.id !== projectId));
   try {
-    await supabase.from('projects').delete().eq('id', projectId);
+    const { error } = await supabase.from('projects').delete().eq('id', projectId);
+    if (error) {
+      console.error('[DB] deleteProjectFromDb error:', error.message);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
   } catch (err) {
-    console.warn('Failed to delete project from Supabase:', err);
+    const msg = err instanceof Error ? err.message : 'Erro desconhecido';
+    return { success: false, error: msg };
   }
 }
 
-export async function fetchIncomesFromDb(): Promise<Income[]> {
+
+export async function fetchIncomesFromDb(companyId?: string): Promise<Income[]> {
   try {
-    const { data, error } = await supabase.from('incomes').select('*').order('created_at', { ascending: false });
+    let query = supabase.from('incomes').select('*').order('created_at', { ascending: false });
+    if (companyId) query = query.eq('company_id', companyId);
+    const { data, error } = await query;
     if (error) throw error;
     const formatted: Income[] = (data || []).map((item) => ({
       id: item.id,
@@ -300,16 +293,17 @@ export async function fetchIncomesFromDb(): Promise<Income[]> {
     saveIncomes(formatted);
     return formatted;
   } catch (err) {
-    console.warn('Supabase fetch incomes failed, using local cache:', err);
+    console.warn('[DB] fetchIncomesFromDb failed, using local cache:', err);
     return getStoredIncomes();
   }
 }
 
-export async function upsertIncomeToDb(income: Income): Promise<void> {
+export async function upsertIncomeToDb(income: Income, companyId: string): Promise<{ success: boolean; error?: string }> {
   saveIncomes([income, ...getStoredIncomes().filter(i => i.id !== income.id)]);
   try {
     const payload = {
       id: income.id,
+      company_id: companyId,
       client_id: income.clientId || null,
       project_id: income.projectId || null,
       description: income.description,
@@ -328,9 +322,10 @@ export async function upsertIncomeToDb(income: Income): Promise<void> {
 
     const { error } = await supabase.from('incomes').upsert(payload);
     if (error) {
-      console.warn('Supabase upsert income failed with full payload, retrying core schema:', error);
+      console.warn('[DB] upsertIncomeToDb standard failed, retrying core schema:', error.message);
       const payloadCore = {
         id: income.id,
+        company_id: companyId,
         client_id: income.clientId || null,
         project_id: income.projectId || null,
         description: income.description,
@@ -344,26 +339,38 @@ export async function upsertIncomeToDb(income: Income): Promise<void> {
       };
       const { error: err2 } = await supabase.from('incomes').upsert(payloadCore);
       if (err2) {
-        console.error('CRITICAL: Supabase core upsert income error:', err2);
+        console.error('[DB] CRITICAL: upsertIncomeToDb core error:', err2.message);
+        return { success: false, error: err2.message };
       }
     }
+    return { success: true };
   } catch (err) {
-    console.warn('Failed to sync income to Supabase:', err);
+    const msg = err instanceof Error ? err.message : 'Erro desconhecido';
+    console.error('[DB] upsertIncomeToDb exception:', msg);
+    return { success: false, error: msg };
   }
 }
 
-export async function deleteIncomeFromDb(incomeId: string): Promise<void> {
+export async function deleteIncomeFromDb(incomeId: string): Promise<{ success: boolean; error?: string }> {
   saveIncomes(getStoredIncomes().filter(i => i.id !== incomeId));
   try {
-    await supabase.from('incomes').delete().eq('id', incomeId);
+    const { error } = await supabase.from('incomes').delete().eq('id', incomeId);
+    if (error) {
+      console.error('[DB] deleteIncomeFromDb error:', error.message);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
   } catch (err) {
-    console.warn('Failed to delete income from Supabase:', err);
+    const msg = err instanceof Error ? err.message : 'Erro desconhecido';
+    return { success: false, error: msg };
   }
 }
 
-export async function fetchExpensesFromDb(): Promise<Expense[]> {
+export async function fetchExpensesFromDb(companyId?: string): Promise<Expense[]> {
   try {
-    const { data, error } = await supabase.from('expenses').select('*').order('created_at', { ascending: false });
+    let query = supabase.from('expenses').select('*').order('created_at', { ascending: false });
+    if (companyId) query = query.eq('company_id', companyId);
+    const { data, error } = await query;
     if (error) throw error;
     const formatted: Expense[] = (data || []).map((item) => ({
       id: item.id,
@@ -381,28 +388,51 @@ export async function fetchExpensesFromDb(): Promise<Expense[]> {
     saveExpenses(formatted);
     return formatted;
   } catch (err) {
-    console.warn('Supabase fetch expenses failed, using local cache:', err);
+    console.warn('[DB] fetchExpensesFromDb failed, using local cache:', err);
     return getStoredExpenses();
   }
 }
 
-export async function upsertExpenseToDb(expense: Expense): Promise<void> {
+export async function upsertExpenseToDb(expense: Expense, companyId: string): Promise<{ success: boolean; error?: string }> {
   saveExpenses([expense, ...getStoredExpenses().filter(e => e.id !== expense.id)]);
   try {
-    await supabase.from('expenses').upsert({
+    const { error } = await supabase.from('expenses').upsert({
       id: expense.id,
+      company_id: companyId,
       category: expense.category,
       description: expense.description,
       amount: expense.amount,
       currency: expense.currency,
       date: expense.date,
       paid: expense.paid,
-      partner_id: expense.partnerId,
-      partner_name: expense.partnerName,
-      receipt_url: expense.receiptUrl,
+      partner_id: expense.partnerId || null,
+      partner_name: expense.partnerName || null,
+      receipt_url: expense.receiptUrl || null,
     });
+    if (error) {
+      console.error('[DB] upsertExpenseToDb error:', error.message);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
   } catch (err) {
-    console.warn('Failed to sync expense to Supabase:', err);
+    const msg = err instanceof Error ? err.message : 'Erro desconhecido';
+    console.error('[DB] upsertExpenseToDb exception:', msg);
+    return { success: false, error: msg };
+  }
+}
+
+export async function deleteExpenseFromDb(expenseId: string): Promise<{ success: boolean; error?: string }> {
+  saveExpenses(getStoredExpenses().filter(e => e.id !== expenseId));
+  try {
+    const { error } = await supabase.from('expenses').delete().eq('id', expenseId);
+    if (error) {
+      console.error('[DB] deleteExpenseFromDb error:', error.message);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Erro desconhecido';
+    return { success: false, error: msg };
   }
 }
 
@@ -410,9 +440,11 @@ export async function upsertExpenseToDb(expense: Expense): Promise<void> {
 // PARTNER DB OPERATIONS
 // ----------------------------------------------------
 
-export async function fetchPartnersFromDb(): Promise<Partner[]> {
+export async function fetchPartnersFromDb(companyId?: string): Promise<Partner[]> {
   try {
-    const { data, error } = await supabase.from('partners').select('*').order('created_at', { ascending: false });
+    let query = supabase.from('partners').select('*').order('created_at', { ascending: false });
+    if (companyId) query = query.eq('company_id', companyId);
+    const { data, error } = await query;
     if (error) throw error;
     const formatted: Partner[] = (data || []).map((item) => ({
       id: item.id,
@@ -426,48 +458,59 @@ export async function fetchPartnersFromDb(): Promise<Partner[]> {
     savePartners(formatted);
     return formatted;
   } catch (err) {
-    console.warn('Supabase fetch partners failed, using local cache:', err);
+    console.warn('[DB] fetchPartnersFromDb failed, using local cache:', err);
     return getStoredPartners();
   }
 }
 
-export async function upsertPartnerToDb(partner: Partner): Promise<void> {
+export async function upsertPartnerToDb(partner: Partner, companyId: string): Promise<{ success: boolean; error?: string }> {
   savePartners([partner, ...getStoredPartners().filter(p => p.id !== partner.id)]);
   try {
-    await supabase.from('partners').upsert({
+    const { error } = await supabase.from('partners').upsert({
       id: partner.id,
+      company_id: companyId,
       name: partner.name,
-      whatsapp: partner.whatsapp,
-      email: partner.email,
+      whatsapp: partner.whatsapp || null,
+      email: partner.email || null,
       default_commission_percent: partner.defaultCommissionPercent,
-      notes: partner.notes,
+      notes: partner.notes || null,
     });
+    if (error) {
+      console.error('[DB] upsertPartnerToDb error:', error.message);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
   } catch (err) {
-    console.warn('Failed to sync partner to Supabase:', err);
+    const msg = err instanceof Error ? err.message : 'Erro desconhecido';
+    console.error('[DB] upsertPartnerToDb exception:', msg);
+    return { success: false, error: msg };
   }
 }
 
-export async function deletePartnerFromDb(partnerId: string): Promise<void> {
+export async function deletePartnerFromDb(partnerId: string): Promise<{ success: boolean; error?: string }> {
   savePartners(getStoredPartners().filter(p => p.id !== partnerId));
   try {
-    await supabase.from('partners').delete().eq('id', partnerId);
+    const { error } = await supabase.from('partners').delete().eq('id', partnerId);
+    if (error) {
+      console.error('[DB] deletePartnerFromDb error:', error.message);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
   } catch (err) {
-    console.warn('Failed to delete partner from Supabase:', err);
+    const msg = err instanceof Error ? err.message : 'Erro desconhecido';
+    return { success: false, error: msg };
   }
 }
 
-export async function deleteExpenseFromDb(expenseId: string): Promise<void> {
-  saveExpenses(getStoredExpenses().filter(e => e.id !== expenseId));
-  try {
-    await supabase.from('expenses').delete().eq('id', expenseId);
-  } catch (err) {
-    console.warn('Failed to delete expense from Supabase:', err);
-  }
-}
+// ----------------------------------------------------
+// AGENDA EVENTS DB OPERATIONS
+// ----------------------------------------------------
 
-export async function fetchAgendaEventsFromDb(): Promise<AgendaEvent[]> {
+export async function fetchAgendaEventsFromDb(companyId?: string): Promise<AgendaEvent[]> {
   try {
-    const { data, error } = await supabase.from('agenda_events').select('*').order('date', { ascending: true });
+    let query = supabase.from('agenda_events').select('*').order('date', { ascending: true });
+    if (companyId) query = query.eq('company_id', companyId);
+    const { data, error } = await query;
     if (error) throw error;
     const formatted: AgendaEvent[] = (data || []).map((item) => ({
       id: item.id,
@@ -485,39 +528,54 @@ export async function fetchAgendaEventsFromDb(): Promise<AgendaEvent[]> {
     saveAgendaEvents(formatted);
     return formatted;
   } catch (err) {
-    console.warn('Supabase fetch agenda failed, using local cache:', err);
+    console.warn('[DB] fetchAgendaEventsFromDb failed, using local cache:', err);
     return getStoredAgendaEvents();
   }
 }
 
-export async function upsertAgendaEventToDb(event: AgendaEvent): Promise<void> {
+export async function upsertAgendaEventToDb(event: AgendaEvent, companyId: string): Promise<{ success: boolean; error?: string }> {
   saveAgendaEvents([event, ...getStoredAgendaEvents().filter(e => e.id !== event.id)]);
   try {
-    await supabase.from('agenda_events').upsert({
+    const { error } = await supabase.from('agenda_events').upsert({
       id: event.id,
+      company_id: companyId,
       title: event.title,
       type: event.type,
       date: event.date,
-      time: event.time,
-      client_id: event.clientId,
-      project_id: event.projectId,
-      description: event.description,
+      time: event.time || null,
+      client_id: event.clientId || null,
+      project_id: event.projectId || null,
+      description: event.description || null,
       status: event.status,
       notify_push: event.notifyPush,
     });
+    if (error) {
+      console.error('[DB] upsertAgendaEventToDb error:', error.message);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
   } catch (err) {
-    console.warn('Failed to sync agenda event to Supabase:', err);
+    const msg = err instanceof Error ? err.message : 'Erro desconhecido';
+    console.error('[DB] upsertAgendaEventToDb exception:', msg);
+    return { success: false, error: msg };
   }
 }
 
-export async function deleteAgendaEventFromDb(eventId: string): Promise<void> {
+export async function deleteAgendaEventFromDb(eventId: string): Promise<{ success: boolean; error?: string }> {
   saveAgendaEvents(getStoredAgendaEvents().filter(e => e.id !== eventId));
   try {
-    await supabase.from('agenda_events').delete().eq('id', eventId);
+    const { error } = await supabase.from('agenda_events').delete().eq('id', eventId);
+    if (error) {
+      console.error('[DB] deleteAgendaEventFromDb error:', error.message);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
   } catch (err) {
-    console.warn('Failed to delete agenda event from Supabase:', err);
+    const msg = err instanceof Error ? err.message : 'Erro desconhecido';
+    return { success: false, error: msg };
   }
 }
+
 
 // ============================================================
 // RBAC — User Profiles

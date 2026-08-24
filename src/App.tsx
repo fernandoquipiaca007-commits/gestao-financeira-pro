@@ -217,20 +217,23 @@ export default function App() {
   const notifications: NotificationItem[] = computeNotifications(clients, projects, incomes, expenses);
 
   // ------------------------------------------------------------------
+  // ------------------------------------------------------------------
   // Initial Data Fetch & Synchronization
   // ------------------------------------------------------------------
   const loadDbData = useCallback(async () => {
     try {
       registerServiceWorker();
 
+      const cid = userProfile?.companyId;
+
       const [dbClients, dbProjects, dbIncomes, dbExpenses, dbEvents, dbPartners, liveRates] =
         await Promise.all([
-          fetchClientsFromDb(),
-          fetchProjectsFromDb(),
-          fetchIncomesFromDb(),
-          fetchExpensesFromDb(),
-          fetchAgendaEventsFromDb(),
-          fetchPartnersFromDb(),
+          fetchClientsFromDb(cid),
+          fetchProjectsFromDb(cid),
+          fetchIncomesFromDb(cid),
+          fetchExpensesFromDb(cid),
+          fetchAgendaEventsFromDb(cid),
+          fetchPartnersFromDb(cid),
           fetchLiveExchangeRates(),
         ]);
 
@@ -354,7 +357,9 @@ export default function App() {
 
     setClients(updated);
     saveClients(updated);
-    await upsertClientToDb(newClient);
+    if (userProfile?.companyId) {
+      await upsertClientToDb(newClient, userProfile.companyId);
+    }
 
     if (userProfile) {
       logAction({
@@ -436,7 +441,9 @@ export default function App() {
       );
       setProjects(updatedProjects);
       saveProjects(updatedProjects);
-      await upsertProjectToDb(updatedProject);
+      if (userProfile?.companyId) {
+        await upsertProjectToDb(updatedProject, userProfile.companyId);
+      }
     }
   };
 
@@ -459,7 +466,9 @@ export default function App() {
 
     setProjects(updatedProjects);
     saveProjects(updatedProjects);
-    await upsertProjectToDb(newProject);
+    if (userProfile?.companyId) {
+      await upsertProjectToDb(newProject, userProfile.companyId);
+    }
 
     if (isNew) {
       const initialIncomes: Income[] = [];
@@ -479,7 +488,9 @@ export default function App() {
           createdAt: getTodayIso(),
         };
         initialIncomes.push(paidIncome);
-        await upsertIncomeToDb(paidIncome);
+        if (userProfile?.companyId) {
+          await upsertIncomeToDb(paidIncome, userProfile.companyId);
+        }
       }
 
       const remainingAmount = newProject.totalAmount - newProject.paidAmount;
@@ -497,7 +508,9 @@ export default function App() {
           createdAt: getTodayIso(),
         };
         initialIncomes.push(pendingIncome);
-        await upsertIncomeToDb(pendingIncome);
+        if (userProfile?.companyId) {
+          await upsertIncomeToDb(pendingIncome, userProfile.companyId);
+        }
       }
 
       if (initialIncomes.length > 0) {
@@ -532,7 +545,9 @@ export default function App() {
     );
     setProjects(updatedProjects);
     saveProjects(updatedProjects);
-    await upsertProjectToDb(updatedProject);
+    if (userProfile?.companyId) {
+      await upsertProjectToDb(updatedProject, userProfile.companyId);
+    }
 
     // Update or create linked income as Recebido
     const projectIncomes = incomes.filter((i) => i.projectId === project.id);
@@ -544,7 +559,9 @@ export default function App() {
             status: 'Recebido',
             receivedDate: inc.receivedDate || getTodayIso(),
           };
-          upsertIncomeToDb(updatedInc);
+          if (userProfile?.companyId) {
+            upsertIncomeToDb(updatedInc, userProfile.companyId);
+          }
           return updatedInc;
         }
         return inc;
@@ -575,7 +592,9 @@ export default function App() {
     const updated = projects.map((p) => (p.id === project.id ? updatedProject : p));
     setProjects(updated);
     saveProjects(updated);
-    await upsertProjectToDb(updatedProject);
+    if (userProfile?.companyId) {
+      await upsertProjectToDb(updatedProject, userProfile.companyId);
+    }
   };
 
   const handleDeleteProject = async (projectId: string) => {
@@ -610,7 +629,7 @@ export default function App() {
   const handleAssumeProject = async (projectId: string): Promise<{ success: boolean; error?: string }> => {
     const res = await assumeAvailableProject(projectId);
     if (res.success) {
-      const dbProjects = await fetchProjectsFromDb();
+      const dbProjects = await fetchProjectsFromDb(userProfile?.companyId);
       if (dbProjects) {
         setProjects(dbProjects);
         saveProjects(dbProjects);
@@ -618,6 +637,7 @@ export default function App() {
     }
     return res;
   };
+
 
   // ------------------------------------------------------------------
   // CRUD Handlers: Tasks
@@ -754,9 +774,10 @@ export default function App() {
 
       // If approved, also reload incomes and projects because a new Income was generated
       if (data.status === 'Aprovada') {
+        const cid = userProfile.companyId;
         const [freshIncomes, freshProjects] = await Promise.all([
-          fetchIncomesFromDb(),
-          fetchProjectsFromDb(),
+          fetchIncomesFromDb(cid),
+          fetchProjectsFromDb(cid),
         ]);
         if (freshIncomes) {
           setIncomes(freshIncomes);
@@ -767,6 +788,7 @@ export default function App() {
           saveProjects(freshProjects);
         }
       }
+
 
       logAction({
         companyId: userProfile.companyId,
@@ -920,7 +942,9 @@ export default function App() {
 
     setIncomes(updated);
     saveIncomes(updated);
-    await upsertIncomeToDb(newIncome);
+    if (userProfile?.companyId) {
+      await upsertIncomeToDb(newIncome, userProfile.companyId);
+    }
 
     if (newIncome.projectId) {
       await syncProjectPaidAmountFromIncomes(newIncome.projectId, updated, projects);
@@ -954,7 +978,9 @@ export default function App() {
     const updated = incomes.map((i) => (i.id === income.id ? updatedIncome : i));
     setIncomes(updated);
     saveIncomes(updated);
-    await upsertIncomeToDb(updatedIncome);
+    if (userProfile?.companyId) {
+      await upsertIncomeToDb(updatedIncome, userProfile.companyId);
+    }
 
     if (income.projectId) {
       await syncProjectPaidAmountFromIncomes(income.projectId, updated, projects);
@@ -980,7 +1006,9 @@ export default function App() {
 
     setExpenses(updated);
     saveExpenses(updated);
-    await upsertExpenseToDb(newExpense);
+    if (userProfile?.companyId) {
+      await upsertExpenseToDb(newExpense, userProfile.companyId);
+    }
   };
 
   const handleDeleteExpense = async (expenseId: string) => {
@@ -1004,7 +1032,9 @@ export default function App() {
     const updated = expenses.map((e) => (e.id === expense.id ? updatedExpense : e));
     setExpenses(updated);
     saveExpenses(updated);
-    await upsertExpenseToDb(updatedExpense);
+    if (userProfile?.companyId) {
+      await upsertExpenseToDb(updatedExpense, userProfile.companyId);
+    }
   };
 
   const handleToggleProjectCommissionPaid = async (project: Project) => {
@@ -1014,7 +1044,9 @@ export default function App() {
     const updated = projects.map((p) => (p.id === project.id ? updatedProject : p));
     setProjects(updated);
     saveProjects(updated);
-    await upsertProjectToDb(updatedProject);
+    if (userProfile?.companyId) {
+      await upsertProjectToDb(updatedProject, userProfile.companyId);
+    }
   };
 
   // ------------------------------------------------------------------
@@ -1053,7 +1085,9 @@ export default function App() {
       ? [newEvent, ...agendaEvents]
       : agendaEvents.map((e) => (e.id === eventId ? newEvent : e));
     setAgendaEvents(updated);
-    await upsertAgendaEventToDb(newEvent);
+    if (userProfile?.companyId) {
+      await upsertAgendaEventToDb(newEvent, userProfile.companyId);
+    }
   };
 
   const handleDeleteAgendaEvent = async (eventId: string) => {
@@ -1067,7 +1101,9 @@ export default function App() {
     const nextStatus = evt.status === 'completed' ? 'pending' : 'completed';
     const updatedEvt: AgendaEvent = { ...evt, status: nextStatus };
     setAgendaEvents((prev) => prev.map((e) => (e.id === eventId ? updatedEvt : e)));
-    await upsertAgendaEventToDb(updatedEvt);
+    if (userProfile?.companyId) {
+      await upsertAgendaEventToDb(updatedEvt, userProfile.companyId);
+    }
   };
 
   const handleSavePartner = async (partnerData: Omit<Partner, 'id' | 'createdAt'> & { id?: string }) => {
@@ -1083,7 +1119,9 @@ export default function App() {
       : partners.map((p) => (p.id === partnerId ? newPartner : p));
     setPartners(updated);
     savePartners(updated);
-    await upsertPartnerToDb(newPartner);
+    if (userProfile?.companyId) {
+      await upsertPartnerToDb(newPartner, userProfile.companyId);
+    }
   };
 
   const handleDeletePartner = async (partnerId: string) => {
@@ -1096,40 +1134,69 @@ export default function App() {
   };
 
   const handleResetData = () => {
-    clearAllData();
-    window.location.reload();
+    if (window.confirm('Deseja recarregar o sistema e sincronizar com o servidor?')) {
+      clearAllData();
+      window.location.reload();
+    }
   };
 
   const handleClearData = () => {
-    clearAllData();
-    setClients([]);
-    setProjects([]);
-    setIncomes([]);
-    setExpenses([]);
-    setPartners([]);
-    setAgendaEvents([]);
-    setBillingRequests([]);
+    if (
+      window.confirm(
+        'ATENÇÃO: Deseja realmente limpar os dados locais do cache deste dispositivo? Os dados salvos no servidor permanecerão intactos.'
+      )
+    ) {
+      clearAllData();
+      setClients([]);
+      setProjects([]);
+      setIncomes([]);
+      setExpenses([]);
+      setPartners([]);
+      setAgendaEvents([]);
+      setBillingRequests([]);
+    }
   };
 
   const handleExportData = () => {
     exportBackupData();
   };
 
-  const handleImportData = (jsonStr: string) => {
+  const handleImportData = async (jsonStr: string) => {
     const success = importBackupData(jsonStr);
     if (success) {
-      setClients(getStoredClients());
-      setProjects(getStoredProjects());
-      setIncomes(getStoredIncomes());
-      setExpenses(getStoredExpenses());
+      const importedClients = getStoredClients();
+      const importedProjects = getStoredProjects();
+      const importedIncomes = getStoredIncomes();
+      const importedExpenses = getStoredExpenses();
+      const importedPartners = getStoredPartners();
+
+      setClients(importedClients);
+      setProjects(importedProjects);
+      setIncomes(importedIncomes);
+      setExpenses(importedExpenses);
       setCategories(getStoredCategories());
-      setPartners(getStoredPartners());
+      setPartners(importedPartners);
       setSettings(getStoredSettings());
-      alert('Dados restaurados com sucesso!');
+
+      // Sincronizar dados importados diretamente com o banco Supabase
+      const cid = userProfile?.companyId;
+      if (cid) {
+        try {
+          for (const c of importedClients) await upsertClientToDb(c, cid);
+          for (const p of importedProjects) await upsertProjectToDb(p, cid);
+          for (const i of importedIncomes) await upsertIncomeToDb(i, cid);
+          for (const e of importedExpenses) await upsertExpenseToDb(e, cid);
+          for (const pa of importedPartners) await upsertPartnerToDb(pa, cid);
+        } catch (err) {
+          console.warn('[Import] Erro na sincronização com o banco:', err);
+        }
+      }
+      alert('Dados restaurados e sincronizados com a base de dados com sucesso!');
     } else {
       alert('Erro ao importar arquivo de backup.');
     }
   };
+
 
   // ------------------------------------------------------------------
   // ROUTE GUARD

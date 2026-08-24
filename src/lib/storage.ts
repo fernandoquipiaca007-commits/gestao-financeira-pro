@@ -1,13 +1,43 @@
 import { Client, Project, Income, Expense, AppSettings, Partner } from '../types';
 
-const CLIENTS_KEY = 'gfo_clients_v1';
-const PROJECTS_KEY = 'gfo_projects_v1';
-const INCOMES_KEY = 'gfo_incomes_v1';
-const EXPENSES_KEY = 'gfo_expenses_v1';
-const SETTINGS_KEY = 'gfo_settings_v1';
-const PARTNERS_KEY = 'gfo_partners_v1';
+// ── Namespace isolado por utilizador ─────────────────────────────
+// Deve ser chamado imediatamente após o login, e limpo no logout.
+let _currentUserId: string = 'anonymous';
 
-// Get today's ISO date string YYYY-MM-DD
+export function setStorageUserId(userId: string): void {
+  _currentUserId = userId;
+}
+
+export function clearStorageForUser(userId: string): void {
+  const suffix = `_${userId}`;
+  const keysToRemove: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.endsWith(suffix)) keysToRemove.push(key);
+  }
+  keysToRemove.forEach((k) => localStorage.removeItem(k));
+}
+
+// Key factories ─ namespaced por userId, nunca globais
+const clientsKey  = () => `gfo_clients_v1_${_currentUserId}`;
+const projectsKey = () => `gfo_projects_v1_${_currentUserId}`;
+const incomesKey  = () => `gfo_incomes_v1_${_currentUserId}`;
+const expensesKey = () => `gfo_expenses_v1_${_currentUserId}`;
+const settingsKey = () => `gfo_settings_v1_${_currentUserId}`;
+const partnersKey = () => `gfo_partners_v1_${_currentUserId}`;
+
+const DEFAULT_SETTINGS: AppSettings = {
+  defaultCurrency: 'BRL',
+  userName: 'Gestor',
+  businessName: 'Studio Digital',
+  exchangeRates: {
+    BRL: 1,
+    AOA: 165,
+    USD: 0.18,
+    EUR: 0.16,
+  },
+};
+
 export function getTodayIso(): string {
   const d = new Date();
   const year = d.getFullYear();
@@ -25,100 +55,80 @@ export function addDaysIso(days: number): string {
   return `${year}-${month}-${day}`;
 }
 
-const DEFAULT_SETTINGS: AppSettings = {
-  defaultCurrency: 'BRL',
-  userName: 'Gestor',
-  businessName: 'Studio Digital',
-  exchangeRates: {
-    BRL: 1,
-    AOA: 165,
-    USD: 0.18,
-    EUR: 0.16,
-  },
-};
-
-// ==============================
-// LocalStorage CRUD (cache local)
-// ==============================
-
 export function getStoredClients(): Client[] {
   try {
-    const item = localStorage.getItem(CLIENTS_KEY);
+    const item = localStorage.getItem(clientsKey());
     if (item) return JSON.parse(item);
   } catch {}
   return [];
 }
 
 export function saveClients(clients: Client[]): void {
-  localStorage.setItem(CLIENTS_KEY, JSON.stringify(clients));
+  localStorage.setItem(clientsKey(), JSON.stringify(clients));
 }
 
 export function getStoredProjects(): Project[] {
   try {
-    const item = localStorage.getItem(PROJECTS_KEY);
+    const item = localStorage.getItem(projectsKey());
     if (item) return JSON.parse(item);
   } catch {}
   return [];
 }
 
 export function saveProjects(projects: Project[]): void {
-  localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+  localStorage.setItem(projectsKey(), JSON.stringify(projects));
 }
 
 export function getStoredIncomes(): Income[] {
   try {
-    const item = localStorage.getItem(INCOMES_KEY);
+    const item = localStorage.getItem(incomesKey());
     if (item) return JSON.parse(item);
   } catch {}
   return [];
 }
 
 export function saveIncomes(incomes: Income[]): void {
-  localStorage.setItem(INCOMES_KEY, JSON.stringify(incomes));
+  localStorage.setItem(incomesKey(), JSON.stringify(incomes));
 }
 
 export function getStoredExpenses(): Expense[] {
   try {
-    const item = localStorage.getItem(EXPENSES_KEY);
+    const item = localStorage.getItem(expensesKey());
     if (item) return JSON.parse(item);
   } catch {}
   return [];
 }
 
 export function saveExpenses(expenses: Expense[]): void {
-  localStorage.setItem(EXPENSES_KEY, JSON.stringify(expenses));
+  localStorage.setItem(expensesKey(), JSON.stringify(expenses));
 }
 
 export function getStoredSettings(): AppSettings {
   try {
-    const item = localStorage.getItem(SETTINGS_KEY);
+    const item = localStorage.getItem(settingsKey());
     if (item) return { ...DEFAULT_SETTINGS, ...JSON.parse(item) };
   } catch {}
-  return DEFAULT_SETTINGS;
+  return { ...DEFAULT_SETTINGS };
 }
 
 export function saveSettings(settings: AppSettings): void {
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  localStorage.setItem(settingsKey(), JSON.stringify(settings));
 }
 
 export function getStoredPartners(): Partner[] {
   try {
-    const item = localStorage.getItem(PARTNERS_KEY);
+    const item = localStorage.getItem(partnersKey());
     if (item) return JSON.parse(item);
   } catch {}
   return [];
 }
 
 export function savePartners(partners: Partner[]): void {
-  localStorage.setItem(PARTNERS_KEY, JSON.stringify(partners));
+  localStorage.setItem(partnersKey(), JSON.stringify(partners));
 }
 
 export function clearAllData(): void {
-  localStorage.removeItem(CLIENTS_KEY);
-  localStorage.removeItem(PROJECTS_KEY);
-  localStorage.removeItem(INCOMES_KEY);
-  localStorage.removeItem(EXPENSES_KEY);
-  localStorage.removeItem(PARTNERS_KEY);
+  clearStorageForUser(_currentUserId);
 }
 
 export function exportBackupData(): string {
@@ -131,7 +141,15 @@ export function exportBackupData(): string {
     expenses: getStoredExpenses(),
     settings: getStoredSettings(),
   };
-  return JSON.stringify(backup, null, 2);
+  const jsonStr = JSON.stringify(backup, null, 2);
+  const blob = new Blob([jsonStr], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `gestao_financeira_backup_${getTodayIso()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  return jsonStr;
 }
 
 export function importBackupData(jsonString: string): boolean {

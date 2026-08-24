@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { UserSession } from '../types';
 import { UserProfile, UserRole, PermissionScope, PermissionMap } from '../types/rbac';
 import { buildPermissionMap, hasPermission as checkPerm, getVisibleTabs } from '../lib/permissions';
+import { setStorageUserId, clearStorageForUser } from '../lib/storage';
 
 // ============================================================
 // AuthContext Types
@@ -132,6 +133,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const { data: { session } } = await supabase.auth.getSession();
 
       if (session?.user && mounted) {
+        setStorageUserId(session.user.id);
         const sess: UserSession = {
           id: session.user.id,
           email: session.user.email || '',
@@ -151,6 +153,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (!mounted) return;
 
       if (session?.user) {
+        setStorageUserId(session.user.id);
         const sess: UserSession = {
           id: session.user.id,
           email: session.user.email || '',
@@ -162,6 +165,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           await fetchProfileAndPermissions(session.user.id);
         }
       } else {
+        setStorageUserId('anonymous');
         setUserSession(null);
         setUserProfile(null);
         setPermissionMap(new Map());
@@ -179,6 +183,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Login (called after successful Supabase auth)
   // ------------------------------------------------------------------
   const login = useCallback(async (session: UserSession) => {
+    setStorageUserId(session.id);
     setUserSession(session);
     const profile = await fetchProfileAndPermissions(session.id);
 
@@ -193,15 +198,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Logout
   // ------------------------------------------------------------------
   const logout = useCallback(async () => {
+    const currentId = userSession?.id;
     await supabase.auth.signOut();
     setUserSession(null);
     setUserProfile(null);
     setPermissionMap(new Map());
-    // Limpar cache local
-    ['gfo_clients_v1', 'gfo_projects_v1', 'gfo_incomes_v1', 'gfo_expenses_v1', 'gfo_partners_v1'].forEach(
-      (key) => localStorage.removeItem(key)
-    );
-  }, []);
+    if (currentId) {
+      clearStorageForUser(currentId);
+    }
+    setStorageUserId('anonymous');
+  }, [userSession?.id]);
+
 
   // ------------------------------------------------------------------
   // Derived values
