@@ -13,6 +13,7 @@ import {
   Handshake,
   CheckSquare,
   UserPlus,
+  FileText,
 } from 'lucide-react';
 import { CurrencyCode, CURRENCIES, UserSession } from '../types';
 import { ROLE_LABELS, ROLE_COLORS } from '../types/rbac';
@@ -31,6 +32,7 @@ interface HeaderProps {
   onOpenNewPartnerModal?: () => void;
   onOpenNewTaskModal?: () => void;
   onOpenNewUserModal?: () => void;
+  onOpenNewBillingModal?: () => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
   toggleMobileMenu: () => void;
@@ -51,6 +53,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenNewPartnerModal,
   onOpenNewTaskModal,
   onOpenNewUserModal,
+  onOpenNewBillingModal,
   activeTab,
   setActiveTab,
   toggleMobileMenu,
@@ -63,6 +66,7 @@ export const Header: React.FC<HeaderProps> = ({
   const canCreateClient = isOwner || hasPermission('clients.create');
   const canCreateProject = isOwner || hasPermission('projects.create');
   const canCreateTask = isOwner || hasPermission('tasks.create');
+  const canCreateBilling = isOwner || hasPermission('billing.request');
   const canCreateFinancial = isOwner || hasPermission('financial.create');
   const canCreatePartner = isOwner || hasPermission('partners.create');
   const canCreateUser = isOwner || hasPermission('users.create');
@@ -234,6 +238,16 @@ export const Header: React.FC<HeaderProps> = ({
                         >
                           <CheckSquare className="w-4 h-4 text-[#003da9]" strokeWidth={1.5} />
                           <span className="font-medium text-sm">Nova Tarefa</span>
+                        </button>
+                      )}
+
+                      {canCreateBilling && onOpenNewBillingModal && (
+                        <button
+                          onClick={() => { setShowQuickAddDropdown(false); onOpenNewBillingModal(); }}
+                          className="w-full px-4 py-2 text-left hover:bg-[#f7f3f2] flex items-center space-x-3 transition-colors cursor-pointer text-[#1c1b1b]"
+                        >
+                          <FileText className="w-4 h-4 text-[#0050d7]" strokeWidth={1.5} />
+                          <span className="font-medium text-sm">Solicitar Faturamento</span>
                         </button>
                       )}
 

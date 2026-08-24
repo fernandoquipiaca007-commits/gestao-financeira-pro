@@ -45,6 +45,10 @@ export const ALL_PERMISSIONS: PermissionDefinition[] = [
   { id: 'tasks.delete',         resource: 'tasks',       action: 'delete',      label: 'Eliminar tarefas', scopeOptions: ['ALL'] },
   { id: 'tasks.assign',         resource: 'tasks',       action: 'assign',      label: 'Atribuir tarefas', scopeOptions: ['ALL'] },
   { id: 'tasks.complete',       resource: 'tasks',       action: 'complete',    label: 'Concluir tarefas', scopeOptions: ['ALL', 'ASSIGNED'] },
+  // Solicitações de Faturamento (Fase 2)
+  { id: 'billing.view',         resource: 'billing',     action: 'view',        label: 'Ver solicitações de faturamento', scopeOptions: ['ALL', 'OWN'] },
+  { id: 'billing.request',      resource: 'billing',     action: 'request',     label: 'Criar solicitações de faturamento', scopeOptions: ['ALL'] },
+  { id: 'billing.approve',      resource: 'billing',     action: 'approve',     label: 'Aprovar / Rejeitar faturamento', scopeOptions: ['ALL'] },
   // Financeiro
   { id: 'financial.view',       resource: 'financial',   action: 'view',        label: 'Ver receitas e despesas', scopeOptions: ['ALL'] },
   { id: 'financial.create',     resource: 'financial',   action: 'create',      label: 'Criar lançamentos', scopeOptions: ['ALL'] },
@@ -85,6 +89,7 @@ export const RESOURCE_LABELS: Record<string, string> = {
   clients:    'Clientes',
   projects:   'Projetos',
   tasks:      'Tarefas',
+  billing:    'Solicitações de Faturamento',
   financial:  'Financeiro',
   partners:   'Parceiros',
   calendar:   'Agenda',
@@ -116,6 +121,9 @@ export const ADMIN_DEFAULT_PERMISSIONS: Array<{ id: string; scope: PermissionSco
   { id: 'tasks.delete',         scope: 'ALL' },
   { id: 'tasks.assign',         scope: 'ALL' },
   { id: 'tasks.complete',       scope: 'ALL' },
+  { id: 'billing.view',         scope: 'ALL' },
+  { id: 'billing.request',      scope: 'ALL' },
+  { id: 'billing.approve',      scope: 'ALL' },
   { id: 'financial.view',       scope: 'ALL' },
   { id: 'financial.create',     scope: 'ALL' },
   { id: 'financial.edit',       scope: 'ALL' },
@@ -145,6 +153,8 @@ export const EMPLOYEE_DEFAULT_PERMISSIONS: Array<{ id: string; scope: Permission
   { id: 'tasks.view',       scope: 'ASSIGNED' },
   { id: 'tasks.edit',       scope: 'ASSIGNED' },
   { id: 'tasks.complete',   scope: 'ASSIGNED' },
+  { id: 'billing.view',     scope: 'OWN' },
+  { id: 'billing.request',  scope: 'ALL' },
   { id: 'calendar.view',    scope: 'ASSIGNED' },
   { id: 'calendar.create',  scope: 'ALL' },
   { id: 'calendar.edit',    scope: 'OWN' },
@@ -210,7 +220,7 @@ export function buildPermissionMap(
  */
 export function getVisibleTabs(role: UserRole, permMap: PermissionMap): string[] {
   if (role === 'owner') {
-    return ['dashboard', 'calendar', 'projects', 'tasks', 'clients', 'financial', 'partners', 'categories', 'reports', 'users', 'audit', 'settings'];
+    return ['dashboard', 'calendar', 'projects', 'tasks', 'billing', 'clients', 'financial', 'partners', 'categories', 'reports', 'users', 'audit', 'settings'];
   }
 
   const tabs: string[] = [];
@@ -219,6 +229,7 @@ export function getVisibleTabs(role: UserRole, permMap: PermissionMap): string[]
   if (hasPermission(role, permMap, 'calendar.view'))  tabs.push('calendar');
   if (hasPermission(role, permMap, 'projects.view'))  tabs.push('projects');
   if (hasPermission(role, permMap, 'tasks.view'))     tabs.push('tasks');
+  if (hasPermission(role, permMap, 'billing.view'))   tabs.push('billing');
   if (hasPermission(role, permMap, 'clients.view'))   tabs.push('clients');
   if (hasPermission(role, permMap, 'financial.view')) tabs.push('financial');
   if (hasPermission(role, permMap, 'partners.view'))  tabs.push('partners');

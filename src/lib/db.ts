@@ -9,6 +9,7 @@ import {
   AppSettings,
   NotificationItem,
   Partner,
+  CurrencyCode,
 } from '../types';
 import {
   UserProfile,
@@ -21,6 +22,7 @@ import {
   TaskPriority,
   ProjectAssignment,
   AuditLogEntry,
+  BillingRequest,
 } from '../types/rbac';
 import {
   getStoredClients,
@@ -984,4 +986,174 @@ export async function initializeOwnerCompany(params: {
     return null;
   }
 }
+
+// ============================================================
+// RBAC — Billing Requests (Fase 2)
+// ============================================================
+
+export async function fetchBillingRequests(
+  companyId: string,
+  userId?: string,
+  isOwnerOrAdmin?: boolean
+): Promise<BillingRequest[]> {
+  try {
+    let query = supabase
+      .from('billing_requests')
+      .select(`
+        *,
+        user_profiles!billing_requests_requested_by_fkey ( name ),
+        projects ( name, clients ( name ) )
+      `)
+      .eq('company_id', companyId)
+      .order('created_at', { ascending: false });
+
+    if (!isOwnerOrAdmin && userId) {
+      query = query.eq('requested_by', userId);
+    }
+
+    const { data, error } = await query;
+    if (error || !data) {
+      // Fallback without joins if foreign keys differ
+      const { data: rawData, error: rawError } = await supabase
+        .from('billing_requests')
+        .select('*')
+        .eq('company_id', companyId)
+        .order('created_at', { ascending: false });
+
+      if (rawError || !rawData) return [];
+      return rawData.map((d: any) => ({
+        id: d.id,
+        companyId: d.company_id,
+        projectId: d.project_id || undefined,
+        requestedBy: d.requested_by,
+        amount: Number(d.amount) || 0,
+        currency: d.currency || 'BRL',
+        description: d.description,
+        status: d.status,
+        reviewedBy: d.reviewed_by || undefined,
+        reviewedAt: d.reviewed_at || undefined,
+        reviewNotes: d.review_notes || undefined,
+        incomeId: d.income_id || undefined,
+        createdAt: d.created_at,
+        updatedAt: d.updated_at,
+      }));
+    }
+
+    return data.map((d: any) => ({
+      id: d.id,
+      companyId: d.company_id,
+      projectId: d.project_id || undefined,
+      projectName: d.projects?.name,
+      clientName: d.projects?.clients?.name,
+      requestedBy: d.requested_by,
+      requestedByName: d.user_profiles?.name,
+      amount: Number(d.amount) || 0,
+      currency: d.currency || 'BRL',
+      description: d.description,
+      status: d.status,
+      reviewedBy: d.reviewed_by || undefined,
+      reviewedAt: d.reviewed_at || undefined,
+      reviewNotes: d.review_notes || undefined,
+      incomeId: d.income_id || undefined,
+      createdAt: d.created_at,
+      updatedAt: d.updated_at,
+    }));
+  } catch (err) {
+    console.warn('[DB] fetchBillingRequests failed:', err);
+    return [];
+  }
+}
+
+export async function createBillingRequest(params: {
+  companyId: string;
+  projectId?: string;
+  requestedBy: string;
+  amount: number;
+  currency: CurrencyCode;
+  description: string;
+}): Promise<BillingRequest | null> {
+  try {
+    const { data, error } = await supabase
+      .from('billing_requests')
+      .insert({
+        company_id: params.companyId,
+        project_id: params.projectId || null,
+        requested_by: params.requestedBy,
+        amount: params.amount,
+        currency: params.currency,
+        description: params.description,
+        status: 'Solicitada',
+      })
+      .select()
+      .single();
+
+    if (error || !data) throw error;
+
+    return {
+      id: data.id,
+      companyId: data.company_id,
+      projectId: data.project_id || undefined,
+      requestedBy: data.requested_by,
+      amount: Number(data.amount) || 0,
+      currency: data.currency,
+      description: data.description,
+      status: data.status,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+    };
+  } catch (err) {
+    console.warn('[DB] createBillingRequest failed:', err);
+    return null;
+  }
+}
+
+export async function reviewBillingRequest(params: {
+  requestId: string;
+  status: 'Aprovada' | 'Rejeitada' | 'Em análise';
+  reviewerId: string;
+  notes?: string;
+}): Promise<{ success: boolean; incomeId?: string; error?: string }> {
+  try {
+    if (params.status === 'Aprovada') {
+      // Use database function for secure income generation and approval
+      const { data, error } = await supabase.rpc('approve_billing_request', {
+        p_request_id: params.requestId,
+        p_notes: params.notes || null,
+      });
+
+      if (error) throw error;
+      if (data && data.success === false) {
+        return { success: false, error: data.error };
+      }
+      return { success: true, incomeId: data?.income_id };
+    }
+
+    // Otherwise standard update (Rejeitada / Em análise)
+    const { error } = await supabase
+      .from('billing_requests')
+      .update({
+        status: params.status,
+        reviewed_by: params.reviewerId,
+        reviewed_at: new Date().toISOString(),
+        review_notes: params.notes || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', params.requestId);
+
+    if (error) throw error;
+    return { success: true };
+  } catch (err: unknown) {
+    console.warn('[DB] reviewBillingRequest failed:', err);
+    return { success: false, error: err instanceof Error ? err.message : 'Falha ao processar solicitação' };
+  }
+}
+
+export async function deleteBillingRequest(requestId: string): Promise<void> {
+  try {
+    await supabase.from('billing_requests').delete().eq('id', requestId);
+  } catch (err) {
+    console.warn('[DB] deleteBillingRequest failed:', err);
+  }
+}
+
 

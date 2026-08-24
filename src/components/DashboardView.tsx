@@ -25,6 +25,7 @@ import {
   Hand,
   Calendar,
   Building2,
+  FileText,
 } from 'lucide-react';
 import {
   Client,
@@ -50,6 +51,7 @@ interface DashboardViewProps {
   incomes: Income[];
   expenses: Expense[];
   tasks?: Task[];
+  billingRequests?: import('../types/rbac').BillingRequest[];
   settings: AppSettings;
   currencyFilter: CurrencyCode | 'ALL';
   onNavigateTab: (tab: string, filter?: string) => void;
@@ -66,6 +68,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   incomes,
   expenses,
   tasks = [],
+  billingRequests = [],
   settings,
   currencyFilter,
   onNavigateTab,
@@ -397,9 +400,39 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     );
   }
 
+  // Pending billing requests
+  const pendingBillingRequests = billingRequests.filter(
+    (r) => r.status === 'Solicitada' || r.status === 'Em análise'
+  );
+
   // Full Financial Dashboard for Owner / Admin with financial access
   return (
     <div className="space-y-8">
+      {/* Pending Billing Requests Alert Banner */}
+      {pendingBillingRequests.length > 0 && (
+        <div
+          onClick={() => onNavigateTab('billing', 'Solicitada')}
+          className="p-4 rounded-[22px] bg-[#fff3d6] border border-[#7a5400]/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer hover:bg-[#ffecc0] transition-all shadow-xs"
+        >
+          <div className="flex items-center space-x-3">
+            <div className="w-9 h-9 rounded-full bg-[#7a5400] text-white flex items-center justify-center shrink-0">
+              <FileText className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="font-semibold text-sm text-[#1c1b1b]">
+                {pendingBillingRequests.length} {pendingBillingRequests.length === 1 ? 'solicitação de faturamento pendente' : 'solicitações de faturamento pendentes'}
+              </div>
+              <div className="text-xs text-[#747878]">
+                Colaboradores enviaram pedidos de faturamento aguardando sua análise e aprovação.
+              </div>
+            </div>
+          </div>
+          <button className="px-4 py-2 bg-[#000000] text-white text-xs font-semibold rounded-full shrink-0 self-start sm:self-auto hover:opacity-85 transition-opacity">
+            Revisar Pedidos &rarr;
+          </button>
+        </div>
+      )}
+
       {/* 10-Second Executive Summary */}
       <Quick10SecSummary
         clients={clients}

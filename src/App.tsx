@@ -15,6 +15,7 @@ import {
   CheckSquare,
   UserCog,
   History,
+  FileText,
 } from 'lucide-react';
 import {
   Client,
@@ -35,6 +36,7 @@ import {
   TaskStatus,
   UserRole,
   PermissionScope,
+  BillingRequest,
 } from './types/rbac';
 import {
   getStoredClients,
@@ -87,6 +89,10 @@ import {
   updateTaskStatus,
   deleteTask,
   assumeAvailableProject,
+  fetchBillingRequests,
+  createBillingRequest,
+  reviewBillingRequest,
+  deleteBillingRequest,
 } from './lib/db';
 import { fetchLiveExchangeRates } from './lib/exchange';
 import {
@@ -105,6 +111,7 @@ import { DashboardView } from './components/DashboardView';
 import { CalendarView } from './components/CalendarView';
 import { ProjectsView } from './components/ProjectsView';
 import { TasksView } from './components/TasksView';
+import { BillingRequestsView } from './components/BillingRequestsView';
 import { ClientsView } from './components/ClientsView';
 import { FinancialView } from './components/FinancialView';
 import { CategoriesView } from './components/CategoriesView';
@@ -119,6 +126,7 @@ import { GlobalSearchModal } from './components/GlobalSearchModal';
 import { ClientModal } from './components/modals/ClientModal';
 import { ProjectModal } from './components/modals/ProjectModal';
 import { TaskModal } from './components/modals/TaskModal';
+import { BillingRequestModal } from './components/modals/BillingRequestModal';
 import { IncomeModal } from './components/modals/IncomeModal';
 import { ExpenseModal } from './components/modals/ExpenseModal';
 import { CategoryModal } from './components/modals/CategoryModal';
@@ -163,6 +171,7 @@ export default function App() {
   // RBAC Data State
   const [companyUsers, setCompanyUsers] = useState<UserProfile[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [billingRequests, setBillingRequests] = useState<BillingRequest[]>([]);
 
   // Modals & Drawers State
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -176,6 +185,9 @@ export default function App() {
 
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
+
+  const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
+  const [billingRequestToReview, setBillingRequestToReview] = useState<BillingRequest | null>(null);
 
   const [isIncomeModalOpen, setIsIncomeModalOpen] = useState(false);
   const [incomeToEdit, setIncomeToEdit] = useState<Income | null>(null);
@@ -268,19 +280,21 @@ export default function App() {
         });
       }
 
-      // If user has companyId, fetch company users and tasks
+      // If user has companyId, fetch company users, tasks and billing requests
       if (userProfile?.companyId) {
-        const [usersData, tasksData] = await Promise.all([
+        const [usersData, tasksData, billingData] = await Promise.all([
           fetchCompanyUsers(userProfile.companyId),
           fetchTasks(userProfile.companyId),
+          fetchBillingRequests(userProfile.companyId, userProfile.id, isOwner || isAdmin),
         ]);
         if (usersData) setCompanyUsers(usersData);
         if (tasksData) setTasks(tasksData);
+        if (billingData) setBillingRequests(billingData);
       }
     } catch (err) {
       console.warn('Failed to sync data with Supabase on load:', err);
     }
-  }, [userProfile?.companyId]);
+  }, [userProfile?.companyId, userProfile?.id, isOwner, isAdmin]);
 
   useEffect(() => {
     if (userSession) {
@@ -596,7 +610,6 @@ export default function App() {
   const handleAssumeProject = async (projectId: string): Promise<{ success: boolean; error?: string }> => {
     const res = await assumeAvailableProject(projectId);
     if (res.success) {
-      // Reload projects to reflect new assignment
       const dbProjects = await fetchProjectsFromDb();
       if (dbProjects) {
         setProjects(dbProjects);
@@ -679,6 +692,102 @@ export default function App() {
   };
 
   // ------------------------------------------------------------------
+  // CRUD Handlers: Billing Requests (Fase 2)
+  // ------------------------------------------------------------------
+  const handleCreateBillingRequest = async (data: {
+    projectId?: string;
+    amount: number;
+    currency: CurrencyCode;
+    description: string;
+  }) => {
+    if (!userProfile?.companyId) return;
+    const req = await createBillingRequest({
+      companyId: userProfile.companyId,
+      requestedBy: userProfile.id,
+      projectId: data.projectId,
+      amount: data.amount,
+      currency: data.currency,
+      description: data.description,
+    });
+
+    if (req) {
+      const enrichedReq: BillingRequest = {
+        ...req,
+        projectName: projects.find((p) => p.id === req.projectId)?.name,
+        requestedByName: userProfile.name,
+      };
+      setBillingRequests((prev) => [enrichedReq, ...prev]);
+
+      logAction({
+        companyId: userProfile.companyId,
+        userId: userProfile.id,
+        userName: userProfile.name,
+        userRole: userProfile.role,
+        action: 'billing.request',
+        resourceType: 'billing_request',
+        resourceId: req.id,
+      });
+    }
+  };
+
+  const handleReviewBillingRequest = async (data: {
+    requestId: string;
+    status: 'Aprovada' | 'Rejeitada' | 'Em análise';
+    notes?: string;
+  }) => {
+    if (!userProfile) return;
+    const res = await reviewBillingRequest({
+      requestId: data.requestId,
+      status: data.status,
+      reviewerId: userProfile.id,
+      notes: data.notes,
+    });
+
+    if (res.success) {
+      // Reload billing requests
+      const freshBilling = await fetchBillingRequests(
+        userProfile.companyId,
+        userProfile.id,
+        isOwner || isAdmin
+      );
+      setBillingRequests(freshBilling);
+
+      // If approved, also reload incomes and projects because a new Income was generated
+      if (data.status === 'Aprovada') {
+        const [freshIncomes, freshProjects] = await Promise.all([
+          fetchIncomesFromDb(),
+          fetchProjectsFromDb(),
+        ]);
+        if (freshIncomes) {
+          setIncomes(freshIncomes);
+          saveIncomes(freshIncomes);
+        }
+        if (freshProjects) {
+          setProjects(freshProjects);
+          saveProjects(freshProjects);
+        }
+      }
+
+      logAction({
+        companyId: userProfile.companyId,
+        userId: userProfile.id,
+        userName: userProfile.name,
+        userRole: userProfile.role,
+        action: data.status === 'Aprovada' ? 'billing.approve' : 'billing.review',
+        resourceType: 'billing_request',
+        resourceId: data.requestId,
+      });
+    } else {
+      throw new Error(res.error || 'Falha ao processar solicitação');
+    }
+  };
+
+  const handleDeleteBillingRequest = async (requestId: string) => {
+    setBillingRequests((prev) => prev.filter((r) => r.id !== requestId));
+    await deleteBillingRequest(requestId);
+  };
+
+  // ------------------------------------------------------------------
   // CRUD Handlers: Users & Permissions
   // ------------------------------------------------------------------
   const handleSaveUser = async (data: {
@@ -692,7 +801,6 @@ export default function App() {
     if (!userProfile?.companyId) return;
 
     if (!data.id) {
-      // Create new user
       const res = await createCompanyUser({
         email: data.email,
         password: data.password || 'Mudar123!',
@@ -705,7 +813,6 @@ export default function App() {
         throw new Error(res.error || 'Erro ao criar utilizador');
       }
 
-      // Reload users list
       const freshUsers = await fetchCompanyUsers(userProfile.companyId);
       setCompanyUsers(freshUsers);
 
@@ -719,7 +826,6 @@ export default function App() {
         resourceId: res.userId,
       });
     } else {
-      // Update existing user profile
       await updateUserProfile({
         id: data.id,
         companyId: userProfile.companyId,
@@ -1002,6 +1108,7 @@ export default function App() {
     setExpenses([]);
     setPartners([]);
     setAgendaEvents([]);
+    setBillingRequests([]);
   };
 
   const handleExportData = () => {
@@ -1042,12 +1149,17 @@ export default function App() {
     return <LoginView onLoginSuccess={login} />;
   }
 
+  const pendingBillingCount = billingRequests.filter(
+    (r) => r.status === 'Solicitada' || r.status === 'Em análise'
+  ).length;
+
   // Navigation Items Catalog
   const allNavItems = [
     { id: 'dashboard',  label: 'Painel Geral',       icon: LayoutDashboard },
     { id: 'calendar',   label: 'Agenda & Prazos',     icon: CalendarIcon, badge: agendaEvents.filter((e) => e.status === 'pending').length },
     { id: 'projects',   label: 'Projetos & Operações', icon: FolderKanban, badge: projects.filter((p) => p.status === 'Em andamento').length },
     { id: 'tasks',      label: 'Tarefas & Entregas',  icon: CheckSquare,  badge: tasks.filter((t) => t.status !== 'Concluída').length },
+    { id: 'billing',    label: 'Faturamento & Pedidos', icon: FileText,   badge: pendingBillingCount > 0 ? pendingBillingCount : undefined },
     { id: 'clients',    label: 'Clientes & Contas',   icon: Users,        badge: clients.length },
     { id: 'financial',  label: 'Transações Financeiras', icon: DollarSign, badge: incomes.filter((i) => i.status === 'Pendente').length },
     { id: 'partners',   label: 'Gestão de Parceiros', icon: Handshake,    badge: partners.length },
@@ -1080,6 +1192,7 @@ export default function App() {
         onOpenNewPartnerModal={() => { setPartnerToEdit(null); setIsPartnerModalOpen(true); }}
         onOpenNewTaskModal={() => { setTaskToEdit(null); setIsTaskModalOpen(true); }}
         onOpenNewUserModal={() => { setUserToEdit(null); setIsUserModalOpen(true); }}
+        onOpenNewBillingModal={() => { setBillingRequestToReview(null); setIsBillingModalOpen(true); }}
         activeTab={activeTab}
         setActiveTab={handleNavigateTab}
         toggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -1203,6 +1316,7 @@ export default function App() {
               incomes={incomes}
               expenses={expenses}
               tasks={tasks}
+              billingRequests={billingRequests}
               settings={settings}
               currencyFilter={currencyFilter}
               onNavigateTab={handleNavigateTab}
@@ -1262,6 +1376,16 @@ export default function App() {
               onDeleteTask={handleDeleteTask}
               onUpdateTaskStatus={handleUpdateTaskStatus}
               onAssignToMe={handleAssignTaskToMe}
+            />
+          )}
+
+          {activeTab === 'billing' && (
+            <BillingRequestsView
+              requests={billingRequests}
+              projects={projects}
+              onOpenNewRequestModal={() => { setBillingRequestToReview(null); setIsBillingModalOpen(true); }}
+              onOpenReviewModal={(r) => { setBillingRequestToReview(r); setIsBillingModalOpen(true); }}
+              onDeleteRequest={handleDeleteBillingRequest}
             />
           )}
 
@@ -1410,6 +1534,17 @@ export default function App() {
           canAssign={isOwner || hasPermission('tasks.assign')}
         />
       )}
+
+      <BillingRequestModal
+        isOpen={isBillingModalOpen}
+        onClose={() => setIsBillingModalOpen(false)}
+        onSave={handleCreateBillingRequest}
+        onReview={handleReviewBillingRequest}
+        projects={projects}
+        requestToReview={billingRequestToReview}
+        defaultCurrency={settings.defaultCurrency}
+        canApprove={isOwner || hasPermission('billing.approve')}
+      />
 
       <IncomeModal
         isOpen={isIncomeModalOpen}

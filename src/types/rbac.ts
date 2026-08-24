@@ -2,6 +2,8 @@
 // RBAC Types — Hierarquia de Acessos, Cargos e Permissões
 // ============================================================
 
+import { CurrencyCode } from '../types';
+
 export type UserRole = 'owner' | 'admin' | 'employee';
 export type PermissionScope = 'ALL' | 'ASSIGNED' | 'OWN' | 'TEAM';
 export type UserStatus = 'active' | 'suspended' | 'invited';
@@ -9,6 +11,8 @@ export type TaskStatus = 'Disponível' | 'Aguardando' | 'Em andamento' | 'Em rev
 export type TaskPriority = 'low' | 'normal' | 'high' | 'urgent';
 export type ProjectAssignmentType = 'company' | 'employee' | 'available';
 export type AuditResult = 'success' | 'error' | 'denied';
+
+export type BillingRequestStatus = 'Solicitada' | 'Em análise' | 'Aprovada' | 'Rejeitada' | 'Faturada';
 
 // ------------------------------------------------------------------
 // Perfil de Utilizador
@@ -101,6 +105,30 @@ export interface Task {
 }
 
 // ------------------------------------------------------------------
+// Solicitações de Faturamento (Fase 2)
+// ------------------------------------------------------------------
+export interface BillingRequest {
+  id: string;
+  companyId: string;
+  projectId?: string;
+  projectName?: string;
+  clientName?: string;
+  requestedBy: string;
+  requestedByName?: string;
+  amount: number;
+  currency: CurrencyCode;
+  description: string;
+  status: BillingRequestStatus;
+  reviewedBy?: string;
+  reviewedByName?: string;
+  reviewedAt?: string;
+  reviewNotes?: string;
+  incomeId?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+// ------------------------------------------------------------------
 // Log de Auditoria
 // ------------------------------------------------------------------
 export interface AuditLogEntry {
@@ -109,8 +137,8 @@ export interface AuditLogEntry {
   userId?: string;
   userName?: string;
   userRole?: UserRole;
-  action: string;          // ex: 'permission.grant', 'project.assume', 'user.suspend'
-  resourceType?: string;   // ex: 'project', 'user', 'task'
+  action: string;          // ex: 'permission.grant', 'project.assume', 'user.suspend', 'billing.approve'
+  resourceType?: string;   // ex: 'project', 'user', 'task', 'billing_request'
   resourceId?: string;
   changes?: Record<string, { old: unknown; new: unknown }>;
   result: AuditResult;
@@ -166,4 +194,12 @@ export const TASK_PRIORITY_COLORS: Record<TaskPriority, { bg: string; text: stri
   normal: { bg: '#f1edec', text: '#1c1b1b' },
   high:   { bg: '#fff3d6', text: '#7a5400' },
   urgent: { bg: '#ffdad6', text: '#ba1a1a' },
+};
+
+export const BILLING_STATUS_COLORS: Record<BillingRequestStatus, { bg: string; text: string }> = {
+  'Solicitada': { bg: '#fff3d6', text: '#7a5400' },
+  'Em análise': { bg: '#dbe1ff', text: '#003da9' },
+  'Aprovada':   { bg: '#d4eddf', text: '#1a6b3a' },
+  'Rejeitada':  { bg: '#ffdad6', text: '#ba1a1a' },
+  'Faturada':   { bg: '#e8d5f5', text: '#6b21a8' },
 };
