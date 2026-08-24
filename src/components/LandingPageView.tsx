@@ -5,8 +5,6 @@ import { MetricsBar } from '../../landing-page/src/components/MetricsBar';
 import { ServicesSection } from '../../landing-page/src/components/ServicesSection';
 import { LectureFunnelSpotlight } from '../../landing-page/src/components/LectureFunnelSpotlight';
 import { HowItWorksSection } from '../../landing-page/src/components/HowItWorksSection';
-import { RoiCalculator } from '../../landing-page/src/components/RoiCalculator';
-import { TestimonialsSection } from '../../landing-page/src/components/TestimonialsSection';
 import { FaqSection } from '../../landing-page/src/components/FaqSection';
 import { ContactForm } from '../../landing-page/src/components/ContactForm';
 import { Footer } from '../../landing-page/src/components/Footer';
@@ -54,8 +52,6 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onBackToDashbo
         <ServicesSection onSelectService={(s) => setSelectedService(s)} />
         <LectureFunnelSpotlight onSelectService={(s) => setSelectedService(s)} />
         <HowItWorksSection />
-        <RoiCalculator />
-        <TestimonialsSection />
         <ContactForm selectedServicePreset={selectedService} />
         <FaqSection />
       </main>
