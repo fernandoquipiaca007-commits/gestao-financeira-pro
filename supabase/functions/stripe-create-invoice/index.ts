@@ -8,7 +8,10 @@ const corsHeaders = {
 };
 
 function stripeAuthHeader() {
-  return { Authorization: `Bearer ${STRIPE_SECRET_KEY}`, 'Content-Type': 'application/x-www-form-urlencoded' };
+  return {
+    Authorization: `Bearer ${STRIPE_SECRET_KEY}`,
+    'Content-Type': 'application/x-www-form-urlencoded',
+  };
 }
 
 function encodeForm(obj) {
@@ -30,18 +33,18 @@ async function stripePost(path, body) {
     body: encodeForm(body),
   });
   const data = await r.json();
-  if (!r.ok) throw new Error(data?.error?.message || `Stripe error ${r.status}`);
+  if (!r.ok) throw new Error(data?.error?.message || `Stripe error ${r.status}: ${JSON.stringify(data)}`);
   return data;
 }
 
 async function supabaseUpdate(table, id, updates) {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
-      'apikey': SUPABASE_SERVICE_ROLE_KEY,
-      'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-      'Prefer': 'return=minimal',
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      Prefer: 'return=minimal',
     },
     body: JSON.stringify(updates),
   });
@@ -60,8 +63,8 @@ Deno.serve(async (req) => {
       clientEmail,
       clientName,
       clientWhatsapp,
-      amount,
-      currency,
+      amount,          // valor em unidade monetária (ex: 1500.00 BRL)
+      currency,        // 'BRL' | 'USD' | 'EUR'
       description,
       footerText,
       daysUntilDue,
@@ -76,25 +79,44 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 1. Buscar ou criar Customer
+    const stripeCurrency = String(currency).toLowerCase(); // 'brl', 'usd', 'eur'
+    const amountInCents = Math.round(Number(amount) * 100);
+
+    if (amountInCents <= 0) {
+      return new Response(
+        JSON.stringify({ error: 'O valor da fatura deve ser maior que zero.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ── 1. Buscar ou criar Customer com locale pt-BR ──────────────────────
     let customerId;
-    const search = await stripeGet(`/v1/customers?email=${encodeURIComponent(clientEmail)}&limit=1`);
+    const search = await stripeGet(
+      `/v1/customers?email=${encodeURIComponent(clientEmail)}&limit=1`
+    );
+
     if (search.data?.length > 0) {
       customerId = search.data[0].id;
+      // Actualizar nome e locale se necessário
+      const updateBody = { 'preferred_locales[0]': 'pt-BR' };
       if (clientName && search.data[0].name !== clientName) {
-        await stripePost(`/v1/customers/${customerId}`, { name: clientName });
+        updateBody.name = clientName;
       }
+      await stripePost(`/v1/customers/${customerId}`, updateBody);
     } else {
-      const customerBody = { email: clientEmail, 'metadata[gestao_project_id]': projectId || '' };
+      const customerBody = {
+        email: clientEmail,
+        'preferred_locales[0]': 'pt-BR',
+        'metadata[gestao_project_id]': projectId || '',
+        'metadata[gestao_company_id]': companyId || '',
+      };
       if (clientName) customerBody.name = clientName;
       if (clientWhatsapp) customerBody.phone = clientWhatsapp;
       const customer = await stripePost('/v1/customers', customerBody);
       customerId = customer.id;
     }
 
-    // 2. Invoice Item
-    const amountInCents = Math.round(Number(amount) * 100);
-    const stripeCurrency = String(currency).toLowerCase();
+    // ── 2. Criar Invoice Item com moeda correcta ──────────────────────────
     await stripePost('/v1/invoiceitems', {
       customer: customerId,
       amount: amountInCents,
@@ -102,27 +124,30 @@ Deno.serve(async (req) => {
       description: description || `Servico — ${projectId}`,
     });
 
-    // 3. Invoice
+    // ── 3. Criar Invoice (com moeda explícita e locale) ───────────────────
     const invoiceBody = {
       customer: customerId,
+      currency: stripeCurrency,           // ← CRÍTICO: garante que a invoice usa a mesma moeda
       collection_method: 'send_invoice',
       days_until_due: Number(daysUntilDue) || 15,
       'metadata[gestao_project_id]': projectId || '',
       'metadata[gestao_income_id]': incomeId || '',
+      'metadata[gestao_company_id]': companyId || '',
     };
     if (footerText) invoiceBody.footer = footerText;
+
     const invoice = await stripePost('/v1/invoices', invoiceBody);
 
-    // 4. Finalizar
+    // ── 4. Finalizar a fatura ─────────────────────────────────────────────
     const finalizedInvoice = await stripePost(`/v1/invoices/${invoice.id}/finalize`, {});
 
-    // 5. Enviar email
+    // ── 5. Enviar e-mail via Stripe (opcional) ────────────────────────────
     let sentInvoice = finalizedInvoice;
     if (sendEmailNow) {
       sentInvoice = await stripePost(`/v1/invoices/${invoice.id}/send`, {});
     }
 
-    // 6. Guardar no Supabase
+    // ── 6. Guardar no Supabase ────────────────────────────────────────────
     if (incomeId) {
       await supabaseUpdate('incomes', incomeId, {
         stripe_invoice_id: sentInvoice.id,
@@ -145,6 +170,7 @@ Deno.serve(async (req) => {
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
+
   } catch (err) {
     const msg = err?.message || 'Erro interno ao criar fatura';
     console.error('[stripe-create-invoice] Error:', msg);
