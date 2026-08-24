@@ -6,5 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
+supabase/.env
 stitch_buro_fintech_app/
 landing-page/
