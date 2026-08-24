@@ -1,19 +1,52 @@
-import Stripe from 'npm:stripe@14';
-import { createClient } from 'jsr:@supabase/supabase-js@2';
-
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
-  apiVersion: '2024-06-20',
-});
-
-const supabase = createClient(
-  Deno.env.get('SUPABASE_URL') ?? '',
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-);
+const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY') ?? '';
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+function stripeAuthHeader() {
+  return { Authorization: `Bearer ${STRIPE_SECRET_KEY}`, 'Content-Type': 'application/x-www-form-urlencoded' };
+}
+
+function encodeForm(obj) {
+  return Object.entries(obj)
+    .filter(([, v]) => v !== undefined && v !== null && v !== '')
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+    .join('&');
+}
+
+async function stripeGet(path) {
+  const r = await fetch(`https://api.stripe.com${path}`, { headers: stripeAuthHeader() });
+  return r.json();
+}
+
+async function stripePost(path, body) {
+  const r = await fetch(`https://api.stripe.com${path}`, {
+    method: 'POST',
+    headers: stripeAuthHeader(),
+    body: encodeForm(body),
+  });
+  const data = await r.json();
+  if (!r.ok) throw new Error(data?.error?.message || `Stripe error ${r.status}`);
+  return data;
+}
+
+async function supabaseUpdate(table, id, updates) {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_SERVICE_ROLE_KEY,
+      'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      'Prefer': 'return=minimal',
+    },
+    body: JSON.stringify(updates),
+  });
+  return r.ok;
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -27,16 +60,15 @@ Deno.serve(async (req) => {
       clientEmail,
       clientName,
       clientWhatsapp,
-      amount,           // valor em reais (ex: 600.00)
-      currency,         // 'BRL' | 'USD' | 'EUR'
-      description,      // descrição do serviço (item da fatura)
-      footerText,       // rodapé da fatura
-      daysUntilDue,     // 7 | 15 | 30 | 45 | 60
-      sendEmailNow,     // boolean — envia email automaticamente via Stripe?
+      amount,
+      currency,
+      description,
+      footerText,
+      daysUntilDue,
+      sendEmailNow,
       companyId,
     } = await req.json();
 
-    // Validação básica
     if (!clientEmail || !amount || !currency) {
       return new Response(
         JSON.stringify({ error: 'Campos obrigatórios em falta: clientEmail, amount, currency' }),
@@ -44,75 +76,61 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 1. Buscar ou criar Customer no Stripe
-    let customerId: string;
-    const existingCustomers = await stripe.customers.list({ email: clientEmail, limit: 1 });
-
-    if (existingCustomers.data.length > 0) {
-      customerId = existingCustomers.data[0].id;
-      // Actualizar nome se necessário
-      if (clientName && existingCustomers.data[0].name !== clientName) {
-        await stripe.customers.update(customerId, { name: clientName });
+    // 1. Buscar ou criar Customer
+    let customerId;
+    const search = await stripeGet(`/v1/customers?email=${encodeURIComponent(clientEmail)}&limit=1`);
+    if (search.data?.length > 0) {
+      customerId = search.data[0].id;
+      if (clientName && search.data[0].name !== clientName) {
+        await stripePost(`/v1/customers/${customerId}`, { name: clientName });
       }
     } else {
-      const customer = await stripe.customers.create({
-        email: clientEmail,
-        name: clientName || clientEmail,
-        phone: clientWhatsapp || undefined,
-        metadata: {
-          gestao_project_id: projectId || '',
-          gestao_company_id: companyId || '',
-        },
-      });
+      const customerBody = { email: clientEmail, 'metadata[gestao_project_id]': projectId || '' };
+      if (clientName) customerBody.name = clientName;
+      if (clientWhatsapp) customerBody.phone = clientWhatsapp;
+      const customer = await stripePost('/v1/customers', customerBody);
       customerId = customer.id;
     }
 
-    // 2. Converter valor para centavos (Stripe usa centavos)
+    // 2. Invoice Item
     const amountInCents = Math.round(Number(amount) * 100);
-    const stripeCurrency = currency.toLowerCase(); // 'brl', 'usd', 'eur'
-
-    // 3. Criar Invoice Item
-    await stripe.invoiceItems.create({
+    const stripeCurrency = String(currency).toLowerCase();
+    await stripePost('/v1/invoiceitems', {
       customer: customerId,
       amount: amountInCents,
       currency: stripeCurrency,
-      description: description || `Serviço — ${projectId}`,
+      description: description || `Servico — ${projectId}`,
     });
 
-    // 4. Criar Invoice
-    const invoice = await stripe.invoices.create({
+    // 3. Invoice
+    const invoiceBody = {
       customer: customerId,
       collection_method: 'send_invoice',
       days_until_due: Number(daysUntilDue) || 15,
-      footer: footerText || '',
-      metadata: {
-        gestao_project_id: projectId || '',
-        gestao_income_id: incomeId || '',
-        gestao_company_id: companyId || '',
-      },
-    });
+      'metadata[gestao_project_id]': projectId || '',
+      'metadata[gestao_income_id]': incomeId || '',
+    };
+    if (footerText) invoiceBody.footer = footerText;
+    const invoice = await stripePost('/v1/invoices', invoiceBody);
 
-    // 5. Finalizar a fatura (necessário antes de enviar ou obter PDF)
-    const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
+    // 4. Finalizar
+    const finalizedInvoice = await stripePost(`/v1/invoices/${invoice.id}/finalize`, {});
 
-    // 6. Enviar por email via Stripe se solicitado
+    // 5. Enviar email
     let sentInvoice = finalizedInvoice;
     if (sendEmailNow) {
-      sentInvoice = await stripe.invoices.sendInvoice(invoice.id);
+      sentInvoice = await stripePost(`/v1/invoices/${invoice.id}/send`, {});
     }
 
-    // 7. Guardar stripe_invoice_id e URLs na tabela incomes do Supabase
+    // 6. Guardar no Supabase
     if (incomeId) {
-      await supabase
-        .from('incomes')
-        .update({
-          stripe_invoice_id: sentInvoice.id,
-          stripe_customer_id: customerId,
-          stripe_invoice_url: sentInvoice.hosted_invoice_url,
-          stripe_invoice_pdf: sentInvoice.invoice_pdf,
-          stripe_status: sentInvoice.status,
-        })
-        .eq('id', incomeId);
+      await supabaseUpdate('incomes', incomeId, {
+        stripe_invoice_id: sentInvoice.id,
+        stripe_customer_id: customerId,
+        stripe_invoice_url: sentInvoice.hosted_invoice_url,
+        stripe_invoice_pdf: sentInvoice.invoice_pdf,
+        stripe_status: sentInvoice.status,
+      });
     }
 
     return new Response(
@@ -123,14 +141,15 @@ Deno.serve(async (req) => {
         invoicePdf: sentInvoice.invoice_pdf,
         customerId,
         status: sentInvoice.status,
-        emailSent: sendEmailNow ?? false,
+        emailSent: !!sendEmailNow,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
-  } catch (err: any) {
-    console.error('[stripe-create-invoice] Error:', err);
+  } catch (err) {
+    const msg = err?.message || 'Erro interno ao criar fatura';
+    console.error('[stripe-create-invoice] Error:', msg);
     return new Response(
-      JSON.stringify({ error: err.message || 'Erro interno ao criar fatura' }),
+      JSON.stringify({ error: msg }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

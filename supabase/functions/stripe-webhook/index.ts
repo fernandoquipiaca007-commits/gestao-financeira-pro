@@ -1,130 +1,129 @@
-import Stripe from 'npm:stripe@14';
-import { createClient } from 'jsr:@supabase/supabase-js@2';
+const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY') ?? '';
+const STRIPE_WEBHOOK_SECRET = Deno.env.get('STRIPE_WEBHOOK_SECRET') ?? '';
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
-  apiVersion: '2024-06-20',
-});
+async function verifyStripeSignature(payload, header, secret) {
+  try {
+    const parts = {};
+    for (const part of header.split(',')) {
+      const idx = part.indexOf('=');
+      if (idx > 0) parts[part.slice(0, idx).trim()] = part.slice(idx + 1).trim();
+    }
+    const timestamp = parts['t'];
+    const sig = parts['v1'];
+    if (!timestamp || !sig) return false;
+    const enc = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      'raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+    );
+    const buf = await crypto.subtle.sign('HMAC', key, enc.encode(`${timestamp}.${payload}`));
+    const computed = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    return computed === sig;
+  } catch { return false; }
+}
 
-const supabase = createClient(
-  Deno.env.get('SUPABASE_URL') ?? '',
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-);
+async function supabaseGet(table, query) {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, {
+    headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+  });
+  return r.json();
+}
+
+async function supabaseUpdate(table, id, updates) {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      Prefer: 'return=minimal',
+    },
+    body: JSON.stringify(updates),
+  });
+  return r.ok;
+}
+
+async function stripeGet(path) {
+  const r = await fetch(`https://api.stripe.com${path}`, {
+    headers: { Authorization: `Bearer ${STRIPE_SECRET_KEY}` },
+  });
+  return r.json();
+}
 
 Deno.serve(async (req) => {
-  // O Stripe envia o body como raw bytes — NÃO usar req.json()
   const body = await req.text();
   const signature = req.headers.get('stripe-signature') ?? '';
-  const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET') ?? '';
 
-  let event: Stripe.Event;
-  try {
-    event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
-  } catch (err: any) {
-    console.error('[stripe-webhook] Invalid signature:', err.message);
-    return new Response(`Webhook Error: ${err.message}`, { status: 400 });
+  const valid = await verifyStripeSignature(body, signature, STRIPE_WEBHOOK_SECRET);
+  if (!valid) {
+    console.error('[stripe-webhook] Invalid signature');
+    return new Response('Webhook Error: Invalid signature', { status: 400 });
   }
+
+  let event;
+  try { event = JSON.parse(body); }
+  catch { return new Response('Invalid JSON', { status: 400 }); }
 
   console.log(`[stripe-webhook] Event: ${event.type}`);
 
   try {
     if (event.type === 'invoice.paid') {
-      const invoice = event.data.object as Stripe.Invoice;
-      const gestaoIncomeId = invoice.metadata?.gestao_income_id;
-      const gestaoProjectId = invoice.metadata?.gestao_project_id;
+      const invoice = event.data.object;
+      const meta = invoice.metadata ?? {};
+      const gestaoIncomeId = meta.gestao_income_id;
+      const gestaoProjectId = meta.gestao_project_id;
 
-      // Obter URL do recibo (do charge)
-      let receiptUrl: string | null = null;
-      if (invoice.charge && typeof invoice.charge === 'string') {
+      let receiptUrl = null;
+      if (typeof invoice.charge === 'string' && invoice.charge) {
         try {
-          const charge = await stripe.charges.retrieve(invoice.charge);
+          const charge = await stripeGet(`/v1/charges/${invoice.charge}`);
           receiptUrl = charge.receipt_url ?? null;
-        } catch {}
+        } catch { /* ignore */ }
       }
 
-      // Actualizar a receita no Supabase
       if (gestaoIncomeId) {
-        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-        const { error } = await supabase
-          .from('incomes')
-          .update({
-            status: 'Recebido',
-            received_date: today,
-            stripe_status: 'paid',
-            stripe_receipt_url: receiptUrl,
-            stripe_invoice_pdf: invoice.invoice_pdf,
-            stripe_invoice_url: invoice.hosted_invoice_url,
-          })
-          .eq('id', gestaoIncomeId);
-
-        if (error) {
-          console.error('[stripe-webhook] Failed to update income:', error);
-        } else {
-          console.log(`[stripe-webhook] Income ${gestaoIncomeId} marked as Recebido`);
-        }
+        const today = new Date().toISOString().split('T')[0];
+        const ok = await supabaseUpdate('incomes', gestaoIncomeId, {
+          status: 'Recebido',
+          received_date: today,
+          stripe_status: 'paid',
+          stripe_receipt_url: receiptUrl,
+          stripe_invoice_pdf: invoice.invoice_pdf,
+          stripe_invoice_url: invoice.hosted_invoice_url,
+        });
+        console.log(`[stripe-webhook] Income ${gestaoIncomeId} updated: ${ok}`);
       }
 
-      // Actualizar paid_amount no projecto
-      if (gestaoProjectId && invoice.amount_paid) {
-        const paidAmount = invoice.amount_paid / 100; // converter de centavos para reais
-
-        // Buscar o projecto actual
-        const { data: project } = await supabase
-          .from('projects')
-          .select('paid_amount, total_amount')
-          .eq('id', gestaoProjectId)
-          .single();
-
-        if (project) {
-          const newPaidAmount = (project.paid_amount || 0) + paidAmount;
-          const isFullyPaid = newPaidAmount >= project.total_amount && project.total_amount > 0;
-
-          await supabase
-            .from('projects')
-            .update({
-              paid_amount: newPaidAmount,
-              status: isFullyPaid ? 'Concluído' : undefined,
-            })
-            .eq('id', gestaoProjectId);
-
-          console.log(`[stripe-webhook] Project ${gestaoProjectId} paid_amount updated to ${newPaidAmount}`);
+      if (gestaoProjectId && typeof invoice.amount_paid === 'number' && invoice.amount_paid > 0) {
+        const paidAmount = invoice.amount_paid / 100;
+        const rows = await supabaseGet('projects', `id=eq.${gestaoProjectId}&select=paid_amount,total_amount`);
+        if (rows?.[0]) {
+          const project = rows[0];
+          const newPaid = (project.paid_amount || 0) + paidAmount;
+          const isFullyPaid = newPaid >= project.total_amount && project.total_amount > 0;
+          await supabaseUpdate('projects', gestaoProjectId, {
+            paid_amount: newPaid,
+            ...(isFullyPaid ? { status: 'Concluído' } : {}),
+          });
         }
       }
     }
 
     if (event.type === 'invoice.payment_failed') {
-      const invoice = event.data.object as Stripe.Invoice;
-      const gestaoIncomeId = invoice.metadata?.gestao_income_id;
-
-      if (gestaoIncomeId) {
-        await supabase
-          .from('incomes')
-          .update({
-            status: 'Atrasado',
-            stripe_status: invoice.status ?? 'open',
-          })
-          .eq('id', gestaoIncomeId);
-
-        console.log(`[stripe-webhook] Income ${gestaoIncomeId} marked as Atrasado (payment failed)`);
-      }
+      const id = event.data.object?.metadata?.gestao_income_id;
+      if (id) await supabaseUpdate('incomes', id, { stripe_status: 'payment_failed' });
     }
 
     if (event.type === 'invoice.voided') {
-      const invoice = event.data.object as Stripe.Invoice;
-      const gestaoIncomeId = invoice.metadata?.gestao_income_id;
-
-      if (gestaoIncomeId) {
-        await supabase
-          .from('incomes')
-          .update({ stripe_status: 'void' })
-          .eq('id', gestaoIncomeId);
-      }
+      const id = event.data.object?.metadata?.gestao_income_id;
+      if (id) await supabaseUpdate('incomes', id, { stripe_status: 'void' });
     }
 
-    return new Response(JSON.stringify({ received: true }), {
-      headers: { 'Content-Type': 'application/json' },
-    });
-  } catch (err: any) {
-    console.error('[stripe-webhook] Processing error:', err);
-    return new Response(`Server Error: ${err.message}`, { status: 500 });
+    return new Response(JSON.stringify({ received: true }), { headers: { 'Content-Type': 'application/json' } });
+  } catch (err) {
+    const msg = err?.message || 'Erro interno';
+    console.error('[stripe-webhook] Error:', msg);
+    return new Response(JSON.stringify({ error: msg }), { status: 500 });
   }
 });
