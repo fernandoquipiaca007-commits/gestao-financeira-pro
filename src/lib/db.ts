@@ -205,6 +205,8 @@ export async function fetchProjectsFromDb(companyId?: string): Promise<Project[]
         commissionValue: Number(item.commission_value) || 0,
         commissionAmount: Number(item.commission_amount) || 0,
         commissionPaid: item.commission_paid || false,
+        invoiceFooter: item.invoice_footer || undefined,
+        invoiceNotes: item.invoice_notes || undefined,
         createdAt: item.created_at ? item.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
       };
     });
@@ -247,6 +249,8 @@ export async function upsertProjectToDb(project: Project, companyId: string): Pr
       commission_value: Number(project.commissionValue) || 0,
       commission_amount: Number(project.commissionAmount) || 0,
       commission_paid: Boolean(project.commissionPaid),
+      invoice_footer: project.invoiceFooter || null,
+      invoice_notes: project.invoiceNotes || null,
     };
 
     const { error } = await supabase.from('projects').upsert(payload);
@@ -316,6 +320,12 @@ export async function fetchIncomesFromDb(companyId?: string): Promise<Income[]> 
       partnerName: item.partner_name || undefined,
       commissionAmount: Number(item.commission_amount) || 0,
       commissionPaid: item.commission_paid || false,
+      stripeInvoiceId: item.stripe_invoice_id || undefined,
+      stripeCustomerId: item.stripe_customer_id || undefined,
+      stripeInvoiceUrl: item.stripe_invoice_url || undefined,
+      stripeInvoicePdf: item.stripe_invoice_pdf || undefined,
+      stripeReceiptUrl: item.stripe_receipt_url || undefined,
+      stripeStatus: item.stripe_status || undefined,
       createdAt: item.created_at ? item.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
     }));
     saveIncomes(formatted);
@@ -347,6 +357,12 @@ export async function upsertIncomeToDb(income: Income, companyId: string): Promi
       partner_name: income.partnerName || null,
       commission_amount: Number(income.commissionAmount) || 0,
       commission_paid: Boolean(income.commissionPaid),
+      stripe_invoice_id: income.stripeInvoiceId || null,
+      stripe_customer_id: income.stripeCustomerId || null,
+      stripe_invoice_url: income.stripeInvoiceUrl || null,
+      stripe_invoice_pdf: income.stripeInvoicePdf || null,
+      stripe_receipt_url: income.stripeReceiptUrl || null,
+      stripe_status: income.stripeStatus || null,
     };
 
     const { error } = await supabase.from('incomes').upsert(payload);

@@ -48,6 +48,10 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   const [commissionValue, setCommissionValue] = useState<number>(10);
   const [commissionPaid, setCommissionPaid] = useState(false);
 
+  // Invoice / Stripe Customization State
+  const [invoiceNotes, setInvoiceNotes] = useState('');
+  const [invoiceFooter, setInvoiceFooter] = useState('');
+
   // RBAC Assignment State
   const [assignmentType, setAssignmentType] = useState<ProjectAssignmentType>('company');
   const [assignedTo, setAssignedTo] = useState<string>('');
@@ -75,6 +79,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       setCommissionType(projectToEdit.commissionType || 'percent');
       setCommissionValue(projectToEdit.commissionValue ?? 10);
       setCommissionPaid(projectToEdit.commissionPaid || false);
+      setInvoiceNotes(projectToEdit.invoiceNotes || '');
+      setInvoiceFooter(projectToEdit.invoiceFooter || '');
       setAssignmentType(projectToEdit.assignmentType || 'company');
       setAssignedTo(projectToEdit.assignedTo || '');
     } else {
@@ -103,6 +109,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       setCommissionType('percent');
       setCommissionValue(10);
       setCommissionPaid(false);
+      setInvoiceNotes('');
+      setInvoiceFooter('');
       setAssignmentType('company');
       setAssignedTo('');
     }
@@ -212,6 +220,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       commissionValue: hasPartner ? Number(commissionValue) || 0 : undefined,
       commissionAmount: hasPartner ? calculatedCommission : undefined,
       commissionPaid: hasPartner ? commissionPaid : undefined,
+      invoiceNotes: invoiceNotes.trim() || undefined,
+      invoiceFooter: invoiceFooter.trim() || undefined,
       assignmentType,
       assignedTo: assignmentType === 'employee' ? assignedTo : undefined,
       assignedToName: assignmentType === 'employee' ? employees.find(e => e.id === assignedTo)?.name : undefined,
@@ -631,6 +641,40 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                 ))}
               </div>
             )}
+          </div>
+
+          {/* Section: Dados Padrão para Fatura Stripe */}
+          <div className="p-4 bg-[#f7f3f2] border border-[#c4c7c7]/30 rounded-[16px] space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-[#1c1b1b] flex items-center gap-1.5">
+                <FileText className="w-4 h-4 text-[#635bff]" /> Dados para Faturas Stripe (Opcional)
+              </label>
+              <span className="text-[11px] text-[#747878]">Preenchimento automático na fatura</span>
+            </div>
+            <div>
+              <label className="text-[10px] font-semibold text-[#747878] uppercase tracking-wider block mb-1">
+                Descrição do Serviço (Item na fatura)
+              </label>
+              <input
+                type="text"
+                value={invoiceNotes}
+                onChange={(e) => setInvoiceNotes(e.target.value)}
+                placeholder="Ex: Gestão de Tráfego Pago - 1º Mês"
+                className="w-full bg-white border border-[#c4c7c7]/35 rounded-xl px-3 py-2 text-xs text-[#1c1b1b] focus:outline-none focus:border-[#635bff]/60 transition-all"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-semibold text-[#747878] uppercase tracking-wider block mb-1">
+                Rodapé Padrão da Fatura (PIX, CNPJ, dados bancários)
+              </label>
+              <textarea
+                value={invoiceFooter}
+                onChange={(e) => setInvoiceFooter(e.target.value)}
+                rows={2}
+                placeholder="Ex: Chave PIX: contato@empresa.com | CNPJ: 00.000.000/0001-00"
+                className="w-full bg-white border border-[#c4c7c7]/35 rounded-xl px-3 py-2 text-xs text-[#1c1b1b] focus:outline-none focus:border-[#635bff]/60 resize-none transition-all"
+              />
+            </div>
           </div>
 
           <div className="p-4 bg-[#f7f3f2] border border-[#c4c7c7]/30 rounded-[16px] space-y-3">

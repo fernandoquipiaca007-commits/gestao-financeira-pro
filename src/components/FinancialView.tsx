@@ -16,6 +16,10 @@ import {
   ArrowDownRight,
   Check,
   Mail,
+  FileText,
+  ExternalLink,
+  Download,
+  CreditCard,
 } from 'lucide-react';
 import {
   Income,
@@ -363,9 +367,16 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
                           </td>
 
                           <td className="px-5 py-4">
-                            <span className="px-2.5 py-0.5 rounded-full bg-[#f1edec] text-[#444747] font-medium text-[11px]">
-                              {inc.paymentMethod || 'PIX'}
-                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="px-2.5 py-0.5 rounded-full bg-[#f1edec] text-[#444747] font-medium text-[11px]">
+                                {inc.paymentMethod || 'PIX'}
+                              </span>
+                              {inc.stripeInvoiceId && (
+                                <span className="px-2 py-0.5 rounded-full bg-[#f0efff] text-[#635bff] border border-[#635bff]/20 font-medium text-[10px] flex items-center gap-1">
+                                  <CreditCard className="w-2.5 h-2.5" /> Stripe
+                                </span>
+                              )}
+                            </div>
                           </td>
 
                           <td className="px-5 py-4">
@@ -391,10 +402,50 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
 
                           <td className="px-5 py-4 text-right">
                             <div className="flex items-center justify-end space-x-1">
+                              {/* Link de pagamento Stripe se pendente */}
+                              {inc.stripeInvoiceUrl && inc.status !== 'Recebido' && (
+                                <a
+                                  href={inc.stripeInvoiceUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-1.5 text-[#635bff] hover:bg-[#f0efff] rounded-full transition-colors"
+                                  title="Abrir link de pagamento Stripe"
+                                >
+                                  <ExternalLink className="w-4 h-4" />
+                                </a>
+                              )}
+
+                              {/* Download PDF da fatura Stripe */}
+                              {inc.stripeInvoicePdf && (
+                                <a
+                                  href={inc.stripeInvoicePdf}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-1.5 text-[#635bff] hover:bg-[#f0efff] rounded-full transition-colors"
+                                  title="Baixar Fatura Stripe (PDF)"
+                                >
+                                  <FileText className="w-4 h-4" />
+                                </a>
+                              )}
+
+                              {/* Download Recibo de pagamento Stripe (se pago) */}
+                              {inc.stripeReceiptUrl && inc.status === 'Recebido' && (
+                                <a
+                                  href={inc.stripeReceiptUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-1.5 text-[#1a6b3a] hover:bg-[#d4eddf] rounded-full transition-colors"
+                                  title="Baixar Recibo de Pagamento Stripe"
+                                >
+                                  <Download className="w-4 h-4" />
+                                </a>
+                              )}
+
                               {client?.whatsapp && inc.status !== 'Recebido' && (
                                 <button
                                   onClick={() => {
-                                    const text = `Olá, ${client.name}! Tudo bem? Passando para lembrar do valor referentes a "${inc.description}" (${formatCurrency(inc.amount, inc.currency)}) com vencimento em ${formatDate(inc.dueDate)}. Obrigado!`;
+                                    const stripeLink = inc.stripeInvoiceUrl ? `\nLink para pagamento: ${inc.stripeInvoiceUrl}` : '';
+                                    const text = `Olá, ${client.name}! Tudo bem? Passando para lembrar do valor referentes a "${inc.description}" (${formatCurrency(inc.amount, inc.currency)}) com vencimento em ${formatDate(inc.dueDate)}.${stripeLink}\n\nObrigado!`;
                                     onOpenWhatsAppCharge(client.whatsapp, text);
                                   }}
                                   className="p-1.5 text-[#7a5400] hover:bg-[#fff3d6] rounded-full transition-colors"
@@ -420,7 +471,7 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
                                       } referente a "${inc.description}" (${formatCurrency(
                                         inc.amount,
                                         inc.currency
-                                      )}).\n\nQualquer dúvida, estamos à disposição.`,
+                                      )}).${inc.stripeInvoiceUrl ? `\n\nLink da fatura para pagamento online: ${inc.stripeInvoiceUrl}` : ''}\n\nQualquer dúvida, estamos à disposição.`,
                                       attachments: project?.attachments
                                         ? project.attachments.map((att) => ({
                                             filename: att.name,

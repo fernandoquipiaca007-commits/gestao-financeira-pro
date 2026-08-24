@@ -149,6 +149,7 @@ import { AgendaModal } from './components/modals/AgendaModal';
 import { PartnerModal } from './components/modals/PartnerModal';
 import { UserModal } from './components/modals/UserModal';
 import { UserPermissionsModal } from './components/modals/UserPermissionsModal';
+import { StripeInvoiceModal } from './components/modals/StripeInvoiceModal';
 
 export default function App() {
   const {
@@ -249,6 +250,38 @@ export default function App() {
   }) => {
     setEmailModalProps(props);
     setIsSendEmailModalOpen(true);
+  };
+
+  // Stripe Invoice Modal State
+  const [isStripeInvoiceModalOpen, setIsStripeInvoiceModalOpen] = useState(false);
+  const [projectForStripeInvoice, setProjectForStripeInvoice] = useState<Project | null>(null);
+
+  const handleOpenStripeInvoiceModal = (p: Project) => {
+    setProjectForStripeInvoice(p);
+    setIsStripeInvoiceModalOpen(true);
+  };
+
+  const handleStripeInvoiceCreated = (
+    incomeId: string,
+    stripeData: {
+      stripeInvoiceId: string;
+      stripeInvoiceUrl: string;
+      stripeInvoicePdf: string;
+      stripeCustomerId: string;
+      stripeStatus: string;
+    }
+  ) => {
+    setIncomes((prev) =>
+      prev.map((inc) =>
+        inc.id === incomeId
+          ? {
+              ...inc,
+              ...stripeData,
+            }
+          : inc
+      )
+    );
+    loadDbData();
   };
 
   // Computed Notifications
@@ -367,6 +400,33 @@ export default function App() {
       // Check overdue invoices & events and notify if needed
     }, 60000);
   }, [userSession]);
+
+  // Realtime subscription for automatic Stripe webhook & database updates
+  useEffect(() => {
+    if (!userSession || !userProfile?.companyId) return;
+
+    const channel = supabase
+      .channel('stripe-db-realtime-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'incomes' },
+        () => {
+          loadDbData();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'projects' },
+        () => {
+          loadDbData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userSession, userProfile?.companyId, loadDbData]);
 
   // Adjust activeTab if current tab is not in visibleTabs
   useEffect(() => {
@@ -1620,6 +1680,7 @@ export default function App() {
               onMarkProjectAsPaid={handleMarkProjectAsPaid}
               onAssumeProject={handleAssumeProject}
               onOpenWhatsAppCharge={handleOpenWhatsAppCharge}
+              onOpenStripeInvoiceModal={handleOpenStripeInvoiceModal}
             />
           )}
 
@@ -1880,6 +1941,19 @@ export default function App() {
         defaultMessage={emailModalProps.message}
         defaultAttachments={emailModalProps.attachments}
       />
+
+      {projectForStripeInvoice && isStripeInvoiceModalOpen && (
+        <StripeInvoiceModal
+          project={projectForStripeInvoice}
+          client={clients.find((c) => c.id === projectForStripeInvoice.clientId)}
+          incomes={incomes}
+          onClose={() => {
+            setIsStripeInvoiceModalOpen(false);
+            setProjectForStripeInvoice(null);
+          }}
+          onInvoiceCreated={handleStripeInvoiceCreated}
+        />
+      )}
     </div>
   );
 }

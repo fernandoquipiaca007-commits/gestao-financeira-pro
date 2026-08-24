@@ -22,6 +22,7 @@ import {
   Globe,
   Hand,
   Loader2,
+  CreditCard,
 } from 'lucide-react';
 import { Project, Client, ProjectStatus, CurrencyCode } from '../types';
 import { formatCurrency, formatDate, getDaysDiff } from '../lib/formatters';
@@ -40,6 +41,7 @@ interface ProjectsViewProps {
   onMarkProjectAsPaid?: (project: Project) => void;
   onAssumeProject?: (projectId: string) => Promise<{ success: boolean; error?: string }>;
   onOpenWhatsAppCharge: (phone: string, text: string) => void;
+  onOpenStripeInvoiceModal?: (project: Project) => void;
 }
 
 export const ProjectsView: React.FC<ProjectsViewProps> = ({
@@ -55,6 +57,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   onMarkProjectAsPaid,
   onAssumeProject,
   onOpenWhatsAppCharge,
+  onOpenStripeInvoiceModal,
 }) => {
   const { isOwner, hasPermission, userProfile } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
@@ -586,6 +589,17 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                   </div>
 
                   <div className="flex items-center space-x-1.5 flex-wrap gap-y-1">
+                    {onOpenStripeInvoiceModal && remaining > 0 && (isOwner || hasPermission('financial.edit')) && (
+                      <button
+                        onClick={() => onOpenStripeInvoiceModal(p)}
+                        className="px-3 py-1.5 bg-[#f0efff] hover:bg-[#e4e2ff] text-[#635bff] border border-[#635bff]/20 rounded-full text-xs font-medium flex items-center space-x-1 transition-all cursor-pointer"
+                        title="Gerar fatura Stripe com link de pagamento automático"
+                      >
+                        <CreditCard className="w-3.5 h-3.5" />
+                        <span>Fatura Stripe</span>
+                      </button>
+                    )}
+
                     {onMarkProjectAsPaid && remaining > 0 && (isOwner || hasPermission('financial.edit')) && (
                       <button
                         onClick={() => onMarkProjectAsPaid(p)}
