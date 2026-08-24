@@ -268,16 +268,16 @@ export default function App() {
       stripeInvoiceUrl: string;
       stripeInvoicePdf: string;
       stripeCustomerId: string;
-      stripeStatus: string;
+      stripeStatus: any;
     }
   ) => {
     setIncomes((prev) =>
       prev.map((inc) =>
         inc.id === incomeId
-          ? {
+          ? ({
               ...inc,
               ...stripeData,
-            }
+            } as Income)
           : inc
       )
     );
