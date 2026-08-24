@@ -2,7 +2,23 @@
 -- FASE 2: MÓDULO DE SOLICITAÇÕES DE FATURAMENTO & APROVAÇÕES
 -- ========================================================
 
--- 1. TABELA DE SOLICITAÇÕES DE FATURAMENTO
+-- 1. ADICIONAR PERMISSÕES DE BILLING NO CATÁLOGO
+INSERT INTO public.permissions (id, resource, action, description, scope_options) VALUES
+  ('billing.view',    'billing', 'view',    'Visualizar solicitações de faturamento', ARRAY['ALL','OWN']),
+  ('billing.request', 'billing', 'request', 'Criar solicitações de faturamento',      ARRAY['ALL']),
+  ('billing.approve', 'billing', 'approve', 'Aprovar ou rejeitar faturamento',        ARRAY['ALL'])
+ON CONFLICT (id) DO NOTHING;
+
+-- Defaults de billing por cargo
+INSERT INTO public.role_default_permissions (role, permission_id, default_scope) VALUES
+  ('admin',    'billing.view',    'ALL'),
+  ('admin',    'billing.request', 'ALL'),
+  ('admin',    'billing.approve', 'ALL'),
+  ('employee', 'billing.view',    'OWN'),
+  ('employee', 'billing.request', 'ALL')
+ON CONFLICT (role, permission_id) DO NOTHING;
+
+-- 2. TABELA DE SOLICITAÇÕES DE FATURAMENTO
 CREATE TABLE IF NOT EXISTS public.billing_requests (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   company_id UUID REFERENCES public.companies(id) ON DELETE CASCADE NOT NULL,
@@ -27,16 +43,16 @@ CREATE INDEX IF NOT EXISTS idx_billing_requests_requested_by ON public.billing_r
 CREATE INDEX IF NOT EXISTS idx_billing_requests_status ON public.billing_requests(status);
 CREATE INDEX IF NOT EXISTS idx_billing_requests_project ON public.billing_requests(project_id);
 
--- 2. HABILITAR RLS
+-- 3. HABILITAR RLS
 ALTER TABLE public.billing_requests ENABLE ROW LEVEL SECURITY;
 
--- 3. POLÍTICAS RLS PARA BILLING_REQUESTS
+-- 4. POLÍTICAS RLS PARA BILLING_REQUESTS
 DROP POLICY IF EXISTS "billing_requests_select" ON public.billing_requests;
 CREATE POLICY "billing_requests_select" ON public.billing_requests
   FOR SELECT USING (
-    company_id = get_user_company_id()
+    company_id = public.get_user_company_id()
     AND (
-      get_user_role() IN ('owner', 'admin')
+      public.get_user_role() IN ('owner', 'admin')
       OR requested_by = auth.uid()
     )
   );
@@ -44,22 +60,21 @@ CREATE POLICY "billing_requests_select" ON public.billing_requests
 DROP POLICY IF EXISTS "billing_requests_insert" ON public.billing_requests;
 CREATE POLICY "billing_requests_insert" ON public.billing_requests
   FOR INSERT WITH CHECK (
-    company_id = get_user_company_id()
+    company_id = public.get_user_company_id()
     AND requested_by = auth.uid()
     AND (
-      is_owner()
-      OR has_permission('billing.request', 'ALL')
-      OR has_permission('billing.create', 'ALL')
+      public.is_owner()
+      OR public.has_permission('billing.request')
     )
   );
 
 DROP POLICY IF EXISTS "billing_requests_update" ON public.billing_requests;
 CREATE POLICY "billing_requests_update" ON public.billing_requests
   FOR UPDATE USING (
-    company_id = get_user_company_id()
+    company_id = public.get_user_company_id()
     AND (
-      is_owner()
-      OR has_permission('billing.approve', 'ALL')
+      public.is_owner()
+      OR public.has_permission('billing.approve')
       OR (requested_by = auth.uid() AND status = 'Solicitada')
     )
   );
@@ -67,14 +82,14 @@ CREATE POLICY "billing_requests_update" ON public.billing_requests
 DROP POLICY IF EXISTS "billing_requests_delete" ON public.billing_requests;
 CREATE POLICY "billing_requests_delete" ON public.billing_requests
   FOR DELETE USING (
-    company_id = get_user_company_id()
+    company_id = public.get_user_company_id()
     AND (
-      is_owner()
+      public.is_owner()
       OR (requested_by = auth.uid() AND status = 'Solicitada')
     )
   );
 
--- 4. FUNÇÃO DATABASE PARA APROVAÇÃO SEGURA DE FATURAMENTO
+-- 5. FUNÇÃO DATABASE PARA APROVAÇÃO SEGURA DE FATURAMENTO
 CREATE OR REPLACE FUNCTION public.approve_billing_request(
   p_request_id UUID,
   p_income_id VARCHAR(64) DEFAULT NULL,
@@ -98,8 +113,8 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'error', 'Não autenticado');
   END IF;
 
-  v_company_id := get_user_company_id();
-  v_user_role := get_user_role();
+  v_company_id := public.get_user_company_id();
+  v_user_role := public.get_user_role();
 
   -- Buscar a solicitação com lock
   SELECT * INTO v_request
@@ -117,7 +132,7 @@ BEGIN
   END IF;
 
   -- Validar permissão se não for owner
-  IF v_user_role != 'owner' AND NOT has_permission('billing.approve', 'ALL') THEN
+  IF v_user_role != 'owner' AND NOT public.has_permission('billing.approve') THEN
     RETURN jsonb_build_object('success', false, 'error', 'Sem permissão para aprovar faturamento');
   END IF;
 
