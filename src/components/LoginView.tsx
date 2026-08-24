@@ -114,6 +114,10 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
       const msg = err instanceof Error ? err.message : '';
       if (msg.includes('Invalid login credentials')) {
         setErrorMessage('E-mail ou senha incorretos.');
+      } else if (msg.toLowerCase().includes('email not confirmed')) {
+        setErrorMessage('E-mail pendente de confirmação. Para permitir o login direto de funcionários criados pelo Owner, desative a opção "Confirm email" nas configurações de Auth do Supabase ou execute o script de auto-confirmação.');
+      } else if (msg.includes('User already registered')) {
+        setErrorMessage('Este e-mail já está cadastrado no sistema.');
       } else {
         setErrorMessage(msg || 'Erro ao autenticar. Tente novamente.');
       }
