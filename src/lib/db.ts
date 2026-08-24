@@ -1287,4 +1287,78 @@ export async function deleteBillingRequest(requestId: string): Promise<void> {
   }
 }
 
+// ----------------------------------------------------
+// NOTIFICATIONS DB OPERATIONS (LANDING PAGE LEADS & ALERTS)
+// ----------------------------------------------------
+
+export async function fetchNotificationsFromDb(companyId?: string): Promise<NotificationItem[]> {
+  try {
+    let query = supabase
+      .from('notifications')
+      .select('*')
+      .eq('read', false)
+      .order('created_at', { ascending: false });
+
+    if (companyId) {
+      query = query.eq('company_id', companyId);
+    }
+
+    let { data, error } = await query;
+    if (error || !data || data.length === 0) {
+      if (companyId) {
+        const fallback = await supabase
+          .from('notifications')
+          .select('*')
+          .eq('read', false)
+          .order('created_at', { ascending: false });
+        if (!fallback.error && fallback.data) {
+          data = fallback.data;
+          error = null;
+        }
+      }
+    }
+
+    if (error) throw error;
+
+    return (data || []).map((item) => ({
+      id: item.id,
+      type: item.type || 'new_lead',
+      title: item.title,
+      message: item.message,
+      date: item.date || item.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+      clientId: item.client_id || undefined,
+      projectId: item.project_id || undefined,
+      incomeId: item.income_id || undefined,
+      expenseId: item.expense_id || undefined,
+      whatsappMessage: item.whatsapp_message || undefined,
+      whatsappPhone: item.whatsapp_phone || undefined,
+      severity: item.severity || 'high',
+      read: item.read || false,
+    }));
+  } catch (err) {
+    console.warn('[DB] fetchNotificationsFromDb failed:', err);
+    return [];
+  }
+}
+
+export async function markNotificationAsReadInDb(notificationId: string): Promise<void> {
+  try {
+    await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('id', notificationId);
+  } catch (err) {
+    console.warn('[DB] markNotificationAsReadInDb failed:', err);
+  }
+}
+
+export async function deleteNotificationFromDb(notificationId: string): Promise<void> {
+  try {
+    await supabase.from('notifications').delete().eq('id', notificationId);
+  } catch (err) {
+    console.warn('[DB] deleteNotificationFromDb failed:', err);
+  }
+}
+
+
 

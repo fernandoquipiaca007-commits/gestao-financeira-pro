@@ -191,7 +191,7 @@ export interface AppSettings {
 
 export interface NotificationItem {
   id: string;
-  type: 'due_today' | 'overdue' | 'project_due' | 'expense_due' | 'agenda_alarm' | 'partner_commission';
+  type: 'due_today' | 'overdue' | 'project_due' | 'expense_due' | 'agenda_alarm' | 'partner_commission' | 'new_lead';
   title: string;
   message: string;
   date: string;
@@ -204,6 +204,7 @@ export interface NotificationItem {
   whatsappMessage?: string;
   whatsappPhone?: string;
   severity: 'high' | 'medium' | 'info';
+  read?: boolean;
 }
 
 export interface UserSession {

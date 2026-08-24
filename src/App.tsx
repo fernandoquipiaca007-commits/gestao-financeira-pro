@@ -95,6 +95,9 @@ import {
   createBillingRequest,
   reviewBillingRequest,
   deleteBillingRequest,
+  fetchNotificationsFromDb,
+  markNotificationAsReadInDb,
+  deleteNotificationFromDb,
 } from './lib/db';
 import { fetchLiveExchangeRates } from './lib/exchange';
 import {
@@ -284,8 +287,16 @@ export default function App() {
     loadDbData();
   };
 
-  // Computed Notifications
-  const notifications: NotificationItem[] = computeNotifications(clients, projects, incomes, expenses);
+  const [dbNotifications, setDbNotifications] = useState<NotificationItem[]>([]);
+
+  const handleMarkNotificationAsRead = async (notifId: string) => {
+    setDbNotifications((prev) => prev.filter((n) => n.id !== notifId));
+    await markNotificationAsReadInDb(notifId);
+  };
+
+  // Computed & Database Notifications (Landing page leads + Due dates)
+  const computedNotifs = computeNotifications(clients, projects, incomes, expenses);
+  const notifications: NotificationItem[] = [...dbNotifications, ...computedNotifs];
 
   // ------------------------------------------------------------------
   // Initial Data Fetch & Synchronization
@@ -297,7 +308,7 @@ export default function App() {
 
       const cid = userProfile?.companyId;
 
-      const [dbClients, dbProjects, dbIncomes, dbExpenses, dbEvents, dbPartners, liveRates] =
+      const [dbClients, dbProjects, dbIncomes, dbExpenses, dbEvents, dbPartners, liveRates, dbNotifs] =
         await Promise.all([
           fetchClientsFromDb(cid),
           fetchProjectsFromDb(cid),
@@ -306,6 +317,7 @@ export default function App() {
           fetchAgendaEventsFromDb(cid),
           fetchPartnersFromDb(cid),
           fetchLiveExchangeRates(),
+          fetchNotificationsFromDb(cid),
         ]);
 
       if (dbClients) setClients(dbClients);
@@ -313,6 +325,7 @@ export default function App() {
       if (dbExpenses) setExpenses(dbExpenses);
       if (dbEvents) setAgendaEvents(dbEvents);
       if (dbPartners) setPartners(dbPartners);
+      if (dbNotifs) setDbNotifications(dbNotifs);
 
       // Reconcile project paid amount with linked incomes
       if (dbProjects && dbIncomes) {
@@ -392,6 +405,35 @@ export default function App() {
       loadDbData();
     }
   }, [userSession, userProfile?.companyId, loadDbData]);
+
+  // Realtime Supabase Subscription for instant landing page leads & notifications
+  useEffect(() => {
+    if (!userSession) return;
+
+    const channel = supabase
+      .channel('realtime_landing_leads_and_notifs')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'clients' },
+        (payload) => {
+          console.log('[Realtime] Novo cliente recebido da Landing Page:', payload);
+          loadDbData();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications' },
+        (payload) => {
+          console.log('[Realtime] Nova notificação recebida:', payload);
+          loadDbData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userSession, loadDbData]);
 
   // Background Push Notification Poller
   useEffect(() => {
@@ -1820,6 +1862,7 @@ export default function App() {
         onClose={() => setIsNotificationsOpen(false)}
         notifications={notifications}
         onOpenWhatsAppCharge={handleOpenWhatsAppCharge}
+        onMarkAsRead={handleMarkNotificationAsRead}
       />
 
       <GlobalSearchModal
