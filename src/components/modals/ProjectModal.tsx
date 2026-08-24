@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, FolderKanban, Save, UserCheck, Paperclip, Upload, FileText, Download, Trash2 } from 'lucide-react';
+import { X, FolderKanban, Save, UserCheck, Paperclip, Upload, FileText, Download, Trash2, User, Users, Globe } from 'lucide-react';
 import { Project, Client, ProjectCategory, ProjectStatus, CurrencyCode, CURRENCIES, Partner, ProjectAttachment } from '../../types';
+import { UserProfile, ProjectAssignmentType } from '../../types/rbac';
 import { getTodayIso, addDaysIso } from '../../lib/storage';
 import { formatCurrency } from '../../lib/formatters';
 
@@ -11,6 +12,7 @@ interface ProjectModalProps {
   projectToEdit?: Project | null;
   clients: Client[];
   partners?: Partner[];
+  employees?: UserProfile[];
   defaultCurrency: CurrencyCode;
 }
 
@@ -21,6 +23,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   projectToEdit,
   clients,
   partners = [],
+  employees = [],
   defaultCurrency,
 }) => {
   const [name, setName] = useState('');
@@ -45,6 +48,10 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   const [commissionValue, setCommissionValue] = useState<number>(10);
   const [commissionPaid, setCommissionPaid] = useState(false);
 
+  // RBAC Assignment State
+  const [assignmentType, setAssignmentType] = useState<ProjectAssignmentType>('company');
+  const [assignedTo, setAssignedTo] = useState<string>('');
+
   useEffect(() => {
     if (projectToEdit) {
       setName(projectToEdit.name);
@@ -68,6 +75,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       setCommissionType(projectToEdit.commissionType || 'percent');
       setCommissionValue(projectToEdit.commissionValue ?? 10);
       setCommissionPaid(projectToEdit.commissionPaid || false);
+      setAssignmentType(projectToEdit.assignmentType || 'company');
+      setAssignedTo(projectToEdit.assignedTo || '');
     } else {
       setName('');
       const firstClient = clients[0];
@@ -94,6 +103,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       setCommissionType('percent');
       setCommissionValue(10);
       setCommissionPaid(false);
+      setAssignmentType('company');
+      setAssignedTo('');
     }
   }, [projectToEdit, isOpen, clients, defaultCurrency]);
 
@@ -201,6 +212,9 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       commissionValue: hasPartner ? Number(commissionValue) || 0 : undefined,
       commissionAmount: hasPartner ? calculatedCommission : undefined,
       commissionPaid: hasPartner ? commissionPaid : undefined,
+      assignmentType,
+      assignedTo: assignmentType === 'employee' ? assignedTo : undefined,
+      assignedToName: assignmentType === 'employee' ? employees.find(e => e.id === assignedTo)?.name : undefined,
     });
 
     onClose();
@@ -315,6 +329,112 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               </div>
             </div>
           )}
+
+          {/* RBAC Assignment Section */}
+          <div className="bg-[#f7f3f2] border border-[#c4c7c7]/30 p-4 rounded-[18px] space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-[#1c1b1b] flex items-center gap-1.5">
+                <Users className="w-4 h-4 text-[#0050d7]" />
+                Responsabilidade & Atribuição do Projeto
+              </span>
+              <span className="text-[11px] text-[#747878]">Quem executará este projeto?</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setAssignmentType('company');
+                  setAssignedTo('');
+                }}
+                className={`p-2.5 rounded-xl border text-left flex items-center space-x-2.5 transition-all cursor-pointer ${
+                  assignmentType === 'company'
+                    ? 'border-[#000000] bg-white text-[#1c1b1b] shadow-xs'
+                    : 'border-[#c4c7c7]/40 bg-white/50 text-[#747878] hover:bg-white'
+                }`}
+              >
+                <div
+                  className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-xs ${
+                    assignmentType === 'company' ? 'bg-[#000000] text-white' : 'bg-[#e5e2e1] text-[#747878]'
+                  }`}
+                >
+                  🏢
+                </div>
+                <div>
+                  <div className="text-xs font-semibold">Empresa</div>
+                  <div className="text-[10px] text-[#747878]">Sem responsável direto</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAssignmentType('employee')}
+                className={`p-2.5 rounded-xl border text-left flex items-center space-x-2.5 transition-all cursor-pointer ${
+                  assignmentType === 'employee'
+                    ? 'border-[#000000] bg-white text-[#1c1b1b] shadow-xs'
+                    : 'border-[#c4c7c7]/40 bg-white/50 text-[#747878] hover:bg-white'
+                }`}
+              >
+                <div
+                  className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-xs ${
+                    assignmentType === 'employee' ? 'bg-[#0050d7] text-white' : 'bg-[#e5e2e1] text-[#747878]'
+                  }`}
+                >
+                  <User className="w-3.5 h-3.5" />
+                </div>
+                <div>
+                  <div className="text-xs font-semibold">Funcionário</div>
+                  <div className="text-[10px] text-[#747878]">Atribuir a membro</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setAssignmentType('available');
+                  setAssignedTo('');
+                }}
+                className={`p-2.5 rounded-xl border text-left flex items-center space-x-2.5 transition-all cursor-pointer ${
+                  assignmentType === 'available'
+                    ? 'border-[#000000] bg-white text-[#1c1b1b] shadow-xs'
+                    : 'border-[#c4c7c7]/40 bg-white/50 text-[#747878] hover:bg-white'
+                }`}
+              >
+                <div
+                  className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-xs ${
+                    assignmentType === 'available' ? 'bg-[#003da9] text-white' : 'bg-[#e5e2e1] text-[#747878]'
+                  }`}
+                >
+                  <Globe className="w-3.5 h-3.5" />
+                </div>
+                <div>
+                  <div className="text-xs font-semibold">Disponível</div>
+                  <div className="text-[10px] text-[#747878]">Para equipa assumir</div>
+                </div>
+              </button>
+            </div>
+
+            {/* Employee selection dropdown if 'employee' is selected */}
+            {assignmentType === 'employee' && (
+              <div className="pt-2">
+                <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
+                  Selecionar Funcionário Responsável *
+                </label>
+                <select
+                  value={assignedTo}
+                  onChange={e => setAssignedTo(e.target.value)}
+                  className="w-full bg-white border border-[#c4c7c7]/40 rounded-xl px-3.5 py-2.5 text-sm text-[#1c1b1b] font-medium focus:outline-none focus:border-[#000000] transition-all"
+                >
+                  <option value="">Selecione o membro da equipa...</option>
+                  {employees.map(emp => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.name} ({emp.role === 'admin' ? 'Admin' : 'Funcionário'}) - {emp.email}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>

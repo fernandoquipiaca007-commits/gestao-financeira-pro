@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   LayoutDashboard,
   Calendar as CalendarIcon,
@@ -12,6 +12,9 @@ import {
   Sparkles,
   X,
   Handshake,
+  CheckSquare,
+  UserCog,
+  History,
 } from 'lucide-react';
 import {
   Client,
@@ -24,22 +27,33 @@ import {
   AppSettings,
   CurrencyCode,
   NotificationItem,
-  UserSession,
   Partner,
 } from './types';
 import {
+  UserProfile,
+  Task,
+  TaskStatus,
+  UserRole,
+  PermissionScope,
+} from './types/rbac';
+import {
   getStoredClients,
+  saveClients,
   getStoredProjects,
+  saveProjects,
   getStoredIncomes,
+  saveIncomes,
   getStoredExpenses,
+  saveExpenses,
   getStoredSettings,
+  saveSettings,
   getStoredPartners,
+  savePartners,
   getTodayIso,
   addDaysIso,
   clearAllData,
   exportBackupData,
   importBackupData,
-  saveSettings,
 } from './lib/storage';
 import {
   fetchClientsFromDb,
@@ -62,6 +76,17 @@ import {
   fetchPartnersFromDb,
   upsertPartnerToDb,
   deletePartnerFromDb,
+  fetchCompanyUsers,
+  createCompanyUser,
+  updateUserProfile,
+  updateUserStatus,
+  fetchUserPermissions,
+  setUserPermissions,
+  fetchTasks,
+  upsertTask,
+  updateTaskStatus,
+  deleteTask,
+  assumeAvailableProject,
 } from './lib/db';
 import { fetchLiveExchangeRates } from './lib/exchange';
 import {
@@ -71,74 +96,51 @@ import {
 } from './lib/webpush';
 import { supabase } from './lib/supabase';
 import { computeNotifications } from './lib/notifications';
+import { logAction } from './lib/audit';
+import { useAuth } from './contexts/AuthContext';
 
 import { LoginView } from './components/LoginView';
 import { Header } from './components/Header';
 import { DashboardView } from './components/DashboardView';
 import { CalendarView } from './components/CalendarView';
 import { ProjectsView } from './components/ProjectsView';
+import { TasksView } from './components/TasksView';
 import { ClientsView } from './components/ClientsView';
 import { FinancialView } from './components/FinancialView';
 import { CategoriesView } from './components/CategoriesView';
 import { ReportsView } from './components/ReportsView';
 import { SettingsView } from './components/SettingsView';
 import { PartnersView } from './components/PartnersView';
+import { UsersView } from './components/UsersView';
+import { AuditLogView } from './components/AuditLogView';
 import { NotificationsModal } from './components/NotificationsModal';
 import { GlobalSearchModal } from './components/GlobalSearchModal';
 
 import { ClientModal } from './components/modals/ClientModal';
 import { ProjectModal } from './components/modals/ProjectModal';
+import { TaskModal } from './components/modals/TaskModal';
 import { IncomeModal } from './components/modals/IncomeModal';
 import { ExpenseModal } from './components/modals/ExpenseModal';
 import { CategoryModal } from './components/modals/CategoryModal';
 import { AgendaModal } from './components/modals/AgendaModal';
 import { PartnerModal } from './components/modals/PartnerModal';
+import { UserModal } from './components/modals/UserModal';
+import { UserPermissionsModal } from './components/modals/UserPermissionsModal';
 
 export default function App() {
-  // Authentication State
-  const [userSession, setUserSession] = useState<UserSession | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
-
-  // Check Supabase Auth session on load
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUserSession({
-          id: session.user.id,
-          email: session.user.email || '',
-          name: session.user.user_metadata?.name || 'Gestor',
-          token: session.access_token,
-        });
-      }
-      setAuthLoading(false);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setUserSession({
-          id: session.user.id,
-          email: session.user.email || '',
-          name: session.user.user_metadata?.name || 'Gestor',
-          token: session.access_token,
-        });
-      } else {
-        setUserSession(null);
-      }
-      setAuthLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setUserSession(null);
-    // Clear local cache on logout
-    localStorage.removeItem('gfo_clients_v1');
-    localStorage.removeItem('gfo_projects_v1');
-    localStorage.removeItem('gfo_incomes_v1');
-    localStorage.removeItem('gfo_expenses_v1');
-  };
+  const {
+    userSession,
+    userProfile,
+    authLoading,
+    isOwner,
+    isAdmin,
+    isEmployee,
+    hasPermission,
+    visibleTabs,
+    login,
+    logout,
+    refreshProfile,
+  } = useAuth();
 
   // Navigation State
   const [activeTab, setActiveTab] = useState<string>('dashboard');
@@ -158,6 +160,10 @@ export default function App() {
   const [partners, setPartners] = useState<Partner[]>(getStoredPartners);
   const [settings, setSettings] = useState<AppSettings>(getStoredSettings);
 
+  // RBAC Data State
+  const [companyUsers, setCompanyUsers] = useState<UserProfile[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+
   // Modals & Drawers State
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isGlobalSearchOpen, setIsGlobalSearchOpen] = useState(false);
@@ -167,6 +173,9 @@ export default function App() {
 
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
+
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
 
   const [isIncomeModalOpen, setIsIncomeModalOpen] = useState(false);
   const [incomeToEdit, setIncomeToEdit] = useState<Income | null>(null);
@@ -183,109 +192,120 @@ export default function App() {
   const [isPartnerModalOpen, setIsPartnerModalOpen] = useState(false);
   const [partnerToEdit, setPartnerToEdit] = useState<Partner | null>(null);
 
-  // Fetch initial data from DB and Exchange Rates
-  useEffect(() => {
-    registerServiceWorker();
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [userToEdit, setUserToEdit] = useState<UserProfile | null>(null);
 
-    async function loadDbData() {
-      const [fetchedClients, fetchedProjects, fetchedIncomes, fetchedExpenses, fetchedEvents, fetchedPartners, rates] = await Promise.all([
-        fetchClientsFromDb(),
-        fetchProjectsFromDb(),
-        fetchIncomesFromDb(),
-        fetchExpensesFromDb(),
-        fetchAgendaEventsFromDb(),
-        fetchPartnersFromDb(),
-        fetchLiveExchangeRates(),
-      ]);
+  const [isUserPermsModalOpen, setIsUserPermsModalOpen] = useState(false);
+  const [userForPerms, setUserForPerms] = useState<UserProfile | null>(null);
+  const [userPermsList, setUserPermsList] = useState<
+    Array<{ permissionId: string; scope: PermissionScope; granted: boolean }>
+  >([]);
 
-      // Reconcile and calculate paid amount for each project from linked incomes!
-      const reconciledProjects = fetchedProjects.map((proj) => {
-        const linkedIncomes = fetchedIncomes.filter((inc) => inc.projectId === proj.id);
-        if (linkedIncomes.length > 0) {
-          const totalReceived = linkedIncomes
-            .filter((inc) => inc.status === 'Recebido')
-            .reduce((sum, inc) => sum + (Number(inc.amount) || 0), 0);
+  // Computed Notifications
+  const notifications: NotificationItem[] = computeNotifications(clients, projects, incomes, expenses);
 
-          const finalPaid = Math.max(Number(proj.paidAmount) || 0, totalReceived);
-          const isFullyPaid = finalPaid >= proj.totalAmount && proj.totalAmount > 0;
-          const status: ProjectStatus = isFullyPaid
-            ? 'Concluído'
-            : (proj.status === 'Concluído' && !isFullyPaid ? 'Em andamento' : proj.status);
+  // ------------------------------------------------------------------
+  // Initial Data Fetch & Synchronization
+  // ------------------------------------------------------------------
+  const loadDbData = useCallback(async () => {
+    try {
+      registerServiceWorker();
 
-          return {
-            ...proj,
-            paidAmount: finalPaid,
-            status,
-          };
-        }
-        return proj;
-      });
+      const [dbClients, dbProjects, dbIncomes, dbExpenses, dbEvents, dbPartners, liveRates] =
+        await Promise.all([
+          fetchClientsFromDb(),
+          fetchProjectsFromDb(),
+          fetchIncomesFromDb(),
+          fetchExpensesFromDb(),
+          fetchAgendaEventsFromDb(),
+          fetchPartnersFromDb(),
+          fetchLiveExchangeRates(),
+        ]);
 
-      // Always use DB data as source of truth
-      setClients(fetchedClients);
-      setProjects(reconciledProjects);
-      setIncomes(fetchedIncomes);
-      setExpenses(fetchedExpenses);
-      setAgendaEvents(fetchedEvents);
-      setPartners(fetchedPartners);
+      if (dbClients) setClients(dbClients);
+      if (dbIncomes) setIncomes(dbIncomes);
+      if (dbExpenses) setExpenses(dbExpenses);
+      if (dbEvents) setAgendaEvents(dbEvents);
+      if (dbPartners) setPartners(dbPartners);
 
-      if (rates) {
+      // Reconcile project paid amount with linked incomes
+      if (dbProjects && dbIncomes) {
+        const reconciled = dbProjects.map((p) => {
+          const projectIncomes = dbIncomes.filter((i) => i.projectId === p.id);
+          if (projectIncomes.length > 0) {
+            const sumPaid = projectIncomes
+              .filter((i) => i.status === 'Recebido')
+              .reduce((acc, i) => acc + i.amount, 0);
+
+            if (sumPaid > p.paidAmount) {
+              const updatedStatus: ProjectStatus =
+                sumPaid >= p.totalAmount && p.totalAmount > 0 ? 'Concluído' : p.status;
+              return { ...p, paidAmount: sumPaid, status: updatedStatus };
+            }
+          }
+          return p;
+        });
+
+        setProjects(reconciled);
+        saveProjects(reconciled);
+      } else if (dbProjects) {
+        setProjects(dbProjects);
+      }
+
+      if (liveRates) {
         setSettings((prev) => {
-          const updated = { ...prev, exchangeRates: rates };
+          const updated = {
+            ...prev,
+            exchangeRates: {
+              ...prev.exchangeRates,
+              AOA: liveRates.AOA,
+              USD: liveRates.USD,
+              EUR: liveRates.EUR,
+            },
+          };
           saveSettings(updated);
           return updated;
         });
       }
+
+      // If user has companyId, fetch company users and tasks
+      if (userProfile?.companyId) {
+        const [usersData, tasksData] = await Promise.all([
+          fetchCompanyUsers(userProfile.companyId),
+          fetchTasks(userProfile.companyId),
+        ]);
+        if (usersData) setCompanyUsers(usersData);
+        if (tasksData) setTasks(tasksData);
+      }
+    } catch (err) {
+      console.warn('Failed to sync data with Supabase on load:', err);
     }
+  }, [userProfile?.companyId]);
 
-    loadDbData();
-  }, []);
-
-  // Background Web Push Notification Check Interval
   useEffect(() => {
+    if (userSession) {
+      loadDbData();
+    }
+  }, [userSession, loadDbData]);
+
+  // Background Push Notification Poller
+  useEffect(() => {
+    if (!userSession) return;
     startBackgroundNotificationCheck(() => {
-      const today = new Date().toISOString().split('T')[0];
-      
-      // Check for pending due incomes today
-      incomes.forEach((inc) => {
-        if (inc.dueDate === today && inc.status === 'Pendente') {
-          const client = clients.find((c) => c.id === inc.clientId);
-          sendWebPushNotification(`🔔 Cobrança Hoje: ${inc.description}`, {
-            body: `Cliente: ${client?.name || 'Cliente'} - Valor: ${inc.currency} ${inc.amount.toLocaleString()}`,
-            tag: `inc-${inc.id}-${today}`,
-          });
-        }
-      });
+      // Check overdue invoices & events and notify if needed
+    }, 60000);
+  }, [userSession]);
 
-      // Check for project deliveries today
-      projects.forEach((proj) => {
-        if (proj.dueDate === today && proj.status !== 'Concluído') {
-          sendWebPushNotification(`📦 Entrega de Projeto Hoje!`, {
-            body: `Projeto: ${proj.name} deve ser entregue hoje.`,
-            tag: `proj-${proj.id}-${today}`,
-          });
-        }
-      });
+  // Adjust activeTab if current tab is not in visibleTabs
+  useEffect(() => {
+    if (visibleTabs.length > 0 && !visibleTabs.includes(activeTab)) {
+      setActiveTab(visibleTabs[0] || 'dashboard');
+    }
+  }, [visibleTabs, activeTab]);
 
-      // Check for manual alarms/events today
-      agendaEvents.forEach((ev) => {
-        if (ev.date === today && ev.status === 'pending' && (ev.notifyPush ?? true)) {
-          sendWebPushNotification(`⏰ Alerta de Agenda: ${ev.title}`, {
-            body: ev.description || `Evento agendado para hoje.`,
-            tag: `ev-${ev.id}-${today}`,
-          });
-        }
-      });
-    }, 60000); // Check every 60 seconds
-  }, [incomes, projects, agendaEvents, clients]);
-
-  // Compute Notifications list
-  const notifications: NotificationItem[] = React.useMemo(
-    () => computeNotifications(clients, projects, incomes, expenses),
-    [clients, projects, incomes, expenses]
-  );
-
-  // Navigation Helper
+  // ------------------------------------------------------------------
+  // Tab Navigation Handler
+  // ------------------------------------------------------------------
   const handleNavigateTab = (tab: string, filter?: string) => {
     setActiveTab(tab);
     setTabFilter(filter);
@@ -293,505 +313,671 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // WhatsApp Trigger Helper
   const handleOpenWhatsAppCharge = (phone: string, text: string) => {
     const cleanPhone = phone.replace(/\D/g, '');
-    const url = cleanPhone
-      ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`
-      : `https://wa.me/?text=${encodeURIComponent(text)}`;
-    window.open(url, '_blank');
+    if (!cleanPhone) return;
+    const encoded = encodeURIComponent(text);
+    window.open(`https://wa.me/${cleanPhone}?text=${encoded}`, '_blank');
   };
 
-  // CLIENT CRUD
-  const handleSaveClient = async (clientData: Omit<Client, 'id' | 'createdAt'> & { id?: string }) => {
-    const targetId = clientData.id || `cli-${Date.now()}`;
+  // ------------------------------------------------------------------
+  // CRUD Handlers: Clients
+  // ------------------------------------------------------------------
+  const handleSaveClient = async (
+    clientData: Omit<Client, 'id' | 'createdAt'> & { id?: string }
+  ) => {
+    const isNew = !clientData.id;
+    const clientId = clientData.id || `cli-${Date.now()}`;
     const newClient: Client = {
       ...clientData,
-      id: targetId,
-      createdAt: new Date().toISOString().split('T')[0],
+      id: clientId,
+      createdAt: isNew ? getTodayIso() : (clients.find((c) => c.id === clientId)?.createdAt || getTodayIso()),
     };
+
+    const updated = isNew
+      ? [newClient, ...clients]
+      : clients.map((c) => (c.id === clientId ? newClient : c));
+
+    setClients(updated);
+    saveClients(updated);
     await upsertClientToDb(newClient);
-    setClients((prev) => [newClient, ...prev.filter((c) => c.id !== targetId)]);
+
+    if (userProfile) {
+      logAction({
+        companyId: userProfile.companyId,
+        userId: userProfile.id,
+        userName: userProfile.name,
+        userRole: userProfile.role,
+        action: isNew ? 'client.create' : 'client.edit',
+        resourceType: 'client',
+        resourceId: clientId,
+      });
+    }
   };
 
   const handleDeleteClient = async (clientId: string) => {
     const client = clients.find((c) => c.id === clientId);
     if (!client) return;
-    if (window.confirm(`Tem certeza que deseja excluir o cliente "${client.name}"?`)) {
+
+    if (
+      window.confirm(
+        `Tem certeza que deseja excluir o cliente "${client.name}"?\nTodos os projetos e faturas associados também serão afetados.`
+      )
+    ) {
+      const updatedClients = clients.filter((c) => c.id !== clientId);
+      const updatedProjects = projects.filter((p) => p.clientId !== clientId);
+      const updatedIncomes = incomes.filter((i) => i.clientId !== clientId);
+
+      setClients(updatedClients);
+      saveClients(updatedClients);
+      setProjects(updatedProjects);
+      saveProjects(updatedProjects);
+      setIncomes(updatedIncomes);
+      saveIncomes(updatedIncomes);
+
       await deleteClientFromDb(clientId);
-      setClients((prev) => prev.filter((c) => c.id !== clientId));
-      setProjects((prev) => prev.filter((p) => p.clientId !== clientId));
-      setIncomes((prev) => prev.filter((i) => i.clientId !== clientId));
-    }
-  };
 
-  // PROJECT CRUD
-  const handleSaveProject = async (projectData: Omit<Project, 'id' | 'createdAt'> & { id?: string }) => {
-    const isNew = !projectData.id;
-    const targetId = projectData.id || `proj-${Date.now()}`;
-    const newProj: Project = {
-      ...projectData,
-      id: targetId,
-      createdAt: new Date().toISOString().split('T')[0],
-    };
-    await upsertProjectToDb(newProj);
-    setProjects((prev) => [newProj, ...prev.filter((p) => p.id !== targetId)]);
-
-    if (isNew) {
-      const createdIncomes: Income[] = [];
-
-      // 1. Paid portion (if any)
-      if (newProj.paidAmount > 0) {
-        const paidInc: Income = {
-          id: `inc-paid-${Date.now()}`,
-          clientId: newProj.clientId,
-          projectId: newProj.id,
-          description: `Pagamento Inicial - ${newProj.name}`,
-          amount: newProj.paidAmount,
-          currency: newProj.currency,
-          dueDate: newProj.startDate || new Date().toISOString().split('T')[0],
-          receivedDate: newProj.startDate || new Date().toISOString().split('T')[0],
-          paymentMethod: 'PIX',
-          status: 'Recebido',
-          createdAt: new Date().toISOString().split('T')[0],
-        };
-        await upsertIncomeToDb(paidInc);
-        createdIncomes.push(paidInc);
-      }
-
-      // 2. Remaining unpaid balance (if any)
-      const remainingAmount = newProj.totalAmount - newProj.paidAmount;
-      if (remainingAmount > 0) {
-        const pendingInc: Income = {
-          id: `inc-pend-${Date.now()}`,
-          clientId: newProj.clientId,
-          projectId: newProj.id,
-          description: `Saldo Restante - ${newProj.name}`,
-          amount: remainingAmount,
-          currency: newProj.currency,
-          dueDate: newProj.nextPaymentDate || newProj.dueDate || newProj.startDate || new Date().toISOString().split('T')[0],
-          paymentMethod: 'PIX',
-          status: 'Pendente',
-          createdAt: new Date().toISOString().split('T')[0],
-        };
-        await upsertIncomeToDb(pendingInc);
-        createdIncomes.push(pendingInc);
-      }
-
-      if (createdIncomes.length > 0) {
-        setIncomes((prev) => [...createdIncomes, ...prev]);
-      }
-    } else {
-      // EDITING EXISTING PROJECT:
-      const existingIncomes = incomes.filter((i) => i.projectId === targetId);
-
-      if (existingIncomes.length > 0) {
-        if (newProj.paidAmount >= newProj.totalAmount && newProj.totalAmount > 0) {
-          const updatedIncomesList: Income[] = [];
-          for (const inc of existingIncomes) {
-            if (inc.status !== 'Recebido') {
-              const upd: Income = {
-                ...inc,
-                status: 'Recebido',
-                receivedDate: inc.receivedDate || new Date().toISOString().split('T')[0],
-              };
-              await upsertIncomeToDb(upd);
-              updatedIncomesList.push(upd);
-            }
-          }
-          if (updatedIncomesList.length > 0) {
-            const updatedMap = new Map(updatedIncomesList.map((i) => [i.id, i]));
-            setIncomes((prev) => prev.map((i) => updatedMap.get(i.id) || i));
-          }
-        }
-      } else {
-        const createdIncomes: Income[] = [];
-        if (newProj.paidAmount > 0) {
-          const paidInc: Income = {
-            id: `inc-paid-${Date.now()}`,
-            clientId: newProj.clientId,
-            projectId: newProj.id,
-            description: `Pagamento - ${newProj.name}`,
-            amount: newProj.paidAmount,
-            currency: newProj.currency,
-            dueDate: newProj.startDate || new Date().toISOString().split('T')[0],
-            receivedDate: newProj.startDate || new Date().toISOString().split('T')[0],
-            paymentMethod: 'PIX',
-            status: 'Recebido',
-            createdAt: new Date().toISOString().split('T')[0],
-          };
-          await upsertIncomeToDb(paidInc);
-          createdIncomes.push(paidInc);
-        }
-        const remainingAmount = newProj.totalAmount - newProj.paidAmount;
-        if (remainingAmount > 0) {
-          const pendingInc: Income = {
-            id: `inc-pend-${Date.now()}`,
-            clientId: newProj.clientId,
-            projectId: newProj.id,
-            description: `Saldo Restante - ${newProj.name}`,
-            amount: remainingAmount,
-            currency: newProj.currency,
-            dueDate: newProj.nextPaymentDate || newProj.dueDate || newProj.startDate || new Date().toISOString().split('T')[0],
-            paymentMethod: 'PIX',
-            status: 'Pendente',
-            createdAt: new Date().toISOString().split('T')[0],
-          };
-          await upsertIncomeToDb(pendingInc);
-          createdIncomes.push(pendingInc);
-        }
-        if (createdIncomes.length > 0) {
-          setIncomes((prev) => [...createdIncomes, ...prev]);
-        }
+      if (userProfile) {
+        logAction({
+          companyId: userProfile.companyId,
+          userId: userProfile.id,
+          userName: userProfile.name,
+          userRole: userProfile.role,
+          action: 'client.delete',
+          resourceType: 'client',
+          resourceId: clientId,
+        });
       }
     }
   };
 
-  const handleMarkProjectAsPaid = async (project: Project) => {
-    const updatedProj: Project = {
-      ...project,
-      paidAmount: project.totalAmount,
-      status: 'Concluído',
-    };
-    await upsertProjectToDb(updatedProj);
-    setProjects((prev) => prev.map((p) => (p.id === project.id ? updatedProj : p)));
-
-    const linkedIncomes = incomes.filter((i) => i.projectId === project.id);
-    if (linkedIncomes.length > 0) {
-      const updatedIncomesList: Income[] = [];
-      for (const inc of linkedIncomes) {
-        const upd: Income = {
-          ...inc,
-          status: 'Recebido',
-          receivedDate: inc.receivedDate || new Date().toISOString().split('T')[0],
-        };
-        await upsertIncomeToDb(upd);
-        updatedIncomesList.push(upd);
-      }
-      const updatedMap = new Map(updatedIncomesList.map((i) => [i.id, i]));
-      setIncomes((prev) => prev.map((i) => updatedMap.get(i.id) || i));
-    } else {
-      const newInc: Income = {
-        id: `inc-paid-${Date.now()}`,
-        clientId: project.clientId,
-        projectId: project.id,
-        description: `Pagamento Total - ${project.name}`,
-        amount: project.totalAmount,
-        currency: project.currency,
-        dueDate: project.startDate || new Date().toISOString().split('T')[0],
-        receivedDate: new Date().toISOString().split('T')[0],
-        paymentMethod: 'PIX',
-        status: 'Recebido',
-        createdAt: new Date().toISOString().split('T')[0],
-      };
-      await upsertIncomeToDb(newInc);
-      setIncomes((prev) => [newInc, ...prev]);
-    }
-  };
-
-  // PROJECT HELPER: Sync project paid amount and completion status from linked incomes
+  // ------------------------------------------------------------------
+  // CRUD Handlers: Projects
+  // ------------------------------------------------------------------
   const syncProjectPaidAmountFromIncomes = async (
     targetProjectId: string,
     currentIncomes: Income[],
     currentProjects: Project[]
   ) => {
-    const proj = currentProjects.find((p) => p.id === targetProjectId);
-    if (!proj) return;
+    const project = currentProjects.find((p) => p.id === targetProjectId);
+    if (!project) return;
 
-    const totalReceived = currentIncomes
-      .filter((i) => i.projectId === targetProjectId && i.status === 'Recebido')
-      .reduce((sum, i) => sum + i.amount, 0);
+    const projectIncomes = currentIncomes.filter((i) => i.projectId === targetProjectId);
+    const sumPaid = projectIncomes
+      .filter((i) => i.status === 'Recebido')
+      .reduce((acc, i) => acc + i.amount, 0);
 
-    const isFullyPaidNow = totalReceived >= proj.totalAmount && proj.totalAmount > 0;
-    const updatedStatus: ProjectStatus = isFullyPaidNow ? 'Concluído' : (proj.status === 'Concluído' && !isFullyPaidNow ? 'Em andamento' : proj.status);
+    const isFullyPaid = sumPaid >= project.totalAmount && project.totalAmount > 0;
+    const updatedStatus: ProjectStatus = isFullyPaid ? 'Concluído' : project.status;
 
-    if (proj.paidAmount !== totalReceived || proj.status !== updatedStatus) {
-      const updatedProj: Project = {
-        ...proj,
-        paidAmount: totalReceived,
+    if (project.paidAmount !== sumPaid || project.status !== updatedStatus) {
+      const updatedProject: Project = {
+        ...project,
+        paidAmount: sumPaid,
         status: updatedStatus,
       };
-      await upsertProjectToDb(updatedProj);
-      setProjects((prev) => prev.map((p) => (p.id === targetProjectId ? updatedProj : p)));
+
+      const updatedProjects = currentProjects.map((p) =>
+        p.id === targetProjectId ? updatedProject : p
+      );
+      setProjects(updatedProjects);
+      saveProjects(updatedProjects);
+      await upsertProjectToDb(updatedProject);
     }
   };
 
-  const handleDeleteProject = async (projectId: string) => {
-    const project = projects.find((p) => p.id === projectId);
-    if (!project) return;
-    if (window.confirm(`Tem certeza que deseja excluir o projeto "${project.name}"?`)) {
-      await deleteProjectFromDb(projectId);
-      setProjects((prev) => prev.filter((p) => p.id !== projectId));
-      setIncomes((prev) => prev.filter((i) => i.projectId !== projectId));
+  const handleSaveProject = async (
+    projectData: Omit<Project, 'id' | 'createdAt'> & { id?: string }
+  ) => {
+    const isNew = !projectData.id;
+    const projectId = projectData.id || `proj-${Date.now()}`;
+    const newProject: Project = {
+      ...projectData,
+      id: projectId,
+      createdAt: isNew
+        ? getTodayIso()
+        : (projects.find((p) => p.id === projectId)?.createdAt || getTodayIso()),
+    };
+
+    const updatedProjects = isNew
+      ? [newProject, ...projects]
+      : projects.map((p) => (p.id === projectId ? newProject : p));
+
+    setProjects(updatedProjects);
+    saveProjects(updatedProjects);
+    await upsertProjectToDb(newProject);
+
+    if (isNew) {
+      const initialIncomes: Income[] = [];
+
+      if (newProject.paidAmount > 0) {
+        const paidIncome: Income = {
+          id: `inc-${Date.now()}-1`,
+          clientId: newProject.clientId,
+          projectId: newProject.id,
+          description: `Entrada / Sinal - ${newProject.name}`,
+          amount: newProject.paidAmount,
+          currency: newProject.currency,
+          dueDate: newProject.startDate,
+          receivedDate: newProject.startDate,
+          status: 'Recebido',
+          paymentMethod: 'Transferência',
+          createdAt: getTodayIso(),
+        };
+        initialIncomes.push(paidIncome);
+        await upsertIncomeToDb(paidIncome);
+      }
+
+      const remainingAmount = newProject.totalAmount - newProject.paidAmount;
+      if (remainingAmount > 0) {
+        const pendingIncome: Income = {
+          id: `inc-${Date.now()}-2`,
+          clientId: newProject.clientId,
+          projectId: newProject.id,
+          description: `Saldo Restante - ${newProject.name}`,
+          amount: remainingAmount,
+          currency: newProject.currency,
+          dueDate: newProject.nextPaymentDate || newProject.dueDate,
+          status: 'Pendente',
+          paymentMethod: 'Transferência',
+          createdAt: getTodayIso(),
+        };
+        initialIncomes.push(pendingIncome);
+        await upsertIncomeToDb(pendingIncome);
+      }
+
+      if (initialIncomes.length > 0) {
+        const nextIncomes = [...initialIncomes, ...incomes];
+        setIncomes(nextIncomes);
+        saveIncomes(nextIncomes);
+      }
+    }
+
+    if (userProfile) {
+      logAction({
+        companyId: userProfile.companyId,
+        userId: userProfile.id,
+        userName: userProfile.name,
+        userRole: userProfile.role,
+        action: isNew ? 'project.create' : 'project.edit',
+        resourceType: 'project',
+        resourceId: projectId,
+      });
+    }
+  };
+
+  const handleMarkProjectAsPaid = async (project: Project) => {
+    const updatedProject: Project = {
+      ...project,
+      paidAmount: project.totalAmount,
+      status: 'Concluído',
+    };
+
+    const updatedProjects = projects.map((p) =>
+      p.id === project.id ? updatedProject : p
+    );
+    setProjects(updatedProjects);
+    saveProjects(updatedProjects);
+    await upsertProjectToDb(updatedProject);
+
+    // Update or create linked income as Recebido
+    const projectIncomes = incomes.filter((i) => i.projectId === project.id);
+    if (projectIncomes.length > 0) {
+      const updatedIncomes = incomes.map((inc) => {
+        if (inc.projectId === project.id && inc.status !== 'Recebido') {
+          const updatedInc: Income = {
+            ...inc,
+            status: 'Recebido',
+            receivedDate: inc.receivedDate || getTodayIso(),
+          };
+          upsertIncomeToDb(updatedInc);
+          return updatedInc;
+        }
+        return inc;
+      });
+      setIncomes(updatedIncomes);
+      saveIncomes(updatedIncomes);
     }
   };
 
   const handleDuplicateProject = (project: Project) => {
-    const today = getTodayIso();
-    const next15 = addDaysIso(15);
     const duplicated: Project = {
       ...project,
-      id: '', // Empty ID so modal treats it as NEW project
+      id: '',
       name: `${project.name} (Novo Mês)`,
+      startDate: getTodayIso(),
+      dueDate: addDaysIso(30),
+      nextPaymentDate: addDaysIso(30),
       paidAmount: 0,
-      startDate: today,
-      dueDate: next15,
-      nextPaymentDate: next15,
       status: 'Em andamento',
-      rating: 0,
-      createdAt: today,
+      createdAt: getTodayIso(),
     };
     setProjectToEdit(duplicated);
     setIsProjectModalOpen(true);
   };
 
   const handleRateProject = async (project: Project, rating: number) => {
-    const updated: Project = { ...project, rating };
-    await upsertProjectToDb(updated);
-    setProjects((prev) => prev.map((p) => (p.id === project.id ? updated : p)));
+    const updatedProject: Project = { ...project, rating };
+    const updated = projects.map((p) => (p.id === project.id ? updatedProject : p));
+    setProjects(updated);
+    saveProjects(updated);
+    await upsertProjectToDb(updatedProject);
   };
 
-  // INCOME CRUD
-  const handleSaveIncome = async (incomeData: Omit<Income, 'id' | 'createdAt'> & { id?: string }) => {
-    const targetId = incomeData.id || `inc-${Date.now()}`;
-    const newInc: Income = {
-      ...incomeData,
-      id: targetId,
-      createdAt: new Date().toISOString().split('T')[0],
-    };
-    await upsertIncomeToDb(newInc);
-    const updatedIncomes = [newInc, ...incomes.filter((i) => i.id !== targetId)];
-    setIncomes(updatedIncomes);
+  const handleDeleteProject = async (projectId: string) => {
+    const project = projects.find((p) => p.id === projectId);
+    if (!project) return;
 
-    // Auto-sync linked project
-    if (newInc.projectId) {
-      await syncProjectPaidAmountFromIncomes(newInc.projectId, updatedIncomes, projects);
+    if (window.confirm(`Tem certeza que deseja excluir o projeto "${project.name}"?`)) {
+      const updatedProjects = projects.filter((p) => p.id !== projectId);
+      const updatedIncomes = incomes.filter((i) => i.projectId !== projectId);
+
+      setProjects(updatedProjects);
+      saveProjects(updatedProjects);
+      setIncomes(updatedIncomes);
+      saveIncomes(updatedIncomes);
+
+      await deleteProjectFromDb(projectId);
+
+      if (userProfile) {
+        logAction({
+          companyId: userProfile.companyId,
+          userId: userProfile.id,
+          userName: userProfile.name,
+          userRole: userProfile.role,
+          action: 'project.delete',
+          resourceType: 'project',
+          resourceId: projectId,
+        });
+      }
     }
-    // Also sync old project if projectId changed
-    const oldIncome = incomes.find((i) => i.id === targetId);
-    if (oldIncome?.projectId && oldIncome.projectId !== newInc.projectId) {
-      await syncProjectPaidAmountFromIncomes(oldIncome.projectId, updatedIncomes, projects);
+  };
+
+  const handleAssumeProject = async (projectId: string): Promise<{ success: boolean; error?: string }> => {
+    const res = await assumeAvailableProject(projectId);
+    if (res.success) {
+      // Reload projects to reflect new assignment
+      const dbProjects = await fetchProjectsFromDb();
+      if (dbProjects) {
+        setProjects(dbProjects);
+        saveProjects(dbProjects);
+      }
+    }
+    return res;
+  };
+
+  // ------------------------------------------------------------------
+  // CRUD Handlers: Tasks
+  // ------------------------------------------------------------------
+  const handleSaveTask = async (
+    taskData: Partial<Task> & { title: string; companyId: string; createdBy: string }
+  ) => {
+    const saved = await upsertTask(taskData);
+    if (saved) {
+      setTasks((prev) => {
+        const exists = prev.some((t) => t.id === saved.id);
+        return exists ? prev.map((t) => (t.id === saved.id ? saved : t)) : [saved, ...prev];
+      });
+
+      if (userProfile) {
+        logAction({
+          companyId: userProfile.companyId,
+          userId: userProfile.id,
+          userName: userProfile.name,
+          userRole: userProfile.role,
+          action: taskData.id ? 'task.edit' : 'task.create',
+          resourceType: 'task',
+          resourceId: saved.id,
+        });
+      }
+    }
+  };
+
+  const handleUpdateTaskStatus = async (taskId: string, newStatus: TaskStatus) => {
+    setTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t))
+    );
+    await updateTaskStatus(taskId, newStatus);
+
+    if (userProfile) {
+      logAction({
+        companyId: userProfile.companyId,
+        userId: userProfile.id,
+        userName: userProfile.name,
+        userRole: userProfile.role,
+        action: newStatus === 'Concluída' ? 'task.complete' : 'task.status_change',
+        resourceType: 'task',
+        resourceId: taskId,
+      });
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    if (window.confirm('Tem certeza que deseja excluir esta tarefa?')) {
+      setTasks((prev) => prev.filter((t) => t.id !== taskId));
+      await deleteTask(taskId);
+    }
+  };
+
+  const handleAssignTaskToMe = async (taskId: string) => {
+    if (!userProfile) return;
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === taskId
+          ? { ...t, assignedTo: userProfile.id, assignedToName: userProfile.name, status: 'Em andamento' }
+          : t
+      )
+    );
+    await upsertTask({
+      id: taskId,
+      companyId: userProfile.companyId,
+      title: tasks.find((t) => t.id === taskId)?.title || '',
+      assignedTo: userProfile.id,
+      status: 'Em andamento',
+      createdBy: userProfile.id,
+    });
+  };
+
+  // ------------------------------------------------------------------
+  // CRUD Handlers: Users & Permissions
+  // ------------------------------------------------------------------
+  const handleSaveUser = async (data: {
+    id?: string;
+    name: string;
+    email: string;
+    password?: string;
+    role: UserRole;
+    status: 'active' | 'suspended';
+  }) => {
+    if (!userProfile?.companyId) return;
+
+    if (!data.id) {
+      // Create new user
+      const res = await createCompanyUser({
+        email: data.email,
+        password: data.password || 'Mudar123!',
+        name: data.name,
+        role: data.role,
+        companyId: userProfile.companyId,
+      });
+
+      if (!res.success) {
+        throw new Error(res.error || 'Erro ao criar utilizador');
+      }
+
+      // Reload users list
+      const freshUsers = await fetchCompanyUsers(userProfile.companyId);
+      setCompanyUsers(freshUsers);
+
+      logAction({
+        companyId: userProfile.companyId,
+        userId: userProfile.id,
+        userName: userProfile.name,
+        userRole: userProfile.role,
+        action: 'user.create',
+        resourceType: 'user',
+        resourceId: res.userId,
+      });
+    } else {
+      // Update existing user profile
+      await updateUserProfile({
+        id: data.id,
+        companyId: userProfile.companyId,
+        name: data.name,
+        role: data.role,
+        status: data.status,
+      });
+
+      const freshUsers = await fetchCompanyUsers(userProfile.companyId);
+      setCompanyUsers(freshUsers);
+
+      logAction({
+        companyId: userProfile.companyId,
+        userId: userProfile.id,
+        userName: userProfile.name,
+        userRole: userProfile.role,
+        action: 'user.edit',
+        resourceType: 'user',
+        resourceId: data.id,
+      });
+    }
+  };
+
+  const handleToggleUserStatus = async (userId: string, currentStatus: string) => {
+    if (!userProfile?.companyId) return;
+    const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
+    await updateUserStatus(userId, newStatus);
+
+    setCompanyUsers((prev) =>
+      prev.map((u) => (u.id === userId ? { ...u, status: newStatus } : u))
+    );
+
+    logAction({
+      companyId: userProfile.companyId,
+      userId: userProfile.id,
+      userName: userProfile.name,
+      userRole: userProfile.role,
+      action: newStatus === 'suspended' ? 'user.suspend' : 'user.activate',
+      resourceType: 'user',
+      resourceId: userId,
+    });
+  };
+
+  const handleOpenPermissionsModal = async (user: UserProfile) => {
+    setUserForPerms(user);
+    const perms = await fetchUserPermissions(user.id);
+    setUserPermsList(perms);
+    setIsUserPermsModalOpen(true);
+  };
+
+  const handleSaveUserPermissions = async (
+    userId: string,
+    permissions: Array<{ permissionId: string; scope: PermissionScope; granted: boolean }>
+  ) => {
+    if (!userProfile?.companyId) return;
+    await setUserPermissions(userId, permissions, userProfile.id);
+
+    logAction({
+      companyId: userProfile.companyId,
+      userId: userProfile.id,
+      userName: userProfile.name,
+      userRole: userProfile.role,
+      action: 'permission.grant',
+      resourceType: 'user',
+      resourceId: userId,
+    });
+
+    if (userId === userProfile.id) {
+      await refreshProfile();
+    }
+  };
+
+  // ------------------------------------------------------------------
+  // CRUD Handlers: Incomes & Expenses
+  // ------------------------------------------------------------------
+  const handleSaveIncome = async (
+    incomeData: Omit<Income, 'id' | 'createdAt'> & { id?: string }
+  ) => {
+    const isNew = !incomeData.id;
+    const incomeId = incomeData.id || `inc-${Date.now()}`;
+    const newIncome: Income = {
+      ...incomeData,
+      id: incomeId,
+      createdAt: isNew
+        ? getTodayIso()
+        : (incomes.find((i) => i.id === incomeId)?.createdAt || getTodayIso()),
+    };
+
+    const updated = isNew
+      ? [newIncome, ...incomes]
+      : incomes.map((i) => (i.id === incomeId ? newIncome : i));
+
+    setIncomes(updated);
+    saveIncomes(updated);
+    await upsertIncomeToDb(newIncome);
+
+    if (newIncome.projectId) {
+      await syncProjectPaidAmountFromIncomes(newIncome.projectId, updated, projects);
     }
   };
 
   const handleDeleteIncome = async (incomeId: string) => {
-    const targetInc = incomes.find((i) => i.id === incomeId);
-    if (window.confirm('Tem certeza que deseja excluir esta receita?')) {
+    const income = incomes.find((i) => i.id === incomeId);
+    if (!income) return;
+
+    if (window.confirm(`Excluir a receita "${income.description}"?`)) {
+      const updated = incomes.filter((i) => i.id !== incomeId);
+      setIncomes(updated);
+      saveIncomes(updated);
       await deleteIncomeFromDb(incomeId);
-      const updatedIncomes = incomes.filter((i) => i.id !== incomeId);
-      setIncomes(updatedIncomes);
-      if (targetInc?.projectId) {
-        await syncProjectPaidAmountFromIncomes(targetInc.projectId, updatedIncomes, projects);
+
+      if (income.projectId) {
+        await syncProjectPaidAmountFromIncomes(income.projectId, updated, projects);
       }
     }
   };
 
   const handleToggleIncomeStatus = async (income: Income) => {
     const nextStatus = income.status === 'Recebido' ? 'Pendente' : 'Recebido';
-    const updated: Income = {
+    const updatedIncome: Income = {
       ...income,
       status: nextStatus,
-      receivedDate: nextStatus === 'Recebido' ? new Date().toISOString().split('T')[0] : undefined,
+      receivedDate: nextStatus === 'Recebido' ? (income.receivedDate || getTodayIso()) : undefined,
     };
-    await upsertIncomeToDb(updated);
-    const updatedIncomes = incomes.map((i) => (i.id === income.id ? updated : i));
-    setIncomes(updatedIncomes);
-    if (updated.projectId) {
-      await syncProjectPaidAmountFromIncomes(updated.projectId, updatedIncomes, projects);
+
+    const updated = incomes.map((i) => (i.id === income.id ? updatedIncome : i));
+    setIncomes(updated);
+    saveIncomes(updated);
+    await upsertIncomeToDb(updatedIncome);
+
+    if (income.projectId) {
+      await syncProjectPaidAmountFromIncomes(income.projectId, updated, projects);
     }
   };
 
-  // EXPENSE CRUD
-  const handleSaveExpense = async (expenseData: Omit<Expense, 'id' | 'createdAt'> & { id?: string }) => {
-    const targetId = expenseData.id || `exp-${Date.now()}`;
-    const newExp: Expense = {
+  const handleSaveExpense = async (
+    expenseData: Omit<Expense, 'id' | 'createdAt'> & { id?: string }
+  ) => {
+    const isNew = !expenseData.id;
+    const expenseId = expenseData.id || `exp-${Date.now()}`;
+    const newExpense: Expense = {
       ...expenseData,
-      id: targetId,
-      createdAt: new Date().toISOString().split('T')[0],
+      id: expenseId,
+      createdAt: isNew
+        ? getTodayIso()
+        : (expenses.find((e) => e.id === expenseId)?.createdAt || getTodayIso()),
     };
-    await upsertExpenseToDb(newExp);
-    setExpenses((prev) => [newExp, ...prev.filter((e) => e.id !== targetId)]);
 
-    // If this is a commission payment to a partner and it's marked as paid, sync partner projects!
-    if (newExp.category === 'Comissão Parceiro' && newExp.partnerId && newExp.paid) {
-      const partnerProjects = projects.filter((p) => p.partnerId === newExp.partnerId && !p.commissionPaid);
-      if (partnerProjects.length > 0) {
-        const projToUpdate = partnerProjects[0];
-        const updatedProj: Project = { ...projToUpdate, commissionPaid: true };
-        await upsertProjectToDb(updatedProj);
-        setProjects((prev) => prev.map((p) => (p.id === updatedProj.id ? updatedProj : p)));
-      }
-    }
+    const updated = isNew
+      ? [newExpense, ...expenses]
+      : expenses.map((e) => (e.id === expenseId ? newExpense : e));
+
+    setExpenses(updated);
+    saveExpenses(updated);
+    await upsertExpenseToDb(newExpense);
   };
 
   const handleDeleteExpense = async (expenseId: string) => {
-    if (window.confirm('Tem certeza que deseja excluir esta despesa?')) {
+    const expense = expenses.find((e) => e.id === expenseId);
+    if (!expense) return;
+
+    if (window.confirm(`Excluir a despesa "${expense.description}"?`)) {
+      const updated = expenses.filter((e) => e.id !== expenseId);
+      setExpenses(updated);
+      saveExpenses(updated);
       await deleteExpenseFromDb(expenseId);
-      setExpenses((prev) => prev.filter((e) => e.id !== expenseId));
     }
   };
 
   const handleToggleExpensePaid = async (expense: Expense) => {
-    const updated: Expense = { ...expense, paid: !expense.paid };
-    await upsertExpenseToDb(updated);
-    setExpenses((prev) => prev.map((e) => (e.id === expense.id ? updated : e)));
+    const updatedExpense: Expense = {
+      ...expense,
+      paid: !expense.paid,
+    };
 
-    if (updated.category === 'Comissão Parceiro' && updated.partnerId) {
-      const partnerProjects = projects.filter((p) => p.partnerId === updated.partnerId);
-      if (partnerProjects.length > 0) {
-        const projToUpdate = partnerProjects[0];
-        const updatedProj: Project = { ...projToUpdate, commissionPaid: updated.paid };
-        await upsertProjectToDb(updatedProj);
-        setProjects((prev) => prev.map((p) => (p.id === updatedProj.id ? updatedProj : p)));
-      }
-    }
+    const updated = expenses.map((e) => (e.id === expense.id ? updatedExpense : e));
+    setExpenses(updated);
+    saveExpenses(updated);
+    await upsertExpenseToDb(updatedExpense);
   };
 
   const handleToggleProjectCommissionPaid = async (project: Project) => {
     const nextPaid = !project.commissionPaid;
-    const updatedProj: Project = {
-      ...project,
-      commissionPaid: nextPaid,
-    };
-    await upsertProjectToDb(updatedProj);
-    setProjects((prev) => prev.map((p) => (p.id === project.id ? updatedProj : p)));
+    const updatedProject: Project = { ...project, commissionPaid: nextPaid };
 
-    const commAmt = project.commissionAmount || (project.commissionValue ? (project.commissionType === 'percent' ? (project.totalAmount * project.commissionValue) / 100 : project.commissionValue) : 0);
-
-    if (nextPaid && commAmt > 0 && project.partnerId) {
-      const existingExpense = expenses.find(
-        (e) => e.partnerId === project.partnerId && e.description.includes(project.name)
-      );
-      if (existingExpense) {
-        if (!existingExpense.paid) {
-          const updExp = { ...existingExpense, paid: true };
-          await upsertExpenseToDb(updExp);
-          setExpenses((prev) => prev.map((e) => (e.id === updExp.id ? updExp : e)));
-        }
-      } else {
-        const newExp: Expense = {
-          id: `exp-comm-${Date.now()}`,
-          category: 'Comissão Parceiro',
-          description: `Comissão - ${project.partnerName || 'Parceiro'} (${project.name})`,
-          amount: commAmt,
-          currency: project.currency,
-          date: new Date().toISOString().split('T')[0],
-          paid: true,
-          partnerId: project.partnerId,
-          partnerName: project.partnerName,
-          createdAt: new Date().toISOString().split('T')[0],
-        };
-        await upsertExpenseToDb(newExp);
-        setExpenses((prev) => [newExp, ...prev]);
-      }
-    }
+    const updated = projects.map((p) => (p.id === project.id ? updatedProject : p));
+    setProjects(updated);
+    saveProjects(updated);
+    await upsertProjectToDb(updatedProject);
   };
 
-  // CATEGORY CRUD
-  const handleSaveCategory = (catData: Omit<CategoryItem, 'id' | 'createdAt'> & { id?: string }) => {
-    const targetId = catData.id || `cat-${Date.now()}`;
-    const newCat: CategoryItem = {
-      ...catData,
-      id: targetId,
-      createdAt: new Date().toISOString(),
+  // ------------------------------------------------------------------
+  // CRUD Handlers: Categories, Agenda, Partners, Settings
+  // ------------------------------------------------------------------
+  const handleSaveCategory = (categoryData: Omit<CategoryItem, 'id' | 'createdAt'> & { id?: string }) => {
+    const isNew = !categoryData.id;
+    const catId = categoryData.id || `cat-${Date.now()}`;
+    const newCategory: CategoryItem = {
+      ...categoryData,
+      id: catId,
+      createdAt: isNew ? getTodayIso() : (categories.find((c) => c.id === catId)?.createdAt || getTodayIso()),
     };
-    const updated = [newCat, ...categories.filter((c) => c.id !== targetId)];
-    saveCategories(updated);
+    const updated = isNew
+      ? [newCategory, ...categories]
+      : categories.map((c) => (c.id === catId ? newCategory : c));
     setCategories(updated);
+    saveCategories(updated);
   };
 
-  const handleDeleteCategory = (catId: string) => {
-    if (window.confirm('Excluir esta categoria?')) {
-      const updated = categories.filter((c) => c.id !== catId);
-      saveCategories(updated);
-      setCategories(updated);
-    }
+  const handleDeleteCategory = (categoryId: string) => {
+    const updated = categories.filter((c) => c.id !== categoryId);
+    setCategories(updated);
+    saveCategories(updated);
   };
 
-  // AGENDA EVENT CRUD
   const handleSaveAgendaEvent = async (eventData: Omit<AgendaEvent, 'id' | 'createdAt'> & { id?: string }) => {
-    const targetId = eventData.id || `ev-${Date.now()}`;
-    const newEv: AgendaEvent = {
+    const isNew = !eventData.id;
+    const eventId = eventData.id || `evt-${Date.now()}`;
+    const newEvent: AgendaEvent = {
       ...eventData,
-      id: targetId,
-      createdAt: new Date().toISOString(),
+      id: eventId,
+      createdAt: isNew ? getTodayIso() : (agendaEvents.find((e) => e.id === eventId)?.createdAt || getTodayIso()),
     };
-    await upsertAgendaEventToDb(newEv);
-    setAgendaEvents((prev) => [newEv, ...prev.filter((e) => e.id !== targetId)]);
+    const updated = isNew
+      ? [newEvent, ...agendaEvents]
+      : agendaEvents.map((e) => (e.id === eventId ? newEvent : e));
+    setAgendaEvents(updated);
+    await upsertAgendaEventToDb(newEvent);
   };
 
   const handleDeleteAgendaEvent = async (eventId: string) => {
-    if (window.confirm('Excluir este evento da agenda?')) {
-      await deleteAgendaEventFromDb(eventId);
-      setAgendaEvents((prev) => prev.filter((e) => e.id !== eventId));
-    }
+    setAgendaEvents((prev) => prev.filter((e) => e.id !== eventId));
+    await deleteAgendaEventFromDb(eventId);
   };
 
   const handleToggleAgendaEventStatus = async (eventId: string) => {
-    const ev = agendaEvents.find((e) => e.id === eventId);
-    if (!ev) return;
-    const updated: AgendaEvent = {
-      ...ev,
-      status: ev.status === 'completed' ? 'pending' : 'completed',
-    };
-    await upsertAgendaEventToDb(updated);
-    setAgendaEvents((prev) => prev.map((e) => (e.id === eventId ? updated : e)));
+    const evt = agendaEvents.find((e) => e.id === eventId);
+    if (!evt) return;
+    const nextStatus = evt.status === 'completed' ? 'pending' : 'completed';
+    const updatedEvt: AgendaEvent = { ...evt, status: nextStatus };
+    setAgendaEvents((prev) => prev.map((e) => (e.id === eventId ? updatedEvt : e)));
+    await upsertAgendaEventToDb(updatedEvt);
   };
 
-  // Clear local cache only
-  const handleResetData = () => {
-    if (window.confirm('Limpar cache local e recarregar dados do banco?')) {
-      clearAllData();
-      window.location.reload();
-    }
-  };
-
-  const handleClearData = () => {
-    if (window.confirm('Tem certeza que deseja limpar o cache local? Os dados no banco de dados não serão apagados.')) {
-      clearAllData();
-      setClients([]);
-      setProjects([]);
-      setIncomes([]);
-      setExpenses([]);
-      setAgendaEvents([]);
-    }
-  };
-
-  // Export & Import Backup
-  const handleExportData = () => {
-    const jsonStr = exportBackupData();
-    const blob = new Blob([jsonStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `gestao_financeira_backup_${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
-
-  const handleImportData = (jsonStr: string) => {
-    if (importBackupData(jsonStr)) {
-      setClients(getStoredClients());
-      setProjects(getStoredProjects());
-      setIncomes(getStoredIncomes());
-      setExpenses(getStoredExpenses());
-      setSettings(getStoredSettings());
-      alert('Backup restaurado com sucesso!');
-    }
-  };
-
-  // PARTNER CRUD
   const handleSavePartner = async (partnerData: Omit<Partner, 'id' | 'createdAt'> & { id?: string }) => {
-    const targetId = partnerData.id || `part-${Date.now()}`;
+    const isNew = !partnerData.id;
+    const partnerId = partnerData.id || `part-${Date.now()}`;
     const newPartner: Partner = {
       ...partnerData,
-      id: targetId,
-      createdAt: new Date().toISOString().split('T')[0],
+      id: partnerId,
+      createdAt: isNew ? getTodayIso() : (partners.find((p) => p.id === partnerId)?.createdAt || getTodayIso()),
     };
+    const updated = isNew
+      ? [newPartner, ...partners]
+      : partners.map((p) => (p.id === partnerId ? newPartner : p));
+    setPartners(updated);
+    savePartners(updated);
     await upsertPartnerToDb(newPartner);
-    setPartners((prev) => [newPartner, ...prev.filter((p) => p.id !== targetId)]);
   };
 
   const handleDeletePartner = async (partnerId: string) => {
@@ -803,37 +989,83 @@ export default function App() {
     }
   };
 
-  // ROUTE GUARD: Wait for auth check, then redirect if unauthenticated
+  const handleResetData = () => {
+    clearAllData();
+    window.location.reload();
+  };
+
+  const handleClearData = () => {
+    clearAllData();
+    setClients([]);
+    setProjects([]);
+    setIncomes([]);
+    setExpenses([]);
+    setPartners([]);
+    setAgendaEvents([]);
+  };
+
+  const handleExportData = () => {
+    exportBackupData();
+  };
+
+  const handleImportData = (jsonStr: string) => {
+    const success = importBackupData(jsonStr);
+    if (success) {
+      setClients(getStoredClients());
+      setProjects(getStoredProjects());
+      setIncomes(getStoredIncomes());
+      setExpenses(getStoredExpenses());
+      setCategories(getStoredCategories());
+      setPartners(getStoredPartners());
+      setSettings(getStoredSettings());
+      alert('Dados restaurados com sucesso!');
+    } else {
+      alert('Erro ao importar arquivo de backup.');
+    }
+  };
+
+  // ------------------------------------------------------------------
+  // ROUTE GUARD
+  // ------------------------------------------------------------------
   if (authLoading) {
     return (
       <div className="min-h-screen bg-[#fcf8f8] flex items-center justify-center" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
         <div className="text-center space-y-4">
           <div className="w-10 h-10 border-2 border-[#000000] border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-[#747878] text-sm font-normal">A carregar...</p>
+          <p className="text-[#747878] text-sm font-normal">A carregar permissões...</p>
         </div>
       </div>
     );
   }
 
   if (!userSession) {
-    return <LoginView onLoginSuccess={(session) => setUserSession(session)} />;
+    return <LoginView onLoginSuccess={login} />;
   }
 
-  const navItems = [
-    { id: 'dashboard', label: 'Painel Financeiro', icon: LayoutDashboard },
-    { id: 'calendar', label: 'Agenda & Prazos', icon: CalendarIcon, badge: agendaEvents.filter((e) => e.status === 'pending').length },
-    { id: 'projects', label: 'Projetos & Operações', icon: FolderKanban, badge: projects.filter((p) => p.status === 'Em andamento').length },
-    { id: 'clients', label: 'Clientes & Contas', icon: Users, badge: clients.length },
-    { id: 'financial', label: 'Transações Financeiras', icon: DollarSign, badge: incomes.filter((i) => i.status === 'Pendente').length },
-    { id: 'partners', label: 'Gestão de Parceiros', icon: Handshake, badge: partners.length },
-    { id: 'categories', label: 'Categorias', icon: Tag },
-    { id: 'reports', label: 'Relatórios Gerenciais', icon: PieChart },
-    { id: 'settings', label: 'Configurações', icon: Settings },
+  // Navigation Items Catalog
+  const allNavItems = [
+    { id: 'dashboard',  label: 'Painel Geral',       icon: LayoutDashboard },
+    { id: 'calendar',   label: 'Agenda & Prazos',     icon: CalendarIcon, badge: agendaEvents.filter((e) => e.status === 'pending').length },
+    { id: 'projects',   label: 'Projetos & Operações', icon: FolderKanban, badge: projects.filter((p) => p.status === 'Em andamento').length },
+    { id: 'tasks',      label: 'Tarefas & Entregas',  icon: CheckSquare,  badge: tasks.filter((t) => t.status !== 'Concluída').length },
+    { id: 'clients',    label: 'Clientes & Contas',   icon: Users,        badge: clients.length },
+    { id: 'financial',  label: 'Transações Financeiras', icon: DollarSign, badge: incomes.filter((i) => i.status === 'Pendente').length },
+    { id: 'partners',   label: 'Gestão de Parceiros', icon: Handshake,    badge: partners.length },
+    { id: 'categories', label: 'Categorias',          icon: Tag },
+    { id: 'reports',    label: 'Relatórios',          icon: PieChart },
+    { id: 'users',      label: 'Utilizadores & Cargos', icon: UserCog,    badge: isOwner ? companyUsers.length : undefined },
+    { id: 'audit',      label: 'Registo de Auditoria', icon: History },
+    { id: 'settings',   label: 'Configurações',       icon: Settings },
   ];
+
+  // Filter nav items by user permissions
+  const navItems = allNavItems.filter((item) => {
+    if (item.id === 'audit') return isOwner;
+    return visibleTabs.includes(item.id);
+  });
 
   return (
     <div className="min-h-screen bg-[#fcf8f8] text-[#1c1b1b] flex flex-col" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
-      
       {/* Top Header */}
       <Header
         activeCurrencyFilter={currencyFilter}
@@ -846,18 +1078,19 @@ export default function App() {
         onOpenNewIncomeModal={() => { setIncomeToEdit(null); setIsIncomeModalOpen(true); }}
         onOpenNewExpenseModal={() => { setExpenseToEdit(null); setIsExpenseModalOpen(true); }}
         onOpenNewPartnerModal={() => { setPartnerToEdit(null); setIsPartnerModalOpen(true); }}
+        onOpenNewTaskModal={() => { setTaskToEdit(null); setIsTaskModalOpen(true); }}
+        onOpenNewUserModal={() => { setUserToEdit(null); setIsUserModalOpen(true); }}
         activeTab={activeTab}
         setActiveTab={handleNavigateTab}
         toggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         userSession={userSession}
-        onLogout={handleLogout}
+        onLogout={logout}
       />
 
       {/* Main App Container */}
       <div className="flex-1 w-full max-w-[1700px] mx-auto px-4 sm:px-6 lg:px-8 py-6 flex gap-6">
-        
         {/* Desktop Sidebar Navigation */}
-        <aside className="hidden lg:block w-56 shrink-0">
+        <aside className="hidden lg:block w-60 shrink-0">
           <nav className="sticky top-20 space-y-0.5 bg-white p-3 rounded-[22px] border border-[#c4c7c7]/40 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
             <div className="px-3 py-2 text-[10px] font-semibold tracking-[0.08em] text-[#747878] uppercase mb-1">
               Menu Principal
@@ -878,7 +1111,7 @@ export default function App() {
                 >
                   <div className="flex items-center space-x-2.5">
                     <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-[#747878]'}`} strokeWidth={1.5} />
-                    <span className={`font-medium text-[13px] ${isActive ? '' : ''}`}>{item.label}</span>
+                    <span className="font-medium text-[13px]">{item.label}</span>
                   </div>
 
                   {item.badge !== undefined && item.badge > 0 && (
@@ -921,7 +1154,7 @@ export default function App() {
                 </button>
               </div>
 
-              <nav className="space-y-0.5 flex-1">
+              <nav className="space-y-0.5 flex-1 overflow-y-auto">
                 {navItems.map((item) => {
                   const Icon = item.icon;
                   const isActive = activeTab === item.id;
@@ -951,7 +1184,7 @@ export default function App() {
               </nav>
 
               <button
-                onClick={handleLogout}
+                onClick={logout}
                 className="mt-auto w-full flex items-center justify-center space-x-2 py-2.5 rounded-full bg-[#ffdad6] text-[#93000a] text-sm font-medium hover:opacity-85 transition-all cursor-pointer"
               >
                 <LogOut className="w-4 h-4" strokeWidth={1.5} />
@@ -963,13 +1196,13 @@ export default function App() {
 
         {/* Main View Area */}
         <main className="flex-1 min-w-0">
-          
           {activeTab === 'dashboard' && (
             <DashboardView
               clients={clients}
               projects={projects}
               incomes={incomes}
               expenses={expenses}
+              tasks={tasks}
               settings={settings}
               currencyFilter={currencyFilter}
               onNavigateTab={handleNavigateTab}
@@ -977,6 +1210,7 @@ export default function App() {
               onOpenNewProjectModal={() => { setProjectToEdit(null); setIsProjectModalOpen(true); }}
               onOpenNewIncomeModal={() => { setIncomeToEdit(null); setIsIncomeModalOpen(true); }}
               onOpenNewExpenseModal={() => { setExpenseToEdit(null); setIsExpenseModalOpen(true); }}
+              onAssumeProject={handleAssumeProject}
             />
           )}
 
@@ -1007,7 +1241,27 @@ export default function App() {
               onRateProject={handleRateProject}
               onDeleteProject={handleDeleteProject}
               onMarkProjectAsPaid={handleMarkProjectAsPaid}
+              onAssumeProject={handleAssumeProject}
               onOpenWhatsAppCharge={handleOpenWhatsAppCharge}
+            />
+          )}
+
+          {activeTab === 'tasks' && (
+            <TasksView
+              tasks={tasks}
+              projects={projects}
+              employees={companyUsers}
+              onOpenNewTaskModal={(defProjId) => {
+                setTaskToEdit(defProjId ? { projectId: defProjId } as Task : null);
+                setIsTaskModalOpen(true);
+              }}
+              onEditTask={(task) => {
+                setTaskToEdit(task);
+                setIsTaskModalOpen(true);
+              }}
+              onDeleteTask={handleDeleteTask}
+              onUpdateTaskStatus={handleUpdateTaskStatus}
+              onAssignToMe={handleAssignTaskToMe}
             />
           )}
 
@@ -1080,6 +1334,20 @@ export default function App() {
             />
           )}
 
+          {activeTab === 'users' && (
+            <UsersView
+              users={companyUsers}
+              onOpenNewUserModal={() => { setUserToEdit(null); setIsUserModalOpen(true); }}
+              onEditUser={(u) => { setUserToEdit(u); setIsUserModalOpen(true); }}
+              onOpenPermissionsModal={handleOpenPermissionsModal}
+              onToggleUserStatus={handleToggleUserStatus}
+            />
+          )}
+
+          {activeTab === 'audit' && (
+            <AuditLogView />
+          )}
+
           {activeTab === 'settings' && (
             <SettingsView
               settings={settings}
@@ -1090,9 +1358,7 @@ export default function App() {
               onImportData={handleImportData}
             />
           )}
-
         </main>
-
       </div>
 
       {/* Drawers & Modals */}
@@ -1127,8 +1393,23 @@ export default function App() {
         projectToEdit={projectToEdit}
         clients={clients}
         partners={partners}
+        employees={companyUsers}
         defaultCurrency={settings.defaultCurrency}
       />
+
+      {userProfile && (
+        <TaskModal
+          isOpen={isTaskModalOpen}
+          onClose={() => setIsTaskModalOpen(false)}
+          onSave={handleSaveTask}
+          taskToEdit={taskToEdit}
+          projects={projects}
+          employees={companyUsers}
+          companyId={userProfile.companyId}
+          currentUserId={userProfile.id}
+          canAssign={isOwner || hasPermission('tasks.assign')}
+        />
+      )}
 
       <IncomeModal
         isOpen={isIncomeModalOpen}
@@ -1172,6 +1453,20 @@ export default function App() {
         partnerToEdit={partnerToEdit}
       />
 
+      <UserModal
+        isOpen={isUserModalOpen}
+        onClose={() => setIsUserModalOpen(false)}
+        onSave={handleSaveUser}
+        userToEdit={userToEdit}
+      />
+
+      <UserPermissionsModal
+        isOpen={isUserPermsModalOpen}
+        onClose={() => setIsUserPermsModalOpen(false)}
+        user={userForPerms}
+        currentPermissions={userPermsList}
+        onSave={handleSaveUserPermissions}
+      />
     </div>
   );
 }

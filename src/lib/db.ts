@@ -11,6 +11,18 @@ import {
   Partner,
 } from '../types';
 import {
+  UserProfile,
+  UserRole,
+  UserStatus,
+  PermissionScope,
+  UserPermissionEntry,
+  Task,
+  TaskStatus,
+  TaskPriority,
+  ProjectAssignment,
+  AuditLogEntry,
+} from '../types/rbac';
+import {
   getStoredClients,
   saveClients,
   getStoredProjects,
@@ -24,6 +36,7 @@ import {
   getStoredPartners,
   savePartners,
 } from './storage';
+
 
 const CATEGORIES_KEY = 'gfo_categories_v1';
 const AGENDA_EVENTS_KEY = 'gfo_agenda_events_v1';
@@ -503,3 +516,472 @@ export async function deleteAgendaEventFromDb(eventId: string): Promise<void> {
     console.warn('Failed to delete agenda event from Supabase:', err);
   }
 }
+
+// ============================================================
+// RBAC — User Profiles
+// ============================================================
+
+export async function fetchCompanyUsers(companyId: string): Promise<UserProfile[]> {
+  try {
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('company_id', companyId)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    return (data || []).map((u) => ({
+      id: u.id,
+      companyId: u.company_id,
+      email: u.email,
+      name: u.name,
+      role: u.role as UserRole,
+      status: u.status as UserStatus,
+      avatarUrl: u.avatar_url || undefined,
+      mustChangePassword: u.must_change_password || false,
+      lastLoginAt: u.last_login_at || undefined,
+      createdAt: u.created_at,
+      updatedAt: u.updated_at,
+    }));
+  } catch (err) {
+    console.warn('[DB] fetchCompanyUsers failed:', err);
+    return [];
+  }
+}
+
+export async function fetchUserProfile(userId: string): Promise<UserProfile | null> {
+  try {
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+    if (error || !data) return null;
+    return {
+      id: data.id,
+      companyId: data.company_id,
+      email: data.email,
+      name: data.name,
+      role: data.role as UserRole,
+      status: data.status as UserStatus,
+      avatarUrl: data.avatar_url || undefined,
+      mustChangePassword: data.must_change_password || false,
+      lastLoginAt: data.last_login_at || undefined,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+    };
+  } catch (err) {
+    console.warn('[DB] fetchUserProfile failed:', err);
+    return null;
+  }
+}
+
+export async function upsertUserProfile(profile: Partial<UserProfile> & { id: string; companyId: string }): Promise<void> {
+  try {
+    await supabase.from('user_profiles').upsert({
+      id: profile.id,
+      company_id: profile.companyId,
+      email: profile.email,
+      name: profile.name,
+      role: profile.role,
+      status: profile.status || 'active',
+      avatar_url: profile.avatarUrl || null,
+      must_change_password: profile.mustChangePassword ?? false,
+      updated_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.warn('[DB] upsertUserProfile failed:', err);
+  }
+}
+
+export const updateUserProfile = upsertUserProfile;
+
+export async function updateUserStatus(userId: string, status: UserStatus): Promise<void> {
+  try {
+    await supabase.from('user_profiles')
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq('id', userId);
+  } catch (err) {
+    console.warn('[DB] updateUserStatus failed:', err);
+  }
+}
+
+export async function updateUserRole(userId: string, role: UserRole): Promise<void> {
+  try {
+    await supabase.from('user_profiles')
+      .update({ role, updated_at: new Date().toISOString() })
+      .eq('id', userId);
+  } catch (err) {
+    console.warn('[DB] updateUserRole failed:', err);
+  }
+}
+
+// Create user via Supabase Admin API (owner creates employees/admins)
+export async function createCompanyUser(params: {
+  email: string;
+  password: string;
+  name: string;
+  role: UserRole;
+  companyId: string;
+}): Promise<{ success: boolean; userId?: string; error?: string }> {
+  try {
+    // Use signUp (we can't use Admin API directly from client SDK without service key)
+    // The user will be created and their profile linked at login, OR:
+    // We create the profile pre-emptively and the user logs in with the temp password
+    const { data, error } = await supabase.auth.admin.createUser({
+      email: params.email,
+      password: params.password,
+      email_confirm: true,
+      user_metadata: { name: params.name },
+    });
+
+    if (error || !data.user) {
+      // Fallback: try signUp
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: params.email,
+        password: params.password,
+        options: { data: { name: params.name } },
+      });
+      if (signUpError || !signUpData.user) {
+        return { success: false, error: signUpError?.message || 'Erro ao criar utilizador' };
+      }
+      // Create profile
+      await supabase.from('user_profiles').insert({
+        id: signUpData.user.id,
+        company_id: params.companyId,
+        email: params.email,
+        name: params.name,
+        role: params.role,
+        status: 'active',
+        must_change_password: true,
+      });
+      return { success: true, userId: signUpData.user.id };
+    }
+
+    // Create profile for admin-created user
+    await supabase.from('user_profiles').insert({
+      id: data.user.id,
+      company_id: params.companyId,
+      email: params.email,
+      name: params.name,
+      role: params.role,
+      status: 'active',
+      must_change_password: true,
+    });
+
+    return { success: true, userId: data.user.id };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Erro desconhecido';
+    console.warn('[DB] createCompanyUser failed:', err);
+    return { success: false, error: message };
+  }
+}
+
+// ============================================================
+// RBAC — Permissions
+// ============================================================
+
+export async function fetchUserPermissions(userId: string): Promise<UserPermissionEntry[]> {
+  try {
+    const { data, error } = await supabase
+      .from('user_permissions')
+      .select('permission_id, scope, granted, granted_by, granted_at')
+      .eq('user_id', userId);
+    if (error) throw error;
+    return (data || []).map((p) => ({
+      permissionId: p.permission_id,
+      scope: p.scope as PermissionScope,
+      granted: p.granted,
+      grantedBy: p.granted_by || undefined,
+      grantedAt: p.granted_at || undefined,
+    }));
+  } catch (err) {
+    console.warn('[DB] fetchUserPermissions failed:', err);
+    return [];
+  }
+}
+
+export async function setUserPermissions(
+  userId: string,
+  permissions: Array<{ permissionId: string; scope: PermissionScope; granted: boolean }>,
+  grantedBy: string
+): Promise<void> {
+  try {
+    // Delete existing custom permissions for this user
+    await supabase.from('user_permissions').delete().eq('user_id', userId);
+
+    if (permissions.length === 0) return;
+
+    // Insert new permissions
+    await supabase.from('user_permissions').insert(
+      permissions.map((p) => ({
+        user_id: userId,
+        permission_id: p.permissionId,
+        scope: p.scope,
+        granted: p.granted,
+        granted_by: grantedBy,
+        granted_at: new Date().toISOString(),
+      }))
+    );
+  } catch (err) {
+    console.warn('[DB] setUserPermissions failed:', err);
+  }
+}
+
+// ============================================================
+// RBAC — Project Assignments
+// ============================================================
+
+export async function fetchProjectAssignments(companyId: string): Promise<ProjectAssignment[]> {
+  try {
+    const { data, error } = await supabase
+      .from('project_assignments')
+      .select('*, projects!inner(company_id)')
+      .eq('projects.company_id', companyId)
+      .eq('status', 'active');
+    if (error) throw error;
+    return (data || []).map((a) => ({
+      id: a.id,
+      projectId: a.project_id,
+      userId: a.user_id,
+      assignedBy: a.assigned_by,
+      assignedAt: a.assigned_at,
+      assumedAt: a.assumed_at,
+      status: a.status,
+    }));
+  } catch (err) {
+    console.warn('[DB] fetchProjectAssignments failed:', err);
+    return [];
+  }
+}
+
+export async function assignProjectToUser(
+  projectId: string,
+  userId: string,
+  assignedBy: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Update project
+    await supabase.from('projects').update({
+      assignment_type: 'employee',
+      assigned_to: userId,
+    }).eq('id', projectId);
+
+    // Upsert assignment
+    await supabase.from('project_assignments').upsert({
+      project_id: projectId,
+      user_id: userId,
+      assigned_by: assignedBy,
+      assigned_at: new Date().toISOString(),
+      status: 'active',
+    }, { onConflict: 'project_id,user_id' });
+
+    return { success: true };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Erro ao atribuir projeto';
+    return { success: false, error: msg };
+  }
+}
+
+export async function assumeAvailableProject(
+  projectId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { data, error } = await supabase.rpc('assume_project', { p_project_id: projectId });
+    if (error) throw error;
+    const result = data as { success: boolean; error?: string };
+    return result;
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Erro ao assumir projeto';
+    return { success: false, error: msg };
+  }
+}
+
+export async function makeProjectAvailable(projectId: string): Promise<void> {
+  try {
+    await supabase.from('projects').update({
+      assignment_type: 'available',
+      assigned_to: null,
+    }).eq('id', projectId);
+
+    await supabase.from('project_assignments')
+      .update({ status: 'released' })
+      .eq('project_id', projectId)
+      .eq('status', 'active');
+  } catch (err) {
+    console.warn('[DB] makeProjectAvailable failed:', err);
+  }
+}
+
+// ============================================================
+// RBAC — Tasks
+// ============================================================
+
+export async function fetchTasks(companyId: string, projectId?: string): Promise<Task[]> {
+  try {
+    let query = supabase
+      .from('tasks')
+      .select('*, user_profiles!tasks_assigned_to_fkey(name)')
+      .eq('company_id', companyId)
+      .order('created_at', { ascending: false });
+
+    if (projectId) query = query.eq('project_id', projectId);
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    return (data || []).map((t) => ({
+      id: t.id,
+      companyId: t.company_id,
+      projectId: t.project_id || undefined,
+      title: t.title,
+      description: t.description || undefined,
+      status: t.status as TaskStatus,
+      priority: t.priority as TaskPriority,
+      assignedTo: t.assigned_to || undefined,
+      assignedToName: t.user_profiles?.name || undefined,
+      assignedBy: t.assigned_by || undefined,
+      dueDate: t.due_date || undefined,
+      completedAt: t.completed_at || undefined,
+      notes: t.notes || undefined,
+      createdBy: t.created_by,
+      createdAt: t.created_at,
+      updatedAt: t.updated_at,
+    }));
+  } catch (err) {
+    console.warn('[DB] fetchTasks failed:', err);
+    return [];
+  }
+}
+
+export async function upsertTask(task: Partial<Task> & { id?: string; companyId: string; title: string; createdBy: string }): Promise<Task | null> {
+  try {
+    const now = new Date().toISOString();
+    const id = task.id || crypto.randomUUID();
+
+    const payload = {
+      id,
+      company_id: task.companyId,
+      project_id: task.projectId || null,
+      title: task.title,
+      description: task.description || null,
+      status: task.status || 'Disponível',
+      priority: task.priority || 'normal',
+      assigned_to: task.assignedTo || null,
+      assigned_by: task.assignedBy || null,
+      due_date: task.dueDate || null,
+      notes: task.notes || null,
+      created_by: task.createdBy,
+      updated_at: now,
+    };
+
+    const { data, error } = await supabase
+      .from('tasks')
+      .upsert(payload)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return {
+      id: data.id,
+      companyId: data.company_id,
+      projectId: data.project_id || undefined,
+      title: data.title,
+      description: data.description || undefined,
+      status: data.status as TaskStatus,
+      priority: data.priority as TaskPriority,
+      assignedTo: data.assigned_to || undefined,
+      assignedBy: data.assigned_by || undefined,
+      dueDate: data.due_date || undefined,
+      completedAt: data.completed_at || undefined,
+      notes: data.notes || undefined,
+      createdBy: data.created_by,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+    };
+  } catch (err) {
+    console.warn('[DB] upsertTask failed:', err);
+    return null;
+  }
+}
+
+export async function updateTaskStatus(taskId: string, status: TaskStatus): Promise<void> {
+  try {
+    const updates: Record<string, unknown> = {
+      status,
+      updated_at: new Date().toISOString(),
+    };
+    if (status === 'Concluída') updates.completed_at = new Date().toISOString();
+
+    await supabase.from('tasks').update(updates).eq('id', taskId);
+  } catch (err) {
+    console.warn('[DB] updateTaskStatus failed:', err);
+  }
+}
+
+export async function deleteTask(taskId: string): Promise<void> {
+  try {
+    await supabase.from('tasks').delete().eq('id', taskId);
+  } catch (err) {
+    console.warn('[DB] deleteTask failed:', err);
+  }
+}
+
+// ============================================================
+// RBAC — Company Setup (first login)
+// ============================================================
+
+export async function initializeOwnerCompany(params: {
+  userId: string;
+  email: string;
+  name: string;
+  businessName: string;
+}): Promise<{ companyId: string } | null> {
+  try {
+    // Check if already set up
+    const { data: existing } = await supabase
+      .from('user_profiles')
+      .select('company_id')
+      .eq('id', params.userId)
+      .single();
+
+    if (existing?.company_id) return { companyId: existing.company_id };
+
+    // Create company
+    const { data: company, error: companyError } = await supabase
+      .from('companies')
+      .insert({
+        name: params.businessName || 'Minha Empresa',
+        created_by: params.userId,
+      })
+      .select()
+      .single();
+
+    if (companyError || !company) throw companyError;
+
+    // Create owner profile
+    await supabase.from('user_profiles').upsert({
+      id: params.userId,
+      company_id: company.id,
+      email: params.email,
+      name: params.name || 'Owner',
+      role: 'owner',
+      status: 'active',
+      must_change_password: false,
+    });
+
+    // Migrate existing data
+    const tables = ['clients', 'projects', 'incomes', 'expenses', 'categories', 'agenda_events', 'partners', 'notifications'];
+    for (const table of tables) {
+      await supabase.from(table).update({
+        company_id: company.id,
+        ...(table !== 'categories' ? { created_by: params.userId } : {}),
+      }).is('company_id', null);
+    }
+
+    return { companyId: company.id };
+  } catch (err) {
+    console.warn('[DB] initializeOwnerCompany failed:', err);
+    return null;
+  }
+}
+

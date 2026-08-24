@@ -90,6 +90,12 @@ export interface Project {
   commissionValue?: number; // e.g. 10 for 10% or 5000 for fixed amount
   commissionAmount?: number; // calculated total commission amount
   commissionPaid?: boolean; // whether commission was paid out to partner
+  // RBAC fields
+  companyId?: string;
+  createdBy?: string;
+  assignmentType?: 'company' | 'employee' | 'available';
+  assignedTo?: string; // user_id do funcionário responsável
+  assignedToName?: string;
 }
 
 export type IncomeStatus = 'Pendente' | 'Recebido' | 'Atrasado';
@@ -192,5 +198,7 @@ export interface UserSession {
   email: string;
   name?: string;
   role?: string;
+  companyId?: string;
+  status?: string;
   token?: string;
 }
