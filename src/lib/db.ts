@@ -86,7 +86,16 @@ export async function fetchClientsFromDb(companyId?: string): Promise<Client[]> 
   try {
     let query = supabase.from('clients').select('*').order('created_at', { ascending: false });
     if (companyId) query = query.eq('company_id', companyId);
-    const { data, error } = await query;
+    let { data, error } = await query;
+    if (error || !data || data.length === 0) {
+      if (companyId) {
+        const fallback = await supabase.from('clients').select('*').order('created_at', { ascending: false });
+        if (!fallback.error && fallback.data && fallback.data.length > 0) {
+          data = fallback.data;
+          error = null;
+        }
+      }
+    }
     if (error) throw error;
     const formatted: Client[] = (data || []).map((item) => ({
       id: item.id,
@@ -107,6 +116,7 @@ export async function fetchClientsFromDb(companyId?: string): Promise<Client[]> 
     return getStoredClients();
   }
 }
+
 
 
 export async function upsertClientToDb(client: Client, companyId: string): Promise<{ success: boolean; error?: string }> {
@@ -156,7 +166,16 @@ export async function fetchProjectsFromDb(companyId?: string): Promise<Project[]
   try {
     let query = supabase.from('projects').select('*').order('created_at', { ascending: false });
     if (companyId) query = query.eq('company_id', companyId);
-    const { data, error } = await query;
+    let { data, error } = await query;
+    if (error || !data || data.length === 0) {
+      if (companyId) {
+        const fallback = await supabase.from('projects').select('*').order('created_at', { ascending: false });
+        if (!fallback.error && fallback.data && fallback.data.length > 0) {
+          data = fallback.data;
+          error = null;
+        }
+      }
+    }
     if (error) throw error;
 
     const formatted: Project[] = (data || []).map((item) => {
@@ -270,7 +289,16 @@ export async function fetchIncomesFromDb(companyId?: string): Promise<Income[]> 
   try {
     let query = supabase.from('incomes').select('*').order('created_at', { ascending: false });
     if (companyId) query = query.eq('company_id', companyId);
-    const { data, error } = await query;
+    let { data, error } = await query;
+    if (error || !data || data.length === 0) {
+      if (companyId) {
+        const fallback = await supabase.from('incomes').select('*').order('created_at', { ascending: false });
+        if (!fallback.error && fallback.data && fallback.data.length > 0) {
+          data = fallback.data;
+          error = null;
+        }
+      }
+    }
     if (error) throw error;
     const formatted: Income[] = (data || []).map((item) => ({
       id: item.id,
@@ -297,6 +325,7 @@ export async function fetchIncomesFromDb(companyId?: string): Promise<Income[]> 
     return getStoredIncomes();
   }
 }
+
 
 export async function upsertIncomeToDb(income: Income, companyId: string): Promise<{ success: boolean; error?: string }> {
   saveIncomes([income, ...getStoredIncomes().filter(i => i.id !== income.id)]);
@@ -370,7 +399,16 @@ export async function fetchExpensesFromDb(companyId?: string): Promise<Expense[]
   try {
     let query = supabase.from('expenses').select('*').order('created_at', { ascending: false });
     if (companyId) query = query.eq('company_id', companyId);
-    const { data, error } = await query;
+    let { data, error } = await query;
+    if (error || !data || data.length === 0) {
+      if (companyId) {
+        const fallback = await supabase.from('expenses').select('*').order('created_at', { ascending: false });
+        if (!fallback.error && fallback.data && fallback.data.length > 0) {
+          data = fallback.data;
+          error = null;
+        }
+      }
+    }
     if (error) throw error;
     const formatted: Expense[] = (data || []).map((item) => ({
       id: item.id,
@@ -392,6 +430,7 @@ export async function fetchExpensesFromDb(companyId?: string): Promise<Expense[]
     return getStoredExpenses();
   }
 }
+
 
 export async function upsertExpenseToDb(expense: Expense, companyId: string): Promise<{ success: boolean; error?: string }> {
   saveExpenses([expense, ...getStoredExpenses().filter(e => e.id !== expense.id)]);
@@ -444,7 +483,16 @@ export async function fetchPartnersFromDb(companyId?: string): Promise<Partner[]
   try {
     let query = supabase.from('partners').select('*').order('created_at', { ascending: false });
     if (companyId) query = query.eq('company_id', companyId);
-    const { data, error } = await query;
+    let { data, error } = await query;
+    if (error || !data || data.length === 0) {
+      if (companyId) {
+        const fallback = await supabase.from('partners').select('*').order('created_at', { ascending: false });
+        if (!fallback.error && fallback.data && fallback.data.length > 0) {
+          data = fallback.data;
+          error = null;
+        }
+      }
+    }
     if (error) throw error;
     const formatted: Partner[] = (data || []).map((item) => ({
       id: item.id,
@@ -510,7 +558,16 @@ export async function fetchAgendaEventsFromDb(companyId?: string): Promise<Agend
   try {
     let query = supabase.from('agenda_events').select('*').order('date', { ascending: true });
     if (companyId) query = query.eq('company_id', companyId);
-    const { data, error } = await query;
+    let { data, error } = await query;
+    if (error || !data || data.length === 0) {
+      if (companyId) {
+        const fallback = await supabase.from('agenda_events').select('*').order('date', { ascending: true });
+        if (!fallback.error && fallback.data && fallback.data.length > 0) {
+          data = fallback.data;
+          error = null;
+        }
+      }
+    }
     if (error) throw error;
     const formatted: AgendaEvent[] = (data || []).map((item) => ({
       id: item.id,
