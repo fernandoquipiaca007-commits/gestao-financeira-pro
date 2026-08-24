@@ -57,6 +57,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [rateUsd, setRateUsd] = useState(settings.exchangeRates?.USD || 0.18);
   const [rateEur, setRateEur] = useState(settings.exchangeRates?.EUR || 0.16);
 
+  const [savedSuccess, setSavedSuccess] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passLoading, setPassLoading] = useState(false);
+  const [passMessage, setPassMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
   // Resend Email Settings State
   const initialEmail = settings.emailSettings || DEFAULT_EMAIL_SETTINGS;
   const [resendApiKey, setResendApiKey] = useState(initialEmail.apiKey || '');
@@ -376,6 +382,157 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   />
                   <span className="absolute right-3.5 top-2.5 text-xs text-[#747878] font-mono">€</span>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Resend Email Configuration & Notifications Control Panel */}
+          <div className="space-y-4 pb-6 border-b border-[#c4c7c7]/40">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="text-sm font-semibold text-[#1c1b1b] flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-[#0050d7]" />
+                  Envio de E-mails Transacionais & Notificações (Resend API)
+                </label>
+                <p className="text-xs text-[#747878] mt-0.5">
+                  Configure a sua chave API do Resend e controle quais eventos disparam e-mails automáticos.
+                </p>
+              </div>
+
+              <label className="flex items-center space-x-2 cursor-pointer bg-[#f1edec] px-3 py-1.5 rounded-full border border-[#c4c7c7]/40">
+                <input
+                  type="checkbox"
+                  checked={resendEnabled}
+                  onChange={(e) => setResendEnabled(e.target.checked)}
+                  className="rounded text-[#0050d7] focus:ring-[#0050d7] w-4 h-4 cursor-pointer"
+                />
+                <span className="text-xs font-semibold text-[#1c1b1b]">
+                  {resendEnabled ? 'E-mails Ativos' : 'Desativados'}
+                </span>
+              </label>
+            </div>
+
+            {testEmailStatus && (
+              <div
+                className={`p-3 rounded-xl text-xs font-medium flex items-center gap-2 ${
+                  testEmailStatus.type === 'success' ? 'bg-[#d4eddf] text-[#1a6b3a]' : 'bg-[#ffdad6] text-[#ba1a1a]'
+                }`}
+              >
+                {testEmailStatus.type === 'success' ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
+                <span>{testEmailStatus.text}</span>
+              </div>
+            )}
+
+            {/* API Credentials */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+              <div className="sm:col-span-2">
+                <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1">
+                  Chave da API do Resend (API Key) *
+                </label>
+                <div className="relative">
+                  <input
+                    type={showApiKey ? 'text' : 'password'}
+                    value={resendApiKey}
+                    onChange={(e) => setResendApiKey(e.target.value)}
+                    placeholder="re_123456789_abcdef..."
+                    className="w-full px-3.5 py-2.5 bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl text-[#1c1b1b] text-sm focus:outline-none focus:border-[#000000] focus:bg-white transition-all font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowApiKey(!showApiKey)}
+                    className="absolute right-3.5 top-3 text-[#747878] hover:text-[#1c1b1b]"
+                  >
+                    {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1">
+                  E-mail do Remetente (From) *
+                </label>
+                <input
+                  type="text"
+                  value={resendFromEmail}
+                  onChange={(e) => setResendFromEmail(e.target.value)}
+                  placeholder="GestãoFO <notificacoes@seudominio.com>"
+                  className="w-full px-3.5 py-2.5 bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl text-[#1c1b1b] text-sm focus:outline-none focus:border-[#000000] focus:bg-white transition-all font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1">
+                  E-mail de Resposta (Reply-To)
+                </label>
+                <input
+                  type="email"
+                  value={resendReplyTo}
+                  onChange={(e) => setResendReplyTo(e.target.value)}
+                  placeholder="suporte@seudominio.com"
+                  className="w-full px-3.5 py-2.5 bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl text-[#1c1b1b] text-sm focus:outline-none focus:border-[#000000] focus:bg-white transition-all font-medium"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-1">
+              <span className="text-[11px] text-[#747878]">
+                {resendApiKey ? '🟢 Resend Configurado' : '🔴 Resend Pendente de API Key'}
+              </span>
+              <button
+                type="button"
+                onClick={handleTestEmail}
+                disabled={testEmailLoading || !resendApiKey}
+                className="px-4 py-2 bg-[#dbe1ff] hover:bg-[#c9d3ff] disabled:opacity-50 text-[#003da9] font-semibold text-xs rounded-full flex items-center space-x-1.5 transition-all cursor-pointer"
+              >
+                {testEmailLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                <span>Testar Conexão Resend</span>
+              </button>
+            </div>
+
+            {/* Granular Toggles */}
+            <div className="pt-4 border-t border-[#c4c7c7]/30 space-y-3">
+              <h4 className="text-xs font-semibold text-[#1c1b1b] uppercase tracking-wider">
+                Eventos &amp; Notificações por E-mail Ativas
+              </h4>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                {[
+                  { key: 'clientPaymentReminder', title: 'Cobranças a Clientes', desc: 'Envio de aviso de vencimento por e-mail' },
+                  { key: 'clientReceipt', title: 'Comprovativos / Recibos', desc: 'Envio automático ao liquidar receita' },
+                  { key: 'clientProjectUpdate', title: 'Atualizações de Projeto', desc: 'Status e arquivos para o cliente' },
+                  { key: 'employeeProjectAssigned', title: 'Atribuição de Projeto', desc: 'E-mail ao colaborador ao receber projeto' },
+                  { key: 'employeeTaskAssigned', title: 'Atribuição de Tarefa', desc: 'E-mail ao colaborador ao receber tarefa' },
+                  { key: 'employeeTaskDueAlert', title: 'Alertas de Prazo de Tarefa', desc: 'Avisos de tarefas a vencer' },
+                  { key: 'employeeWelcome', title: 'Boas-vindas a Colaboradores', desc: 'Credenciais de acesso para novos membros' },
+                  { key: 'adminBillingRequestAlert', title: 'Pedidos de Faturamento (Admin)', desc: 'Alerta ao Admin quando colaborador pede fatura' },
+                  { key: 'employeeBillingStatusAlert', title: 'Status de Faturamento (Colaborador)', desc: 'Avisos de aprovação/rejeição de pedidos' },
+                  { key: 'systemAlertDueDates', title: 'Alertas de Vencimento do Sistema', desc: 'Resumo periódico de pendências' },
+                ].map((item) => {
+                  const key = item.key as keyof EmailNotificationToggles;
+                  const isChecked = emailToggles[key];
+
+                  return (
+                    <label
+                      key={key}
+                      className={`p-3 rounded-xl border flex items-start justify-between space-x-3 cursor-pointer transition-all ${
+                        isChecked
+                          ? 'bg-[#f7f3f2] border-[#0050d7]/40 shadow-2xs'
+                          : 'bg-white border-[#c4c7c7]/30 opacity-70 hover:opacity-100'
+                      }`}
+                    >
+                      <div>
+                        <div className="font-semibold text-[#1c1b1b] text-xs">{item.title}</div>
+                        <div className="text-[10px] text-[#747878] mt-0.5">{item.desc}</div>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => handleToggleEvent(key)}
+                        className="rounded text-[#0050d7] focus:ring-[#0050d7] w-4 h-4 cursor-pointer mt-0.5 shrink-0"
+                      />
+                    </label>
+                  );
+                })}
               </div>
             </div>
           </div>

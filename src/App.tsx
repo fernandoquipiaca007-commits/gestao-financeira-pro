@@ -37,6 +37,7 @@ import {
   UserRole,
   PermissionScope,
   BillingRequest,
+  ROLE_LABELS,
 } from './types/rbac';
 import {
   getStoredClients,
@@ -103,7 +104,18 @@ import {
 import { supabase } from './lib/supabase';
 import { computeNotifications } from './lib/notifications';
 import { logAction } from './lib/audit';
+import { checkFinancialIntegrity } from './lib/integrity';
 import { useAuth } from './contexts/AuthContext';
+import { EmailAttachment } from './types/email';
+import {
+  sendClientPaymentReminderEmail,
+  sendClientReceiptEmail,
+  sendEmployeeWelcomeEmail,
+  sendEmployeeProjectAssignedEmail,
+  sendEmployeeTaskAssignedEmail,
+  sendAdminBillingRequestEmail,
+  sendEmployeeBillingStatusEmail,
+} from './lib/emailTemplates';
 
 import { LoginView } from './components/LoginView';
 import { Header } from './components/Header';
@@ -122,6 +134,7 @@ import { UsersView } from './components/UsersView';
 import { AuditLogView } from './components/AuditLogView';
 import { NotificationsModal } from './components/NotificationsModal';
 import { GlobalSearchModal } from './components/GlobalSearchModal';
+import { SendEmailModal } from './components/modals/SendEmailModal';
 
 import { ClientModal } from './components/modals/ClientModal';
 import { ProjectModal } from './components/modals/ProjectModal';
@@ -213,6 +226,28 @@ export default function App() {
     Array<{ permissionId: string; scope: PermissionScope; granted: boolean }>
   >([]);
   const [isDataSyncing, setIsDataSyncing] = useState(false);
+  const [integrityWarnings, setIntegrityWarnings] = useState<string[]>([]);
+
+  // Direct Resend Email Modal State
+  const [isSendEmailModalOpen, setIsSendEmailModalOpen] = useState(false);
+  const [emailModalProps, setEmailModalProps] = useState<{
+    recipientEmail?: string;
+    recipientName?: string;
+    subject?: string;
+    message?: string;
+    attachments?: EmailAttachment[];
+  }>({});
+
+  const handleOpenSendEmailModal = (props: {
+    recipientEmail?: string;
+    recipientName?: string;
+    subject?: string;
+    message?: string;
+    attachments?: EmailAttachment[];
+  }) => {
+    setEmailModalProps(props);
+    setIsSendEmailModalOpen(true);
+  };
 
   // Computed Notifications
   const notifications: NotificationItem[] = computeNotifications(clients, projects, incomes, expenses);
@@ -294,6 +329,21 @@ export default function App() {
         if (usersData) setCompanyUsers(usersData);
         if (tasksData) setTasks(tasksData);
         if (billingData) setBillingRequests(billingData);
+      }
+
+      // Run financial integrity check with freshly loaded data
+      const freshIncomes  = dbIncomes  || [];
+      const freshExpenses = dbExpenses || [];
+      const freshProjects = dbProjects || [];
+      const integrityResult = checkFinancialIntegrity(
+        freshIncomes,
+        freshExpenses,
+        freshProjects,
+        settings.defaultCurrency
+      );
+      setIntegrityWarnings(integrityResult.warnings);
+      if (!integrityResult.isValid) {
+        console.warn('[Integrity] Avisos de integridade financeira:', integrityResult.warnings);
       }
     } catch (err) {
       console.warn('Failed to sync data with Supabase on load:', err);
@@ -545,6 +595,20 @@ export default function App() {
         resourceId: projectId,
       });
     }
+
+    if (newProject.assignmentType === 'employee' && newProject.assignedTo) {
+      const assignedEmployee = companyUsers.find((u) => u.id === newProject.assignedTo);
+      if (assignedEmployee?.email) {
+        const client = clients.find((c) => c.id === newProject.clientId);
+        sendEmployeeProjectAssignedEmail({
+          employeeEmail: assignedEmployee.email,
+          employeeName: assignedEmployee.name,
+          projectName: newProject.name,
+          clientName: client?.name,
+          dueDate: newProject.dueDate,
+        }).catch((err) => console.warn('[Resend] Project assign email failed:', err));
+      }
+    }
   };
 
   const handleMarkProjectAsPaid = async (project: Project) => {
@@ -677,6 +741,21 @@ export default function App() {
           resourceId: saved.id,
         });
       }
+
+      if (saved.assignedTo) {
+        const assignedEmployee = companyUsers.find((u) => u.id === saved.assignedTo);
+        if (assignedEmployee?.email) {
+          const project = projects.find((p) => p.id === saved.projectId);
+          sendEmployeeTaskAssignedEmail({
+            employeeEmail: assignedEmployee.email,
+            employeeName: assignedEmployee.name,
+            taskTitle: saved.title,
+            projectName: project?.name,
+            dueDate: saved.dueDate,
+            priority: saved.priority,
+          }).catch((err) => console.warn('[Resend] Task assign email failed:', err));
+        }
+      }
     }
   };
 
@@ -761,6 +840,19 @@ export default function App() {
         resourceType: 'billing_request',
         resourceId: req.id,
       });
+
+      const ownerAdmin = companyUsers.find((u) => u.role === 'owner' || u.role === 'admin');
+      if (ownerAdmin?.email) {
+        const project = projects.find((p) => p.id === req.projectId);
+        sendAdminBillingRequestEmail({
+          adminEmail: ownerAdmin.email,
+          employeeName: userProfile.name,
+          description: data.description,
+          amount: data.amount,
+          currency: data.currency,
+          projectName: project?.name,
+        }).catch((err) => console.warn('[Resend] Admin billing alert email failed:', err));
+      }
     }
   };
 
@@ -786,6 +878,23 @@ export default function App() {
       );
       setBillingRequests(freshBilling);
 
+      // Send email to requesting employee
+      const req = billingRequests.find((r) => r.id === data.requestId);
+      if (req) {
+        const reqEmp = companyUsers.find((u) => u.id === req.requestedBy);
+        if (reqEmp?.email && (data.status === 'Aprovada' || data.status === 'Rejeitada')) {
+          sendEmployeeBillingStatusEmail({
+            employeeEmail: reqEmp.email,
+            employeeName: reqEmp.name,
+            description: req.description,
+            amount: req.amount,
+            currency: req.currency,
+            status: data.status,
+            notes: data.notes,
+          }).catch((err) => console.warn('[Resend] Billing status email failed:', err));
+        }
+      }
+
       // If approved, also reload incomes and projects because a new Income was generated
       if (data.status === 'Aprovada') {
         const cid = userProfile.companyId;
@@ -802,7 +911,6 @@ export default function App() {
           saveProjects(freshProjects);
         }
       }
-
 
       logAction({
         companyId: userProfile.companyId,
@@ -861,6 +969,15 @@ export default function App() {
         resourceType: 'user',
         resourceId: res.userId,
       });
+
+      if (data.email) {
+        sendEmployeeWelcomeEmail({
+          employeeEmail: data.email,
+          employeeName: data.name,
+          roleName: ROLE_LABELS[data.role] || data.role,
+          temporaryPassword: data.password || 'Mudar123!',
+        }).catch((err) => console.warn('[Resend] Welcome email failed:', err));
+      }
     } else {
       await updateUserProfile({
         id: data.id,
@@ -1003,6 +1120,21 @@ export default function App() {
 
     if (income.projectId) {
       await syncProjectPaidAmountFromIncomes(income.projectId, updated, projects);
+    }
+
+    if (nextStatus === 'Recebido') {
+      const client = clients.find((c) => c.id === income.clientId);
+      if (client?.email) {
+        sendClientReceiptEmail({
+          clientEmail: client.email,
+          clientName: client.name,
+          description: income.description,
+          amount: income.amount,
+          currency: income.currency,
+          receivedDate: getTodayIso(),
+          paymentMethod: income.paymentMethod,
+        }).catch((err) => console.warn('[Resend] Client receipt email failed:', err));
+      }
     }
   };
 
@@ -1174,9 +1306,11 @@ export default function App() {
   const handleClearData = () => {
     if (
       window.confirm(
-        'ATENÇÃO: Deseja realmente limpar os dados locais do cache deste dispositivo? Os dados salvos no servidor permanecerão intactos.'
+        'ATENÇÃO: Deseja realmente limpar os dados locais do cache deste dispositivo? Os dados salvos no servidor permanecerão intactos.\n\nUm backup será criado automaticamente antes de limpar.'
       )
     ) {
+      // Auto-backup before clearing (uses current live state)
+      exportBackupData({ clients, projects, incomes, expenses, partners });
       clearAllData();
       setClients([]);
       setProjects([]);
@@ -1185,11 +1319,13 @@ export default function App() {
       setPartners([]);
       setAgendaEvents([]);
       setBillingRequests([]);
+      setIntegrityWarnings([]);
     }
   };
 
   const handleExportData = () => {
-    exportBackupData();
+    // Always export from live state (loaded from Supabase) — never stale localStorage
+    exportBackupData({ clients, projects, incomes, expenses, partners });
   };
 
   const handleImportData = async (jsonStr: string) => {
@@ -1409,6 +1545,30 @@ export default function App() {
 
         {/* Main View Area */}
         <main className="flex-1 min-w-0">
+          {/* Financial Integrity Warning Banner — only visible to owner when warnings exist */}
+          {isOwner && integrityWarnings.length > 0 && (
+            <div className="mb-4 bg-[#fff8f1] border border-[#e8b54a]/40 rounded-[16px] p-4 flex items-start gap-3">
+              <div className="w-8 h-8 rounded-full bg-[#f9e4b7] flex items-center justify-center shrink-0 mt-0.5">
+                <Sparkles className="w-4 h-4 text-[#b45309]" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-[#92400e]">Avisos de Integridade Financeira</p>
+                <ul className="mt-1 space-y-0.5">
+                  {integrityWarnings.map((w, i) => (
+                    <li key={i} className="text-xs text-[#b45309]">• {w}</li>
+                  ))}
+                </ul>
+                <p className="text-[11px] text-[#b45309]/70 mt-2">Aceda às Transações Financeiras para corrigir.</p>
+              </div>
+              <button
+                onClick={() => setIntegrityWarnings([])}
+                className="text-[#b45309]/60 hover:text-[#b45309] p-1 rounded-full hover:bg-[#f9e4b7] transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
           {activeTab === 'dashboard' && (
             <DashboardView
               clients={clients}
@@ -1519,6 +1679,7 @@ export default function App() {
               onDeleteExpense={handleDeleteExpense}
               onToggleExpensePaid={handleToggleExpensePaid}
               onOpenWhatsAppCharge={handleOpenWhatsAppCharge}
+              onOpenSendEmailModal={handleOpenSendEmailModal}
             />
           )}
 
@@ -1701,6 +1862,16 @@ export default function App() {
         user={userForPerms}
         currentPermissions={userPermsList}
         onSave={handleSaveUserPermissions}
+      />
+
+      <SendEmailModal
+        isOpen={isSendEmailModalOpen}
+        onClose={() => setIsSendEmailModalOpen(false)}
+        defaultRecipientEmail={emailModalProps.recipientEmail}
+        defaultRecipientName={emailModalProps.recipientName}
+        defaultSubject={emailModalProps.subject}
+        defaultMessage={emailModalProps.message}
+        defaultAttachments={emailModalProps.attachments}
       />
     </div>
   );

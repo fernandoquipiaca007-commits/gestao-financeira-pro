@@ -15,6 +15,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Check,
+  Mail,
 } from 'lucide-react';
 import {
   Income,
@@ -46,6 +47,13 @@ interface FinancialViewProps {
   onDeleteExpense: (expenseId: string) => void;
   onToggleExpensePaid: (expense: Expense) => void;
   onOpenWhatsAppCharge: (phone: string, text: string) => void;
+  onOpenSendEmailModal?: (props: {
+    recipientEmail?: string;
+    recipientName?: string;
+    subject?: string;
+    message?: string;
+    attachments?: any[];
+  }) => void;
 }
 
 export const FinancialView: React.FC<FinancialViewProps> = ({
@@ -65,6 +73,7 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
   onDeleteExpense,
   onToggleExpensePaid,
   onOpenWhatsAppCharge,
+  onOpenSendEmailModal,
 }) => {
   const [subTab, setSubTab] = useState<'receitas' | 'despesas' | 'agenda'>(initialTab);
   const [searchTerm, setSearchTerm] = useState('');
@@ -392,6 +401,38 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
                                   title="Cobrar via WhatsApp"
                                 >
                                   <MessageCircle className="w-4 h-4" />
+                                </button>
+                              )}
+                              {onOpenSendEmailModal && client?.email && (
+                                <button
+                                  onClick={() =>
+                                    onOpenSendEmailModal({
+                                      recipientEmail: client.email,
+                                      recipientName: client.name,
+                                      subject:
+                                        inc.status === 'Recebido'
+                                          ? `Comprovativo de Pagamento: ${inc.description}`
+                                          : `Lembrete de Cobrança: ${inc.description}`,
+                                      message: `Olá, ${client.name}!\n\n${
+                                        inc.status === 'Recebido'
+                                          ? 'Confirmamos o recebimento do pagamento'
+                                          : 'Lembramos o pagamento do valor'
+                                      } referente a "${inc.description}" (${formatCurrency(
+                                        inc.amount,
+                                        inc.currency
+                                      )}).\n\nQualquer dúvida, estamos à disposição.`,
+                                      attachments: project?.attachments
+                                        ? project.attachments.map((att) => ({
+                                            filename: att.name,
+                                            content: att.url,
+                                          }))
+                                        : [],
+                                    })
+                                  }
+                                  className="p-1.5 text-[#0050d7] hover:bg-[#dbe1ff] rounded-full transition-colors cursor-pointer"
+                                  title="Enviar E-mail via Resend"
+                                >
+                                  <Mail className="w-4 h-4" />
                                 </button>
                               )}
                               <button

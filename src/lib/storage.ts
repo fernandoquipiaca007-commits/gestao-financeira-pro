@@ -154,14 +154,23 @@ export function clearAllData(): void {
   clearStorageForUser(_currentUserId);
 }
 
-export function exportBackupData(): string {
+export function exportBackupData(
+  overrideData?: {
+    clients?: Client[];
+    projects?: Project[];
+    incomes?: Income[];
+    expenses?: Expense[];
+    partners?: Partner[];
+  }
+): string {
   const backup = {
     version: '1.0',
     exportedAt: new Date().toISOString(),
-    clients: getStoredClients(),
-    projects: getStoredProjects(),
-    incomes: getStoredIncomes(),
-    expenses: getStoredExpenses(),
+    clients:  overrideData?.clients  ?? getStoredClients(),
+    projects: overrideData?.projects ?? getStoredProjects(),
+    incomes:  overrideData?.incomes  ?? getStoredIncomes(),
+    expenses: overrideData?.expenses ?? getStoredExpenses(),
+    partners: overrideData?.partners ?? getStoredPartners(),
     settings: getStoredSettings(),
   };
   const jsonStr = JSON.stringify(backup, null, 2);
@@ -178,10 +187,11 @@ export function exportBackupData(): string {
 export function importBackupData(jsonString: string): boolean {
   try {
     const parsed = JSON.parse(jsonString);
-    if (parsed.clients && Array.isArray(parsed.clients)) saveClients(parsed.clients);
+    if (parsed.clients  && Array.isArray(parsed.clients))  saveClients(parsed.clients);
     if (parsed.projects && Array.isArray(parsed.projects)) saveProjects(parsed.projects);
-    if (parsed.incomes && Array.isArray(parsed.incomes)) saveIncomes(parsed.incomes);
+    if (parsed.incomes  && Array.isArray(parsed.incomes))  saveIncomes(parsed.incomes);
     if (parsed.expenses && Array.isArray(parsed.expenses)) saveExpenses(parsed.expenses);
+    if (parsed.partners && Array.isArray(parsed.partners)) savePartners(parsed.partners);
     if (parsed.settings && typeof parsed.settings === 'object') saveSettings(parsed.settings);
     return true;
   } catch (err) {
