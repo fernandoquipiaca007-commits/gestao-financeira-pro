@@ -1,5 +1,5 @@
 // Edge Function: create-user
-// Cria um utilizador no Supabase Auth usando a Service Role Key (Admin API)
+// Cria ou vincula um utilizador no Supabase Auth usando a Service Role Key (Admin API)
 // sem afectar a sessão do owner que está a chamar esta função.
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
@@ -26,6 +26,7 @@ Deno.serve(async (req) => {
     }
 
     const cleanEmail = email.trim().toLowerCase();
+    const cleanName = name.trim();
     const cleanPassword = password ? String(password) : 'Mudar123!';
 
     if (cleanPassword.length < 6) {
@@ -37,7 +38,7 @@ Deno.serve(async (req) => {
 
     let userId: string | null = null;
 
-    // 1. Tentar criar utilizador via Admin API (com Service Role Key)
+    // 1. Tentar criar utilizador via Admin API
     const createRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
       method: 'POST',
       headers: {
@@ -49,7 +50,7 @@ Deno.serve(async (req) => {
         email: cleanEmail,
         password: cleanPassword,
         email_confirm: true,
-        user_metadata: { name: name.trim() },
+        user_metadata: { name: cleanName },
       }),
     });
 
@@ -57,13 +58,12 @@ Deno.serve(async (req) => {
 
     if (createRes.ok && userData?.id) {
       userId = userData.id;
+      console.log(`[create-user] Utilizador novo criado no Auth: ${userId}`);
     } else {
-      // Se o utilizador já existe no Auth (ex: erro 422 "already registered")
-      const errMsg = userData?.message || userData?.msg || userData?.error_description || '';
-      console.warn('[create-user] Admin create returned:', createRes.status, errMsg);
+      console.log(`[create-user] Utilizador já registado no Auth. Procurando ID...`);
 
-      // Verificar se já existe perfil na tabela user_profiles
-      const findRes = await fetch(
+      // 1.1. Buscar em user_profiles primeiro
+      const findProfileRes = await fetch(
         `${SUPABASE_URL}/rest/v1/user_profiles?email=eq.${encodeURIComponent(cleanEmail)}&select=id`,
         {
           headers: {
@@ -72,23 +72,69 @@ Deno.serve(async (req) => {
           },
         }
       );
-      const existingProfiles = await findRes.json();
-
-      if (Array.isArray(existingProfiles) && existingProfiles.length > 0) {
+      const existingProfiles = await findProfileRes.json();
+      if (Array.isArray(existingProfiles) && existingProfiles.length > 0 && existingProfiles[0]?.id) {
         userId = existingProfiles[0].id;
-      } else {
-        // Retornar a mensagem clara de erro
+      }
+
+      // 1.2. Se não estiver em user_profiles, buscar na lista auth.users via Admin API
+      if (!userId) {
+        const listUsersRes = await fetch(
+          `${SUPABASE_URL}/auth/v1/admin/users?per_page=1000`,
+          {
+            headers: {
+              apikey: SERVICE_ROLE_KEY,
+              Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+            },
+          }
+        );
+        if (listUsersRes.ok) {
+          const listData = await listUsersRes.json();
+          const authUsers = listData?.users || (Array.isArray(listData) ? listData : []);
+          const matchedUser = authUsers.find(
+            (u: { id?: string; email?: string }) => u.email && u.email.toLowerCase() === cleanEmail
+          );
+          if (matchedUser?.id) {
+            userId = matchedUser.id;
+            console.log(`[create-user] ID encontrado em auth.users: ${userId}`);
+          }
+        }
+      }
+
+      if (!userId) {
+        const errMsg = userData?.message || userData?.msg || userData?.error_description || '';
         return new Response(
           JSON.stringify({
             success: false,
-            error: errMsg || 'Não foi possível registar o utilizador no Supabase Auth.',
+            error: errMsg || 'Não foi possível obter o identificador do utilizador no Supabase.',
           }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+
+      // 1.3. Atualizar a senha e metadados do utilizador existente no Auth
+      if (cleanPassword) {
+        try {
+          await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${userId}`, {
+            method: 'PUT',
+            headers: {
+              apikey: SERVICE_ROLE_KEY,
+              Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              password: cleanPassword,
+              user_metadata: { name: cleanName },
+              email_confirm: true,
+            }),
+          });
+        } catch (updateErr) {
+          console.warn('[create-user] Falha ao atualizar senha do utilizador existente:', updateErr);
+        }
+      }
     }
 
-    // 2. Guardar / atualizar perfil em user_profiles com upsert seguro
+    // 2. Guardar / atualizar perfil em user_profiles com upsert
     const profileRes = await fetch(`${SUPABASE_URL}/rest/v1/user_profiles`, {
       method: 'POST',
       headers: {
@@ -101,7 +147,7 @@ Deno.serve(async (req) => {
         id: userId,
         company_id: companyId,
         email: cleanEmail,
-        name: name.trim(),
+        name: cleanName,
         role: role,
         status: 'active',
         must_change_password: true,
@@ -112,6 +158,8 @@ Deno.serve(async (req) => {
     if (!profileRes.ok) {
       const profileErr = await profileRes.text();
       console.error('[create-user] user_profiles upsert failed:', profileErr);
+    } else {
+      console.log(`[create-user] Perfil guardado em user_profiles para ${cleanEmail} (${role})`);
     }
 
     return new Response(
