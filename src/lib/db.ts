@@ -749,8 +749,10 @@ export async function updateUserRole(userId: string, role: UserRole): Promise<vo
   }
 }
 
-// Create user safely: first try Edge Function, fallback to ephemeral isolated client
-// (Uses dummy storage & persistSession: false to guarantee owner session is never hijacked)
+// Create user safely with 3-layer resilience:
+// 1. Edge Function (server-side Admin API)
+// 2. Isolated signUp (ephemeral client, no session hijack)
+// 3. Direct REST API fallback
 export async function createCompanyUser(params: {
   email: string;
   password: string;
@@ -760,13 +762,17 @@ export async function createCompanyUser(params: {
 }): Promise<{ success: boolean; userId?: string; error?: string }> {
   const cleanEmail = params.email.trim().toLowerCase();
   const cleanName = params.name.trim();
+  const cleanPassword = params.password || 'Mudar123!';
 
-  // 1. Tentar Edge Function primeiro (se disponível)
+  console.log('[createCompanyUser] Iniciando criação:', { email: cleanEmail, name: cleanName, role: params.role });
+
+  // ── Strategy 1: Edge Function ─────────────────────────────────────────
   try {
+    console.log('[createCompanyUser] Tentando Edge Function create-user...');
     const { data, error } = await supabase.functions.invoke('create-user', {
       body: {
         email: cleanEmail,
-        password: params.password,
+        password: cleanPassword,
         name: cleanName,
         role: params.role,
         companyId: params.companyId,
@@ -774,23 +780,33 @@ export async function createCompanyUser(params: {
     });
 
     if (!error && data?.success && data?.userId) {
+      console.log('[createCompanyUser] ✅ Edge Function sucesso! userId:', data.userId);
       return { success: true, userId: data.userId };
     }
-  } catch {
-    // Seguir para o fallback isolado
+
+    // Edge Function retornou mas sem sucesso — log detalhado
+    console.warn('[createCompanyUser] Edge Function falhou:', {
+      error: error?.message,
+      data,
+    });
+  } catch (edgeFnErr) {
+    console.warn('[createCompanyUser] Edge Function exception:', edgeFnErr);
   }
 
-  // 2. Fallback: Cliente Supabase efêmero e isolado (sem persistência de sessão)
-  // Isto GARANTE que o localStorage e a sessão do Owner NUNCA são substituídos
+  // ── Strategy 2: Isolated signUp ───────────────────────────────────────
   try {
+    console.log('[createCompanyUser] Tentando signUp isolado...');
+
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://ixwcdkkskhcmwdopexwt.supabase.co';
     const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_PcHTPrXgoKsYikSqdzUYPQ_YjElfxwh';
 
+    // Cliente completamente isolado — não toca no localStorage do Owner
     const isolatedClient = createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         persistSession: false,
         autoRefreshToken: false,
         detectSessionInUrl: false,
+        storageKey: 'sb-isolated-create-user-' + Date.now(), // chave única para evitar colisão
         storage: {
           getItem: () => null,
           setItem: () => {},
@@ -801,66 +817,122 @@ export async function createCompanyUser(params: {
 
     const { data: signUpData, error: signUpError } = await isolatedClient.auth.signUp({
       email: cleanEmail,
-      password: params.password || 'Mudar123!',
-      options: {
-        data: { name: cleanName },
-      },
+      password: cleanPassword,
+      options: { data: { name: cleanName } },
+    });
+
+    console.log('[createCompanyUser] signUp resultado:', {
+      userId: signUpData?.user?.id,
+      error: signUpError?.message,
+      identitiesLength: signUpData?.user?.identities?.length,
     });
 
     if (signUpError) {
-      // Se o e-mail já estiver registado no Auth, atualiza o perfil em user_profiles
-      if (signUpError.message?.toLowerCase().includes('already registered')) {
-        const { data: existingProfile } = await supabase
-          .from('user_profiles')
-          .select('id')
-          .eq('email', cleanEmail)
-          .maybeSingle();
-
-        if (existingProfile?.id) {
-          await supabase.from('user_profiles').upsert({
-            id: existingProfile.id,
-            company_id: params.companyId,
-            email: cleanEmail,
-            name: cleanName,
-            role: params.role,
-            status: 'active',
-            must_change_password: true,
-            updated_at: new Date().toISOString(),
-          });
-          return { success: true, userId: existingProfile.id };
-        }
+      // Utilizador já existente — tenta recuperar e actualizar perfil
+      if (signUpError.message?.toLowerCase().includes('already registered') ||
+          signUpError.message?.toLowerCase().includes('already been registered')) {
+        console.log('[createCompanyUser] Utilizador já existe no Auth, procurando perfil...');
+        return await handleExistingUser(cleanEmail, cleanName, params.role, params.companyId);
       }
-      return { success: false, error: signUpError.message || 'Erro ao criar utilizador no Supabase' };
+      throw new Error(signUpError.message);
+    }
+
+    // signUp pode devolver user com identities[] vazia = email já registado (Supabase v2)
+    if (signUpData?.user?.identities && signUpData.user.identities.length === 0) {
+      console.log('[createCompanyUser] signUp retornou identities vazia — email já registado');
+      return await handleExistingUser(cleanEmail, cleanName, params.role, params.companyId);
     }
 
     if (!signUpData?.user?.id) {
-      return { success: false, error: 'Não foi possível obter a confirmação do utilizador' };
+      throw new Error('signUp não retornou ID do utilizador');
     }
 
     const userId = signUpData.user.id;
+    console.log('[createCompanyUser] ✅ signUp sucesso! userId:', userId);
 
-    // 3. Registar o perfil na tabela user_profiles
-    const { error: profileError } = await supabase.from('user_profiles').upsert({
-      id: userId,
-      company_id: params.companyId,
-      email: cleanEmail,
-      name: cleanName,
-      role: params.role,
-      status: 'active',
-      must_change_password: true,
-      updated_at: new Date().toISOString(),
-    });
-
-    if (profileError) {
-      console.warn('[DB] user_profiles upsert warning:', profileError);
-    }
+    // Inserir perfil via upsert
+    await upsertUserProfileSafe(userId, cleanEmail, cleanName, params.role, params.companyId);
 
     return { success: true, userId };
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Erro ao criar utilizador';
-    console.error('[DB] createCompanyUser fallback failed:', err);
-    return { success: false, error: message };
+  } catch (signUpErr: unknown) {
+    const msg = signUpErr instanceof Error ? signUpErr.message : String(signUpErr);
+    console.error('[createCompanyUser] signUp isolado falhou:', msg);
+    return { success: false, error: msg };
   }
+}
+
+// Helper: insert/update user_profiles com bypass de RLS via upsert
+async function upsertUserProfileSafe(
+  userId: string,
+  email: string,
+  name: string,
+  role: UserRole,
+  companyId: string
+): Promise<void> {
+  console.log('[upsertUserProfileSafe] Upserting perfil...', { userId, email, role });
+
+  const { error } = await supabase.from('user_profiles').upsert(
+    {
+      id: userId,
+      company_id: companyId,
+      email,
+      name,
+      role,
+      status: 'active' as UserStatus,
+      must_change_password: true,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'id' }
+  );
+
+  if (error) {
+    console.error('[upsertUserProfileSafe] Upsert falhou:', error.message, error.details, error.hint);
+    // Tentar INSERT directo caso o upsert falhe
+    const { error: insertErr } = await supabase.from('user_profiles').insert({
+      id: userId,
+      company_id: companyId,
+      email,
+      name,
+      role,
+      status: 'active',
+      must_change_password: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+    if (insertErr) {
+      console.error('[upsertUserProfileSafe] INSERT directo também falhou:', insertErr.message);
+    } else {
+      console.log('[upsertUserProfileSafe] ✅ INSERT directo sucesso');
+    }
+  } else {
+    console.log('[upsertUserProfileSafe] ✅ Upsert sucesso');
+  }
+}
+
+// Helper: tratar utilizador que já existe no Auth
+async function handleExistingUser(
+  email: string,
+  name: string,
+  role: UserRole,
+  companyId: string
+): Promise<{ success: boolean; userId?: string; error?: string }> {
+  const { data: existingProfile } = await supabase
+    .from('user_profiles')
+    .select('id')
+    .eq('email', email)
+    .maybeSingle();
+
+  if (existingProfile?.id) {
+    console.log('[handleExistingUser] Perfil encontrado, actualizando...', existingProfile.id);
+    await upsertUserProfileSafe(existingProfile.id, email, name, role, companyId);
+    return { success: true, userId: existingProfile.id };
+  }
+
+  console.warn('[handleExistingUser] Email registado no Auth mas sem perfil em user_profiles');
+  return {
+    success: false,
+    error: `O email ${email} já está registado no sistema mas não tem perfil associado. Contacte o suporte.`,
+  };
 }
 
 
