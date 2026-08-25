@@ -450,7 +450,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {/* Total a Receber */}
         <div
-          onClick={() => onNavigateTab('financial', 'pendentes')}
+          onClick={() => onNavigateTab('projects', 'a-receber')}
           className="bg-white border border-[#c4c7c7]/40 rounded-[22px] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:border-[#000000] transition-all cursor-pointer group"
         >
           <span className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1">
@@ -466,7 +466,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {/* Faturamento do Mês */}
         <div
-          onClick={() => onNavigateTab('financial', 'recebidos')}
+          onClick={() => onNavigateTab('financial', 'receitas-recebidas')}
           className="bg-white border border-[#c4c7c7]/40 rounded-[22px] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:border-[#000000] transition-all cursor-pointer group"
         >
           <span className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1">
@@ -526,7 +526,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {/* Projetos em Andamento */}
         <div
-          onClick={() => onNavigateTab('projects', 'Em andamento')}
+          onClick={() => onNavigateTab('projects', 'ativos')}
           className="bg-white border border-[#c4c7c7]/40 rounded-[22px] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:border-[#000000] transition-all cursor-pointer group"
         >
           <span className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1">
@@ -554,7 +554,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {/* Cobranças Atrasadas */}
         <div
-          onClick={() => onNavigateTab('financial', 'atrasados')}
+          onClick={() => onNavigateTab('financial', 'receitas-atrasadas')}
           className="bg-white border border-[#c4c7c7]/40 rounded-[22px] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:border-[#000000] transition-all cursor-pointer group"
         >
           <span className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1">

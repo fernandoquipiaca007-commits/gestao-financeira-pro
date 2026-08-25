@@ -84,6 +84,24 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
   const [statusFilter, setStatusFilter] = useState<string>(initialFilter || 'ALL');
   const [expenseCategoryFilter, setExpenseCategoryFilter] = useState<string>('ALL');
 
+  // Sync subTab & statusFilter whenever initialFilter or initialTab prop changes
+  React.useEffect(() => {
+    if (initialFilter) {
+      if (initialFilter === 'despesas' || initialFilter === 'despesas-mes') {
+        setSubTab('despesas');
+      } else {
+        setSubTab('receitas');
+        setStatusFilter(initialFilter);
+      }
+    }
+  }, [initialFilter]);
+
+  React.useEffect(() => {
+    if (initialTab) {
+      setSubTab(initialTab);
+    }
+  }, [initialTab]);
+
   // Calendar State
   const [currentCalendarDate, setCurrentCalendarDate] = useState(new Date());
 
@@ -94,13 +112,13 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
   const filteredIncomes = incomes.filter((inc) => {
     if (currencyFilter !== 'ALL' && inc.currency !== currencyFilter) return false;
 
-    if (statusFilter === 'receitas-pendentes' && inc.status === 'Recebido') return false;
-    if (statusFilter === 'receitas-recebidas' && inc.status !== 'Recebido') return false;
-    if (statusFilter === 'receitas-atrasadas' && inc.status !== 'Atrasado' && getDaysDiff(inc.dueDate) >= 0) return false;
+    if ((statusFilter === 'receitas-pendentes' || statusFilter === 'pendentes') && inc.status === 'Recebido') return false;
+    if ((statusFilter === 'receitas-recebidas' || statusFilter === 'recebidos') && inc.status !== 'Recebido') return false;
+    if ((statusFilter === 'receitas-atrasadas' || statusFilter === 'atrasados') && inc.status !== 'Atrasado' && getDaysDiff(inc.dueDate) >= 0) return false;
     if (statusFilter === 'cobrar-hoje' && (inc.status === 'Recebido' || getDaysDiff(inc.dueDate) > 0)) return false;
     if (
       statusFilter !== 'ALL' &&
-      !['receitas-pendentes', 'receitas-recebidas', 'receitas-atrasadas', 'cobrar-hoje'].includes(statusFilter) &&
+      !['receitas-pendentes', 'pendentes', 'receitas-recebidas', 'recebidos', 'receitas-atrasadas', 'atrasados', 'cobrar-hoje'].includes(statusFilter) &&
       inc.status !== statusFilter
     ) {
       return false;
@@ -298,11 +316,69 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
               className="px-4 py-2 bg-[#f1edec] border border-[#c4c7c7]/35 rounded-full text-[#1c1b1b] text-sm font-medium focus:outline-none cursor-pointer"
             >
               <option value="ALL">Todos os Status</option>
-              <option value="Pendente">Pendente</option>
-              <option value="Recebido">Recebido</option>
-              <option value="Atrasado">Atrasado</option>
-              <option value="cobrar-hoje">Atrasado ou Vence Hoje</option>
+              <option value="receitas-pendentes">Contas a Receber (Pendentes)</option>
+              <option value="cobrar-hoje">Cobranças de Hoje / Atrasadas</option>
+              <option value="receitas-atrasadas">Inadimplência (Atrasadas)</option>
+              <option value="receitas-recebidas">Receitas Recebidas</option>
             </select>
+          </div>
+
+          {/* Quick Filter Pills */}
+          <div className="flex items-center space-x-2 overflow-x-auto pb-1 text-xs">
+            <button
+              onClick={() => setStatusFilter('ALL')}
+              className={`px-4 py-1.5 rounded-full font-medium transition-all cursor-pointer shrink-0 ${
+                statusFilter === 'ALL'
+                  ? 'bg-[#000000] text-white'
+                  : 'text-[#444747] hover:bg-[#f1edec]'
+              }`}
+            >
+              Todas ({incomes.length})
+            </button>
+
+            <button
+              onClick={() => setStatusFilter('receitas-pendentes')}
+              className={`px-4 py-1.5 rounded-full font-medium transition-all cursor-pointer shrink-0 ${
+                statusFilter === 'receitas-pendentes' || statusFilter === 'pendentes' || statusFilter === 'Pendente'
+                  ? 'bg-[#0050d7] text-white'
+                  : 'text-[#0050d7] hover:bg-[#dbe1ff]'
+              }`}
+            >
+              Contas a Receber ({incomes.filter((i) => i.status !== 'Recebido').length})
+            </button>
+
+            <button
+              onClick={() => setStatusFilter('cobrar-hoje')}
+              className={`px-4 py-1.5 rounded-full font-medium transition-all cursor-pointer shrink-0 ${
+                statusFilter === 'cobrar-hoje'
+                  ? 'bg-[#7a5400] text-white'
+                  : 'text-[#7a5400] hover:bg-[#fff3d6]'
+              }`}
+            >
+              Cobrar Hoje ({incomes.filter((i) => i.status !== 'Recebido' && getDaysDiff(i.dueDate) <= 0).length})
+            </button>
+
+            <button
+              onClick={() => setStatusFilter('receitas-atrasadas')}
+              className={`px-4 py-1.5 rounded-full font-medium transition-all cursor-pointer shrink-0 ${
+                statusFilter === 'receitas-atrasadas' || statusFilter === 'atrasados' || statusFilter === 'Atrasado'
+                  ? 'bg-[#ba1a1a] text-white'
+                  : 'text-[#ba1a1a] hover:bg-[#ffdad6]'
+              }`}
+            >
+              Inadimplência ({incomes.filter((i) => i.status === 'Atrasado' || (i.status === 'Pendente' && getDaysDiff(i.dueDate) < 0)).length})
+            </button>
+
+            <button
+              onClick={() => setStatusFilter('receitas-recebidas')}
+              className={`px-4 py-1.5 rounded-full font-medium transition-all cursor-pointer shrink-0 ${
+                statusFilter === 'receitas-recebidas' || statusFilter === 'recebidos' || statusFilter === 'Recebido'
+                  ? 'bg-[#1a6b3a] text-white'
+                  : 'text-[#1a6b3a] hover:bg-[#d4eddf]'
+              }`}
+            >
+              Recebidas ({incomes.filter((i) => i.status === 'Recebido').length})
+            </button>
           </div>
 
           {/* Receitas List */}

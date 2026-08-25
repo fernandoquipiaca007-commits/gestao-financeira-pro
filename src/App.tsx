@@ -1892,6 +1892,7 @@ export default function App() {
               expenses={expenses}
               settings={settings}
               currencyFilter={currencyFilter}
+              initialFilter={tabFilter}
               onOpenNewPartnerModal={() => { setPartnerToEdit(null); setIsPartnerModalOpen(true); }}
               onEditPartner={(partner) => { setPartnerToEdit(partner); setIsPartnerModalOpen(true); }}
               onDeletePartner={handleDeletePartner}

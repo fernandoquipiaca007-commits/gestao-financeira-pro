@@ -213,7 +213,7 @@ export const Quick10SecSummary: React.FC<Quick10SecSummaryProps> = ({
           <div className="text-xs text-[#747878] mt-2 flex items-center justify-between border-t border-[#c4c7c7]/30 pt-2">
             <span>{pendingIncomeItems.length} fatura(s)</span>
             <button
-              onClick={() => onNavigateToTab('financial', 'receitas-pendentes')}
+              onClick={() => onNavigateToTab('projects', 'a-receber')}
               className="text-[#0050d7] hover:opacity-80 font-medium inline-flex items-center gap-0.5 cursor-pointer"
             >
               Ver <ArrowRight className="w-3.5 h-3.5" />
@@ -278,6 +278,12 @@ export const Quick10SecSummary: React.FC<Quick10SecSummaryProps> = ({
           </div>
           <div className="text-xs text-[#747878] mt-2 flex items-center justify-between border-t border-[#c4c7c7]/30 pt-2">
             <span>Mês atual ({monthlyReceivedItems.length} entradas)</span>
+            <button
+              onClick={() => onNavigateToTab('financial', 'receitas-recebidas')}
+              className="text-[#1a6b3a] hover:opacity-80 font-medium inline-flex items-center gap-0.5 cursor-pointer"
+            >
+              Ver <ArrowRight className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
 
@@ -294,6 +300,12 @@ export const Quick10SecSummary: React.FC<Quick10SecSummaryProps> = ({
           </div>
           <div className="text-xs text-[#747878] mt-2 flex items-center justify-between border-t border-[#c4c7c7]/30 pt-2">
             <span>Mês atual ({monthlyExpenseItems.length} despesas)</span>
+            <button
+              onClick={() => onNavigateToTab('financial', 'despesas')}
+              className="text-[#0050d7] hover:opacity-80 font-medium inline-flex items-center gap-0.5 cursor-pointer"
+            >
+              Ver <ArrowRight className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
 
@@ -327,7 +339,7 @@ export const Quick10SecSummary: React.FC<Quick10SecSummaryProps> = ({
           <div className="text-xs text-[#747878] mt-2 flex items-center justify-between border-t border-[#c4c7c7]/30 pt-2">
             <span>Operação ativa</span>
             <button
-              onClick={() => onNavigateToTab('projects', 'Em andamento')}
+              onClick={() => onNavigateToTab('projects', 'ativos')}
               className="text-[#0050d7] hover:opacity-80 font-medium inline-flex items-center gap-0.5 cursor-pointer"
             >
               Ver <ArrowRight className="w-3.5 h-3.5" />
@@ -349,8 +361,8 @@ export const Quick10SecSummary: React.FC<Quick10SecSummaryProps> = ({
           <div className="text-xs text-[#747878] mt-2 flex items-center justify-between border-t border-[#c4c7c7]/30 pt-2">
             <span>Prazos / Aguardando</span>
             <button
-              onClick={() => onNavigateToTab('projects')}
-              className="text-[#0050d7] hover:opacity-80 font-medium inline-flex items-center gap-0.5 cursor-pointer"
+              onClick={() => onNavigateToTab('projects', 'atencao')}
+              className="text-[#7a5400] hover:opacity-80 font-medium inline-flex items-center gap-0.5 cursor-pointer"
             >
               Ver <ArrowRight className="w-3.5 h-3.5" />
             </button>
@@ -400,6 +412,12 @@ export const Quick10SecSummary: React.FC<Quick10SecSummaryProps> = ({
           </div>
           <div className="text-xs text-[#747878] mt-2 flex items-center justify-between border-t border-[#c4c7c7]/30 pt-2">
             <span>Soma total projetos</span>
+            <button
+              onClick={() => onNavigateToTab('projects', 'ALL')}
+              className="text-[#0050d7] hover:opacity-80 font-medium inline-flex items-center gap-0.5 cursor-pointer"
+            >
+              Ver <ArrowRight className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
 
@@ -417,7 +435,7 @@ export const Quick10SecSummary: React.FC<Quick10SecSummaryProps> = ({
           <div className="text-xs text-[#747878] mt-2 flex items-center justify-between border-t border-[#c4c7c7]/30 pt-2">
             <span>Repasses pendentes</span>
             <button
-              onClick={() => onNavigateToTab('partners')}
+              onClick={() => onNavigateToTab('partners', 'pendentes')}
               className="text-[#0050d7] hover:opacity-80 font-medium inline-flex items-center gap-0.5 cursor-pointer"
             >
               Parceiros <ArrowRight className="w-3.5 h-3.5" />

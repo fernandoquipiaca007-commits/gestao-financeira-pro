@@ -65,6 +65,13 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const [statusFilter, setStatusFilter] = useState<string>(initialStatusFilter || 'ALL');
   const [assumingProjectId, setAssumingProjectId] = useState<string | null>(null);
 
+  // Sync statusFilter whenever initialStatusFilter prop changes (e.g. clicking dashboard KPIs)
+  React.useEffect(() => {
+    if (initialStatusFilter) {
+      setStatusFilter(initialStatusFilter);
+    }
+  }, [initialStatusFilter]);
+
   const canCreate = isOwner || hasPermission('projects.create');
   const canEdit = isOwner || hasPermission('projects.edit');
   const canDelete = isOwner || hasPermission('projects.delete');
@@ -85,11 +92,16 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
     } else if (statusFilter === 'ativos') {
       if (p.status === 'Concluído' || p.status === 'Cancelado') return false;
     } else if (statusFilter === 'atencao') {
-      if (p.status !== 'Aguardando cliente' && getDaysDiff(p.dueDate) > 1) return false;
+      if (p.status === 'Concluído' || p.status === 'Cancelado') return false;
+      const days = getDaysDiff(p.dueDate);
+      if (p.status !== 'Aguardando cliente' && days > 1) return false;
+    } else if (statusFilter === 'a-receber') {
+      if (p.totalAmount - p.paidAmount <= 0) return false;
     } else if (
       statusFilter !== 'ALL' &&
       statusFilter !== 'ativos' &&
       statusFilter !== 'atencao' &&
+      statusFilter !== 'a-receber' &&
       statusFilter !== 'MINE' &&
       statusFilter !== 'AVAILABLE' &&
       p.status !== statusFilter
@@ -269,6 +281,28 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             }`}
           >
             Ativos
+          </button>
+
+          <button
+            onClick={() => setStatusFilter('a-receber')}
+            className={`px-4 py-1.5 rounded-full font-medium transition-all cursor-pointer shrink-0 ${
+              statusFilter === 'a-receber'
+                ? 'bg-[#000000] text-white'
+                : 'text-[#444747] hover:bg-[#f1edec]'
+            }`}
+          >
+            A Receber ({projects.filter((p) => p.totalAmount - p.paidAmount > 0).length})
+          </button>
+
+          <button
+            onClick={() => setStatusFilter('atencao')}
+            className={`px-4 py-1.5 rounded-full font-medium transition-all cursor-pointer shrink-0 ${
+              statusFilter === 'atencao'
+                ? 'bg-[#7a5400] text-white'
+                : 'text-[#7a5400] hover:bg-[#fff3d6]'
+            }`}
+          >
+            Prazos &amp; Alertas
           </button>
 
           <button

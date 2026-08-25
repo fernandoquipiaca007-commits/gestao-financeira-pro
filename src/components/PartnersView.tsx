@@ -9,6 +9,7 @@ interface PartnersViewProps {
   expenses?: Expense[];
   settings: AppSettings;
   currencyFilter: CurrencyCode | 'ALL';
+  initialFilter?: string;
   onOpenNewPartnerModal: () => void;
   onEditPartner: (partner: Partner) => void;
   onDeletePartner: (partnerId: string) => void;
@@ -23,6 +24,7 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
   expenses = [],
   settings,
   currencyFilter,
+  initialFilter,
   onOpenNewPartnerModal,
   onEditPartner,
   onDeletePartner,
@@ -32,12 +34,26 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedPartnerId, setExpandedPartnerId] = useState<string | null>(null);
+  const [filterPendingOnly, setFilterPendingOnly] = useState(initialFilter === 'pendentes');
 
-  const filteredPartners = partners.filter(
-    (p) =>
-      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.notes?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  React.useEffect(() => {
+    if (initialFilter === 'pendentes') {
+      setFilterPendingOnly(true);
+    }
+  }, [initialFilter]);
+
+  const filteredPartners = partners.filter((p) => {
+    if (filterPendingOnly) {
+      const partnerProjects = projects.filter((proj) => proj.partnerId === p.id);
+      const hasPending = partnerProjects.some((proj) => !proj.commissionPaid && ((proj.commissionAmount || 0) > 0 || (proj.commissionValue || 0) > 0));
+      if (!hasPending) return false;
+    }
+    if (searchTerm.trim()) {
+      const q = searchTerm.toLowerCase();
+      return p.name.toLowerCase().includes(q) || p.notes?.toLowerCase().includes(q);
+    }
+    return true;
+  });
 
   return (
     <div className="space-y-6 pb-12 font-sans">
@@ -79,6 +95,38 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
         </div>
       </div>
 
+      {/* Search and Filters */}
+      {partners.length > 0 && (
+        <div className="bg-white border border-[#c4c7c7]/40 rounded-[22px] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col sm:flex-row items-center justify-between gap-3">
+          <input
+            type="text"
+            placeholder="Pesquisar parceiro por nome ou notas..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full sm:w-80 px-4 py-2 bg-[#f1edec] border border-[#c4c7c7]/35 rounded-full text-[#1c1b1b] text-xs placeholder-[#747878] focus:outline-none focus:border-[#000000] focus:bg-white transition-all"
+          />
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setFilterPendingOnly(false)}
+              className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                !filterPendingOnly ? 'bg-[#000000] text-white' : 'bg-[#f1edec] text-[#444747] hover:bg-[#e5e2e1]'
+              }`}
+            >
+              Todos ({partners.length})
+            </button>
+            <button
+              onClick={() => setFilterPendingOnly(true)}
+              className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                filterPendingOnly ? 'bg-[#7a5400] text-white' : 'bg-[#fff3d6] text-[#7a5400] hover:bg-[#ffecc0]'
+              }`}
+            >
+              Comissões Pendentes
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Partners List & Cards */}
       {partners.length === 0 ? (
         <div className="bg-white border border-[#c4c7c7]/40 rounded-[22px] p-12 text-center space-y-4 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
@@ -95,6 +143,17 @@ export const PartnersView: React.FC<PartnersViewProps> = ({
           >
             <Plus className="w-4 h-4 stroke-[2]" />
             <span>Cadastrar Primeiro Parceiro</span>
+          </button>
+        </div>
+      ) : filteredPartners.length === 0 ? (
+        <div className="bg-white border border-[#c4c7c7]/40 rounded-[22px] p-12 text-center space-y-3">
+          <Handshake className="w-10 h-10 text-[#c4c7c7] mx-auto" />
+          <h3 className="text-sm font-semibold text-[#1c1b1b]">Nenhum parceiro encontrado com este filtro</h3>
+          <button
+            onClick={() => { setSearchTerm(''); setFilterPendingOnly(false); }}
+            className="px-4 py-2 bg-[#f1edec] text-[#1c1b1b] text-xs font-medium rounded-full hover:bg-[#e5e2e1]"
+          >
+            Limpar Filtros
           </button>
         </div>
       ) : (
