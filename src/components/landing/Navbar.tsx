@@ -157,7 +157,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenLeadModal }) => {
               className="boro-btn-secondary w-full justify-center h-11 text-sm"
             >
               <PhoneCall className="w-4 h-4 text-[#0050d7]" />
-              <span>Falar no WhatsApp (+244 957 459 336)</span>
+              <span>Falar no WhatsApp ({AGENCY_CONFIG.whatsappRaw})</span>
             </a>
           </div>
         </div>

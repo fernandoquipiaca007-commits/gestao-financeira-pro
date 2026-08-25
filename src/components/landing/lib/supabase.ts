@@ -6,8 +6,8 @@ export { supabase };
 
 export const AGENCY_CONFIG = {
   name: import.meta.env.VITE_AGENCY_NAME || 'Codeengine',
-  whatsappRaw: import.meta.env.VITE_AGENCY_WHATSAPP || '+244957459336',
-  whatsappDigits: (import.meta.env.VITE_AGENCY_WHATSAPP || '+244957459336').replace(/\D/g, ''),
+  whatsappRaw: import.meta.env.VITE_AGENCY_WHATSAPP || '+55 48 99842-4165',
+  whatsappDigits: (import.meta.env.VITE_AGENCY_WHATSAPP || '+5548998424165').replace(/\D/g, ''),
   email: import.meta.env.VITE_AGENCY_EMAIL || 'codeengine2@gmail.com',
 };
 
