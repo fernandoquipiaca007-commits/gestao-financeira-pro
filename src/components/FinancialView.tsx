@@ -112,10 +112,28 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
   const filteredIncomes = incomes.filter((inc) => {
     if (currencyFilter !== 'ALL' && inc.currency !== currencyFilter) return false;
 
+    // Contas a Receber — excluir apenas as já recebidas
     if ((statusFilter === 'receitas-pendentes' || statusFilter === 'pendentes') && inc.status === 'Recebido') return false;
+
+    // Recebidas — mostrar apenas recebidas
     if ((statusFilter === 'receitas-recebidas' || statusFilter === 'recebidos') && inc.status !== 'Recebido') return false;
-    if ((statusFilter === 'receitas-atrasadas' || statusFilter === 'atrasados') && inc.status !== 'Atrasado' && getDaysDiff(inc.dueDate) >= 0) return false;
-    if (statusFilter === 'cobrar-hoje' && (inc.status === 'Recebido' || getDaysDiff(inc.dueDate) > 0)) return false;
+
+    // Inadimplência — excluir SEMPRE as recebidas, e excluir as que ainda não venceram
+    if (statusFilter === 'receitas-atrasadas' || statusFilter === 'atrasados') {
+      if (inc.status === 'Recebido') return false;
+      if (inc.status !== 'Atrasado' && getDaysDiff(inc.dueDate) >= 0) return false;
+    }
+
+    // Cobrar Hoje — excluir recebidas, excluir futuras, excluir projetos pausados
+    if (statusFilter === 'cobrar-hoje') {
+      if (inc.status === 'Recebido') return false;
+      if (getDaysDiff(inc.dueDate) > 0) return false;
+      if (inc.projectId) {
+        const proj = projects.find((p) => p.id === inc.projectId);
+        if (proj?.status === 'Aguardando cliente' || proj?.status === 'Cancelado') return false;
+      }
+    }
+
     if (
       statusFilter !== 'ALL' &&
       !['receitas-pendentes', 'pendentes', 'receitas-recebidas', 'recebidos', 'receitas-atrasadas', 'atrasados', 'cobrar-hoje'].includes(statusFilter) &&

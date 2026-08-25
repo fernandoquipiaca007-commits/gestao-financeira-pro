@@ -372,7 +372,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             const isFullyPaid = remaining === 0;
             const progressPct = p.totalAmount > 0 ? Math.min(100, Math.round((p.paidAmount / p.totalAmount) * 100)) : 0;
             const daysToDue = getDaysDiff(p.dueDate);
-            const isUrgent = daysToDue <= 2 && p.status !== 'Concluído' && p.status !== 'Cancelado';
+            const isUrgent = daysToDue <= 2 && p.status !== 'Concluído' && p.status !== 'Cancelado' && p.status !== 'Aguardando cliente';
 
             const isAssignedToMe = p.assignedTo === userProfile?.id;
             const isAvailable = p.assignmentType === 'available';

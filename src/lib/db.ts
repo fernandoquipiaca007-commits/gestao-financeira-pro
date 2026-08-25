@@ -67,6 +67,87 @@ export function saveCategories(categories: CategoryItem[]): void {
   localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories));
 }
 
+// Supabase-backed categories
+export async function fetchCategoriesFromDb(companyId?: string): Promise<CategoryItem[]> {
+  try {
+    let query = supabase.from('categories').select('*').order('created_at', { ascending: true });
+    if (companyId) query = query.eq('company_id', companyId);
+    const { data, error } = await query;
+    if (error || !data || data.length === 0) return [];
+    const categories: CategoryItem[] = data.map((r: any) => ({
+      id: r.id,
+      name: r.name,
+      type: r.type,
+      color: r.color,
+      createdAt: r.created_at,
+    }));
+    return categories;
+  } catch {
+    return [];
+  }
+}
+
+export async function upsertCategoryToDb(category: CategoryItem, companyId: string): Promise<void> {
+  try {
+    await supabase.from('categories').upsert({
+      id: category.id,
+      name: category.name,
+      type: category.type,
+      color: category.color,
+      company_id: companyId,
+      created_at: category.createdAt || new Date().toISOString(),
+    });
+  } catch (e) {
+    console.error('[upsertCategoryToDb]', e);
+  }
+}
+
+export async function deleteCategoryFromDb(categoryId: string): Promise<void> {
+  try {
+    await supabase.from('categories').delete().eq('id', categoryId);
+  } catch (e) {
+    console.error('[deleteCategoryFromDb]', e);
+  }
+}
+
+// Supabase-backed settings
+export async function fetchSettingsFromDb(companyId: string): Promise<AppSettings | null> {
+  try {
+    const { data, error } = await supabase
+      .from('app_settings')
+      .select('*')
+      .eq('company_id', companyId)
+      .maybeSingle();
+    if (error || !data) return null;
+    return {
+      defaultCurrency: data.default_currency,
+      userName: data.user_name,
+      businessName: data.business_name,
+      exchangeRates: data.exchange_rates || { BRL: 1, AOA: 165, USD: 0.18, EUR: 0.16 },
+      emailSettings: data.email_settings || undefined,
+    } as AppSettings;
+  } catch {
+    return null;
+  }
+}
+
+export async function upsertSettingsToDb(settings: AppSettings, companyId: string): Promise<void> {
+  try {
+    await supabase.from('app_settings').upsert({
+      id: `settings-${companyId}`,
+      company_id: companyId,
+      default_currency: settings.defaultCurrency,
+      user_name: settings.userName,
+      business_name: settings.businessName,
+      exchange_rates: settings.exchangeRates || {},
+      email_settings: (settings as any).emailSettings || {},
+      updated_at: new Date().toISOString(),
+    });
+  } catch (e) {
+    console.error('[upsertSettingsToDb]', e);
+  }
+}
+
 export function getStoredAgendaEvents(): AgendaEvent[] {
   try {
     const item = localStorage.getItem(AGENDA_EVENTS_KEY);
@@ -78,6 +159,7 @@ export function getStoredAgendaEvents(): AgendaEvent[] {
 export function saveAgendaEvents(events: AgendaEvent[]): void {
   localStorage.setItem(AGENDA_EVENTS_KEY, JSON.stringify(events));
 }
+
 
 // ----------------------------------------------------
 // SUPABASE SYNC OPERATIONS

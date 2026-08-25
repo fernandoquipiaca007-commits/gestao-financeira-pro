@@ -30,12 +30,12 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   const [clientId, setClientId] = useState('');
   const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
   const [category, setCategory] = useState<ProjectCategory>('Website');
-  const [totalAmount, setTotalAmount] = useState<number>(1200);
-  const [paidAmount, setPaidAmount] = useState<number>(600);
+  const [totalAmount, setTotalAmount] = useState<number>(0);
+  const [paidAmount, setPaidAmount] = useState<number>(0);
   const [currency, setCurrency] = useState<CurrencyCode>(defaultCurrency);
   const [startDate, setStartDate] = useState(getTodayIso());
-  const [dueDate, setDueDate] = useState(addDaysIso(15));
-  const [nextPaymentDate, setNextPaymentDate] = useState(addDaysIso(0));
+  const [dueDate, setDueDate] = useState(addDaysIso(30));
+  const [nextPaymentDate, setNextPaymentDate] = useState(addDaysIso(15));
   const [status, setStatus] = useState<ProjectStatus>('Em andamento');
   const [notes, setNotes] = useState('');
   const [attachments, setAttachments] = useState<ProjectAttachment[]>([]);
@@ -96,11 +96,11 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         setCurrency(defaultCurrency);
       }
       setCategory('Website');
-      setTotalAmount(1200);
-      setPaidAmount(600);
+      setTotalAmount(0);
+      setPaidAmount(0);
       setStartDate(getTodayIso());
-      setDueDate(addDaysIso(15));
-      setNextPaymentDate(addDaysIso(0));
+      setDueDate(addDaysIso(30));
+      setNextPaymentDate(addDaysIso(15));
       setStatus('Em andamento');
       setNotes('');
       setAttachments([]);

@@ -20,6 +20,12 @@ export function computeNotifications(
   incomes.forEach((inc) => {
     if (inc.status === 'Recebido') return;
 
+    // Ignorar receitas cujo projeto está pausado ou cancelado
+    if (inc.projectId) {
+      const proj = projectMap.get(inc.projectId);
+      if (proj?.status === 'Aguardando cliente' || proj?.status === 'Cancelado') return;
+    }
+
     const diff = getDaysDiff(inc.dueDate);
     const client = clientMap.get(inc.clientId);
     const clientName = client?.name || 'Cliente';
@@ -62,7 +68,7 @@ export function computeNotifications(
 
   // 2. Project due dates (e.g. delivery tomorrow or due in <= 3 days)
   projects.forEach((proj) => {
-    if (proj.status === 'Concluído' || proj.status === 'Cancelado') return;
+    if (proj.status === 'Concluído' || proj.status === 'Cancelado' || proj.status === 'Aguardando cliente') return;
 
     const diff = getDaysDiff(proj.dueDate);
     const client = clientMap.get(proj.clientId);

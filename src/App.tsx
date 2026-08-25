@@ -97,6 +97,11 @@ import {
   fetchNotificationsFromDb,
   markNotificationAsReadInDb,
   deleteNotificationFromDb,
+  fetchCategoriesFromDb,
+  upsertCategoryToDb,
+  deleteCategoryFromDb,
+  fetchSettingsFromDb,
+  upsertSettingsToDb,
 } from './lib/db';
 import { fetchLiveExchangeRates } from './lib/exchange';
 import {
@@ -346,7 +351,7 @@ export default function App() {
 
       const cid = userProfile?.companyId;
 
-      const [dbClients, dbProjects, dbIncomes, dbExpenses, dbEvents, dbPartners, liveRates, dbNotifs] =
+      const [dbClients, dbProjects, dbIncomes, dbExpenses, dbEvents, dbPartners, liveRates, dbNotifs, dbCategories, dbSettings] =
         await Promise.all([
           fetchClientsFromDb(cid),
           fetchProjectsFromDb(cid),
@@ -356,6 +361,8 @@ export default function App() {
           fetchPartnersFromDb(cid),
           fetchLiveExchangeRates(),
           fetchNotificationsFromDb(cid),
+          cid ? fetchCategoriesFromDb(cid) : Promise.resolve([]),
+          cid ? fetchSettingsFromDb(cid) : Promise.resolve(null),
         ]);
 
       if (dbClients) setClients(dbClients);
@@ -364,6 +371,21 @@ export default function App() {
       if (dbEvents) setAgendaEvents(dbEvents);
       if (dbPartners) setPartners(dbPartners);
       if (dbNotifs) setDbNotifications(dbNotifs);
+
+      // Sync categories from Supabase if available, otherwise keep localStorage
+      if (dbCategories && dbCategories.length > 0) {
+        setCategories(dbCategories);
+        saveCategories(dbCategories);
+      }
+
+      // Sync settings from Supabase if available
+      if (dbSettings) {
+        setSettings((prev) => {
+          const merged = { ...prev, ...dbSettings };
+          saveSettings(merged);
+          return merged;
+        });
+      }
 
       // Reconcile project paid amount with linked incomes
       if (dbProjects && dbIncomes) {
@@ -1400,7 +1422,7 @@ export default function App() {
   // ------------------------------------------------------------------
   // CRUD Handlers: Categories, Agenda, Partners, Settings
   // ------------------------------------------------------------------
-  const handleSaveCategory = (categoryData: Omit<CategoryItem, 'id' | 'createdAt'> & { id?: string }) => {
+  const handleSaveCategory = async (categoryData: Omit<CategoryItem, 'id' | 'createdAt'> & { id?: string }) => {
     const isNew = !categoryData.id;
     const catId = categoryData.id || `cat-${Date.now()}`;
     const newCategory: CategoryItem = {
@@ -1413,12 +1435,24 @@ export default function App() {
       : categories.map((c) => (c.id === catId ? newCategory : c));
     setCategories(updated);
     saveCategories(updated);
+    if (userProfile?.companyId) {
+      await upsertCategoryToDb(newCategory, userProfile.companyId);
+    }
   };
 
-  const handleDeleteCategory = (categoryId: string) => {
+  const handleDeleteCategory = async (categoryId: string) => {
     const updated = categories.filter((c) => c.id !== categoryId);
     setCategories(updated);
     saveCategories(updated);
+    await deleteCategoryFromDb(categoryId);
+  };
+
+  const handleSaveSettings = async (newSettings: AppSettings) => {
+    setSettings(newSettings);
+    saveSettings(newSettings);
+    if (userProfile?.companyId) {
+      await upsertSettingsToDb(newSettings, userProfile.companyId);
+    }
   };
 
   const handleSaveAgendaEvent = async (eventData: Omit<AgendaEvent, 'id' | 'createdAt'> & { id?: string }) => {
@@ -1930,7 +1964,7 @@ export default function App() {
           {activeTab === 'settings' && (
             <SettingsView
               settings={settings}
-              onSaveSettings={setSettings}
+              onSaveSettings={handleSaveSettings}
               onResetData={handleResetData}
               onClearData={handleClearData}
               onExportData={handleExportData}
