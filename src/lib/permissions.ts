@@ -220,7 +220,7 @@ export function buildPermissionMap(
  */
 export function getVisibleTabs(role: UserRole, permMap: PermissionMap): string[] {
   if (role === 'owner') {
-    return ['dashboard', 'calendar', 'projects', 'tasks', 'billing', 'clients', 'financial', 'partners', 'categories', 'reports', 'users', 'audit', 'landing', 'settings'];
+    return ['dashboard', 'calendar', 'projects', 'tasks', 'billing', 'clients', 'financial', 'partners', 'categories', 'reports', 'users', 'audit', 'settings'];
   }
 
   const tabs: string[] = [];
@@ -236,7 +236,6 @@ export function getVisibleTabs(role: UserRole, permMap: PermissionMap): string[]
   if (hasPermission(role, permMap, 'categories.view'))tabs.push('categories');
   if (hasPermission(role, permMap, 'reports.view'))   tabs.push('reports');
   if (hasPermission(role, permMap, 'users.view'))     tabs.push('users');
-  tabs.push('landing'); // sempre visível para a equipa aceder ao site público
   tabs.push('settings'); // sempre visível (perfil pessoal)
 
   return tabs;

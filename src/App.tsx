@@ -16,7 +16,6 @@ import {
   UserCog,
   History,
   FileText,
-  Globe,
 } from 'lucide-react';
 import {
   Client,
@@ -136,7 +135,6 @@ import { SettingsView } from './components/SettingsView';
 import { PartnersView } from './components/PartnersView';
 import { UsersView } from './components/UsersView';
 import { AuditLogView } from './components/AuditLogView';
-import { LandingPageView } from './components/LandingPageView';
 import { NotificationsModal } from './components/NotificationsModal';
 
 const getStoredDismissedNotifs = (): string[] => {
@@ -1595,7 +1593,6 @@ export default function App() {
     { id: 'reports',    label: 'Relatórios',          icon: PieChart },
     { id: 'users',      label: 'Utilizadores & Cargos', icon: UserCog,    badge: isOwner ? companyUsers.length : undefined },
     { id: 'audit',      label: 'Registo de Auditoria', icon: History },
-    { id: 'landing',    label: 'Site da Agência',     icon: Globe },
     { id: 'settings',   label: 'Configurações',       icon: Settings },
   ];
 
@@ -1927,10 +1924,6 @@ export default function App() {
 
           {activeTab === 'audit' && (
             <AuditLogView />
-          )}
-
-          {activeTab === 'landing' && (
-            <LandingPageView onBackToDashboard={() => handleNavigateTab('dashboard')} />
           )}
 
           {activeTab === 'settings' && (
