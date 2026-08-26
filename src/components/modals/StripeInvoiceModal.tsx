@@ -87,9 +87,13 @@ export const StripeInvoiceModal: React.FC<StripeInvoiceModalProps> = ({
   // Form fields
   const [clientEmail, setClientEmail] = useState(client?.email || '');
   const [clientName, setClientName] = useState(client?.name || '');
-  const [amount, setAmount] = useState(
-    String(openAmount > 0 ? openAmount : project.totalAmount)
-  );
+  const [amount, setAmount] = useState(() => {
+    // Priority: 1) pending income amount, 2) open balance, 3) total project amount
+    if (pendingIncome && pendingIncome.amount > 0) return String(pendingIncome.amount);
+    if (openAmount > 0) return String(openAmount);
+    if (project.totalAmount > 0) return String(project.totalAmount);
+    return '';
+  });
   const [description, setDescription] = useState(
     project.invoiceNotes || `Serviços de ${project.category} — ${project.name}`
   );
@@ -286,7 +290,15 @@ export const StripeInvoiceModal: React.FC<StripeInvoiceModalProps> = ({
                       </label>
                       <select
                         value={selectedIncomeId}
-                        onChange={(e) => setSelectedIncomeId(e.target.value)}
+                        onChange={(e) => {
+                          const id = e.target.value;
+                          setSelectedIncomeId(id);
+                          // Auto-preencher o valor com o da receita selecionada
+                          if (id) {
+                            const inc = pendingIncomes.find((i) => i.id === id);
+                            if (inc && inc.amount > 0) setAmount(String(inc.amount));
+                          }
+                        }}
                         className="w-full bg-white border border-[#c4c7c7]/50 rounded-xl px-4 py-3 text-sm text-[#1c1b1b] focus:outline-none focus:border-[#635bff] transition-all"
                       >
                         <option value="">— Não associar —</option>

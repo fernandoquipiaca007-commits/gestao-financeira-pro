@@ -124,10 +124,10 @@ Deno.serve(async (req) => {
       description: description || `Servico — ${projectId}`,
     });
 
-    // ── 3. Criar Invoice (com moeda explícita e locale) ───────────────────
-    const invoiceBody = {
+    // ── 3. Criar Invoice (moeda explícita, locale pt-BR, sem auto-pagamento) ──
+    const invoiceBody: Record<string, string | number> = {
       customer: customerId,
-      currency: stripeCurrency,           // ← CRÍTICO: garante que a invoice usa a mesma moeda
+      currency: stripeCurrency,
       collection_method: 'send_invoice',
       days_until_due: Number(daysUntilDue) || 15,
       'metadata[gestao_project_id]': projectId || '',
@@ -138,10 +138,21 @@ Deno.serve(async (req) => {
 
     const invoice = await stripePost('/v1/invoices', invoiceBody);
 
-    // ── 4. Finalizar a fatura ─────────────────────────────────────────────
+    if (!invoice.id) {
+      throw new Error('Stripe nao retornou ID de fatura valido.');
+    }
+
+    // ── 4. Validar valor antes de finalizar (segurança contra fatura R$0) ─
+    const invoiceCheck = await stripeGet(`/v1/invoices/${invoice.id}`);
+    const confirmedAmount = invoiceCheck.amount_due ?? 0;
+    if (confirmedAmount <= 0) {
+      throw new Error(`Valor da fatura invalido (${confirmedAmount} centavos). Verifique o valor digitado no formulario.`);
+    }
+
+    // ── 5. Finalizar a fatura ─────────────────────────────────────────────
     const finalizedInvoice = await stripePost(`/v1/invoices/${invoice.id}/finalize`, {});
 
-    // ── 5. Enviar e-mail via Stripe (opcional) ────────────────────────────
+    // ── 6. Enviar e-mail via Stripe (opcional) ────────────────────────────
     let sentInvoice = finalizedInvoice;
     if (sendEmailNow) {
       sentInvoice = await stripePost(`/v1/invoices/${invoice.id}/send`, {});
