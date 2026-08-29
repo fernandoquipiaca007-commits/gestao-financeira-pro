@@ -125,26 +125,6 @@ export const LAWYER_VIDEO_TESTIMONIALS: VideoTestimonial[] = [
     isFeatured: true,
     duration: '0:53',
   },
-  {
-    id: 'dra-larissa',
-    name: 'Dra. Larissa',
-    role: 'Advogada',
-    specialty: 'Posicionamento Jurídico',
-    serviceCategory: 'Gestão de Tráfego & Captação',
-    highlightQuote: 'Estratégias de anúncios direcionados para posicionamento institucional e prospecção de clientes qualificados.',
-    thumbnailUrl: '',
-    isUpcoming: true,
-  },
-  {
-    id: 'novos-depoimentos',
-    name: 'Novos Casos em Gravação',
-    role: 'Advogadas Parceiras',
-    specialty: 'Prospecção & Funis Digitais',
-    serviceCategory: 'Performance & Aquisição',
-    highlightQuote: 'Novas experiências em gravação com profissionais do meio jurídico que escalaram a captação com a CodeEngine.',
-    thumbnailUrl: '',
-    isUpcoming: true,
-  },
 ];
 
 export const AGENCY_TESTIMONIALS: Testimonial[] = [

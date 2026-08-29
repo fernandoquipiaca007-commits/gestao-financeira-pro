@@ -68,7 +68,7 @@ export const TestimonialsSection: React.FC = () => {
 
         {/* 1. FEATURED TESTIMONIAL (Dra. Dina Neres) */}
         {featuredTestimonial && (
-          <div className="max-w-5xl mx-auto mb-16">
+          <div className="max-w-5xl mx-auto mb-10 lg:mb-12">
             <div className="boro-card p-6 sm:p-10 bg-white border border-[#c4c7c7]/50 shadow-xl relative overflow-hidden group hover:border-[#000000]/20 transition-all">
               
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
