@@ -5,6 +5,7 @@ import { MetricsBar } from './landing/MetricsBar';
 import { ServicesSection } from './landing/ServicesSection';
 import { LectureFunnelSpotlight } from './landing/LectureFunnelSpotlight';
 import { HowItWorksSection } from './landing/HowItWorksSection';
+import { TestimonialsSection } from './landing/TestimonialsSection';
 import { FaqSection } from './landing/FaqSection';
 import { ContactForm } from './landing/ContactForm';
 import { Footer } from './landing/Footer';
@@ -52,6 +53,7 @@ export const LandingPageView: React.FC<LandingPageViewProps> = ({ onBackToDashbo
         <ServicesSection onSelectService={(s) => setSelectedService(s)} />
         <LectureFunnelSpotlight onSelectService={(s) => setSelectedService(s)} />
         <HowItWorksSection />
+        <TestimonialsSection />
         <ContactForm selectedServicePreset={selectedService} />
         <FaqSection />
       </main>

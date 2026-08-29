@@ -10,18 +10,18 @@ export interface CountryConfig {
 }
 
 export const COUNTRIES: Record<CountryCode, CountryConfig> = {
-  AO: { name: 'Angola', flag: '🇦🇴', ddi: '+244', defaultCurrency: 'AOA', phonePlaceholder: '923 000 000' },
-  BR: { name: 'Brasil', flag: '🇧🇷', ddi: '+55', defaultCurrency: 'BRL', phonePlaceholder: '(11) 98765-4321' },
-  PT: { name: 'Portugal', flag: '🇵🇹', ddi: '+351', defaultCurrency: 'EUR', phonePlaceholder: '912 345 678' },
-  US: { name: 'Estados Unidos', flag: '🇺🇸', ddi: '+1', defaultCurrency: 'USD', phonePlaceholder: '(555) 000-0000' },
-  OTHER: { name: 'Outro País', flag: '🌐', ddi: '+', defaultCurrency: 'USD', phonePlaceholder: 'Seu número com DDI' },
+  BR: { name: 'Brasil', flag: '', ddi: '+55', defaultCurrency: 'BRL', phonePlaceholder: '(11) 98765-4321' },
+  AO: { name: 'Angola', flag: '', ddi: '+244', defaultCurrency: 'AOA', phonePlaceholder: '923 000 000' },
+  PT: { name: 'Portugal', flag: '', ddi: '+351', defaultCurrency: 'EUR', phonePlaceholder: '912 345 678' },
+  US: { name: 'Estados Unidos', flag: '', ddi: '+1', defaultCurrency: 'USD', phonePlaceholder: '(555) 000-0000' },
+  OTHER: { name: 'Outro País', flag: '', ddi: '+', defaultCurrency: 'USD', phonePlaceholder: 'Seu número com DDI' },
 };
 
 export const CURRENCIES: Record<CurrencyCode, { symbol: string; name: string; flag: string }> = {
-  AOA: { symbol: 'Kz', name: 'Kwanza', flag: '🇦🇴' },
-  BRL: { symbol: 'R$', name: 'Real', flag: '🇧🇷' },
-  EUR: { symbol: '€', name: 'Euro', flag: '🇵🇹' },
-  USD: { symbol: 'US$', name: 'Dólar', flag: '🇺🇸' },
+  BRL: { symbol: 'R$', name: 'Real', flag: '' },
+  AOA: { symbol: 'Kz', name: 'Kwanza', flag: '' },
+  EUR: { symbol: '€', name: 'Euro', flag: '' },
+  USD: { symbol: 'US$', name: 'Dólar', flag: '' },
 };
 
 export type ServiceId = 
@@ -56,7 +56,7 @@ export interface LeadSubmission {
   country: CountryCode;
   service: string;
   additionalServices: string[];
-  budgetRange: string;
+  budgetRange?: string;
   notes: string;
 }
 
@@ -71,4 +71,19 @@ export interface Testimonial {
   results: string;
   content: string;
   service: string;
+}
+
+export interface VideoTestimonial {
+  id: string;
+  name: string;
+  role: string;
+  specialty?: string;
+  serviceCategory: string;
+  highlightQuote: string;
+  fullDescription?: string;
+  thumbnailUrl: string;
+  videoUrl?: string;
+  isFeatured?: boolean;
+  isUpcoming?: boolean;
+  duration?: string;
 }

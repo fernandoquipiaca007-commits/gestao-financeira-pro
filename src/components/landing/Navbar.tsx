@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Sparkles, ArrowRight, Menu, X, PhoneCall, ShieldCheck, Layers } from 'lucide-react';
-import { AGENCY_CONFIG } from './lib/supabase';
+import { AGENCY_CONFIG } from '../lib/supabase';
 
 interface NavbarProps {
   onOpenLeadModal?: () => void;
@@ -24,12 +24,14 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenLeadModal }) => {
     { label: 'Serviços', href: '#servicos' },
     { label: 'Funil de Palestras', href: '#funil-palestras' },
     { label: 'Como Funciona', href: '#como-funciona' },
+    { label: 'Depoimentos', href: '#depoimentos' },
     { label: 'FAQ', href: '#faq' },
   ];
 
   const handleNavClick = (href: string) => {
     setMobileMenuOpen(false);
-    const element = document.querySelector(href);
+    const cleanId = href.replace('#', '');
+    const element = document.getElementById(cleanId) || document.querySelector(href) || document.getElementById('solicitar') || document.getElementById('contato');
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
     }
