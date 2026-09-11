@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   LayoutDashboard,
   Calendar as CalendarIcon,
@@ -102,7 +102,9 @@ import {
   deleteCategoryFromDb,
   fetchSettingsFromDb,
   upsertSettingsToDb,
+  getStoredAgendaEvents,
 } from './lib/db';
+import { createEmergencySnapshot } from './lib/dataGuard';
 import { fetchLiveExchangeRates } from './lib/exchange';
 import {
   registerServiceWorker,
@@ -197,15 +199,18 @@ export default function App() {
   // Global Currency Filter
   const [currencyFilter, setCurrencyFilter] = useState<CurrencyCode | 'ALL'>('ALL');
 
-  // Core Data State
-  const [clients, setClients] = useState<Client[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [incomes, setIncomes] = useState<Income[]>([]);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
+  // Core Data State (Hidratado a partir do armazenamento local)
+  const [clients, setClients] = useState<Client[]>(getStoredClients);
+  const [projects, setProjects] = useState<Project[]>(getStoredProjects);
+  const [incomes, setIncomes] = useState<Income[]>(getStoredIncomes);
+  const [expenses, setExpenses] = useState<Expense[]>(getStoredExpenses);
   const [categories, setCategories] = useState<CategoryItem[]>(getStoredCategories);
-  const [agendaEvents, setAgendaEvents] = useState<AgendaEvent[]>([]);
-  const [partners, setPartners] = useState<Partner[]>([]);
+  const [agendaEvents, setAgendaEvents] = useState<AgendaEvent[]>(getStoredAgendaEvents);
+  const [partners, setPartners] = useState<Partner[]>(getStoredPartners);
   const [settings, setSettings] = useState<AppSettings>(getStoredSettings);
+
+  // Proteção contra corrida e sobrescrita em importações
+  const isImportingRef = useRef(false);
 
   // RBAC Data State
   const [companyUsers, setCompanyUsers] = useState<UserProfile[]>([]);
@@ -346,10 +351,12 @@ export default function App() {
   // ------------------------------------------------------------------
   const loadDbData = useCallback(async () => {
     setIsDataSyncing(true);
+    console.group('[SYNC 🚀] Iniciando sincronização com Supabase...');
     try {
       registerServiceWorker();
 
       const cid = userProfile?.companyId;
+      console.log(`[SYNC 🏢] Company ID atual: ${cid || 'nenhum'}`);
 
       const [dbClients, dbProjects, dbIncomes, dbExpenses, dbEvents, dbPartners, liveRates, dbNotifs, dbCategories, dbSettings] =
         await Promise.all([
@@ -364,6 +371,15 @@ export default function App() {
           cid ? fetchCategoriesFromDb(cid) : Promise.resolve([]),
           cid ? fetchSettingsFromDb(cid) : Promise.resolve(null),
         ]);
+
+      console.log('[SYNC 📦] Registros recebidos (ou recuperados do cache de proteção):', {
+        clientes: dbClients?.length ?? 0,
+        projetos: dbProjects?.length ?? 0,
+        receitas: dbIncomes?.length ?? 0,
+        despesas: dbExpenses?.length ?? 0,
+        agenda: dbEvents?.length ?? 0,
+        parceiros: dbPartners?.length ?? 0,
+      });
 
       if (dbClients) setClients(dbClients);
       if (dbIncomes) setIncomes(dbIncomes);
@@ -387,7 +403,7 @@ export default function App() {
         });
       }
 
-      // Reconcile project paid amount with linked incomes
+      // Reconcile project paid amount with linked incomes (bidirecional)
       if (dbProjects && dbIncomes) {
         const reconciled = dbProjects.map((p) => {
           const projectIncomes = dbIncomes.filter((i) => i.projectId === p.id);
@@ -396,9 +412,10 @@ export default function App() {
               .filter((i) => i.status === 'Recebido')
               .reduce((acc, i) => acc + i.amount, 0);
 
-            if (sumPaid > p.paidAmount) {
-              const updatedStatus: ProjectStatus =
-                sumPaid >= p.totalAmount && p.totalAmount > 0 ? 'Concluído' : p.status;
+            const isFullyPaid = sumPaid >= p.totalAmount && p.totalAmount > 0;
+            const updatedStatus: ProjectStatus = isFullyPaid ? 'Concluído' : (p.status === 'Concluído' ? 'Em andamento' : p.status);
+
+            if (sumPaid !== p.paidAmount || updatedStatus !== p.status) {
               return { ...p, paidAmount: sumPaid, status: updatedStatus };
             }
           }
@@ -453,18 +470,66 @@ export default function App() {
       if (!integrityResult.isValid) {
         console.warn('[Integrity] Avisos de integridade financeira:', integrityResult.warnings);
       }
+
+      // Criar snapshot de segurança após sincronismo bem sucedido
+      createEmergencySnapshot();
     } catch (err) {
       console.warn('Failed to sync data with Supabase on load:', err);
     } finally {
       setIsDataSyncing(false);
+      console.groupEnd();
     }
-  }, [userProfile?.companyId, userProfile?.id, isOwner, isAdmin]);
+  }, [userProfile?.companyId, userProfile?.id, isOwner, isAdmin, settings.defaultCurrency]);
 
+  // PROTEÇÃO: loadDbData só é chamado se houver sessão E companyId confirmado
   useEffect(() => {
-    if (userSession) {
+    if (userSession && userProfile?.companyId) {
       loadDbData();
     }
   }, [userSession, userProfile?.companyId, loadDbData]);
+
+  // Hidratar estado com cache local do utilizador imediatamente no login
+  useEffect(() => {
+    if (userSession) {
+      setClients(getStoredClients());
+      setProjects(getStoredProjects());
+      setIncomes(getStoredIncomes());
+      setExpenses(getStoredExpenses());
+      setPartners(getStoredPartners());
+      setAgendaEvents(getStoredAgendaEvents());
+      setSettings(getStoredSettings());
+    }
+  }, [userSession]);
+
+  // Ferramenta de auditoria de dados acessível via console do navegador (window.__checkDataStatus())
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).__checkDataStatus = () => {
+        console.group('🛡️ [DIAGNÓSTICO GESTÃO FO - ESTADO DE DADOS]');
+        console.table({
+          'Clientes': { 'Estado React': clients.length, 'LocalStorage': getStoredClients().length },
+          'Projetos': { 'Estado React': projects.length, 'LocalStorage': getStoredProjects().length },
+          'Receitas': { 'Estado React': incomes.length, 'LocalStorage': getStoredIncomes().length },
+          'Despesas': { 'Estado React': expenses.length, 'LocalStorage': getStoredExpenses().length },
+          'Parceiros': { 'Estado React': partners.length, 'LocalStorage': getStoredPartners().length },
+        });
+        console.log('Empresa / Sessão:', {
+          companyId: userProfile?.companyId,
+          userId: userProfile?.id,
+          userName: userProfile?.name,
+          role: userProfile?.role,
+        });
+        console.groupEnd();
+        return {
+          clientsCount: clients.length,
+          projectsCount: projects.length,
+          incomesCount: incomes.length,
+          expensesCount: expenses.length,
+          partnersCount: partners.length,
+        };
+      };
+    }
+  }, [clients, projects, incomes, expenses, partners, userProfile]);
 
   // Realtime Supabase Subscription for instant landing page leads & notifications
   useEffect(() => {
@@ -503,6 +568,11 @@ export default function App() {
         { event: 'INSERT', schema: 'public', table: 'clients' },
         (payload: any) => {
           console.log('[Realtime] Novo cliente recebido da Landing Page:', payload);
+          // PROTEÇÃO: Não disparar reload durante migração ou importação ativa
+          if (isImportingRef.current) {
+            console.log('[Realtime] Ignorando evento durante processo de importação');
+            return;
+          }
           loadDbData();
           playNotificationSound();
 
@@ -519,6 +589,11 @@ export default function App() {
         { event: 'INSERT', schema: 'public', table: 'notifications' },
         (payload: any) => {
           console.log('[Realtime] Nova notificação recebida:', payload);
+          // PROTEÇÃO: Não disparar reload durante migração ou importação ativa
+          if (isImportingRef.current) {
+            console.log('[Realtime] Ignorando evento durante processo de importação');
+            return;
+          }
           loadDbData();
           playNotificationSound();
 
@@ -667,7 +742,7 @@ export default function App() {
       setIncomes(updatedIncomes);
       saveIncomes(updatedIncomes);
 
-      await deleteClientFromDb(clientId);
+      await deleteClientFromDb(clientId, userProfile?.companyId);
 
       if (userProfile) {
         logAction({
@@ -902,7 +977,7 @@ export default function App() {
       setIncomes(updatedIncomes);
       saveIncomes(updatedIncomes);
 
-      await deleteProjectFromDb(projectId);
+      await deleteProjectFromDb(projectId, userProfile?.companyId);
 
       if (userProfile) {
         logAction({
@@ -1309,7 +1384,7 @@ export default function App() {
       const updated = incomes.filter((i) => i.id !== incomeId);
       setIncomes(updated);
       saveIncomes(updated);
-      await deleteIncomeFromDb(incomeId);
+      await deleteIncomeFromDb(incomeId, userProfile?.companyId);
 
       if (income.projectId) {
         await syncProjectPaidAmountFromIncomes(income.projectId, updated, projects);
@@ -1389,7 +1464,7 @@ export default function App() {
       const updated = expenses.filter((e) => e.id !== expenseId);
       setExpenses(updated);
       saveExpenses(updated);
-      await deleteExpenseFromDb(expenseId);
+      await deleteExpenseFromDb(expenseId, userProfile?.companyId);
     }
   };
 
@@ -1444,7 +1519,7 @@ export default function App() {
     const updated = categories.filter((c) => c.id !== categoryId);
     setCategories(updated);
     saveCategories(updated);
-    await deleteCategoryFromDb(categoryId);
+    await deleteCategoryFromDb(categoryId, userProfile?.companyId);
   };
 
   const handleSaveSettings = async (newSettings: AppSettings) => {
@@ -1474,7 +1549,7 @@ export default function App() {
 
   const handleDeleteAgendaEvent = async (eventId: string) => {
     setAgendaEvents((prev) => prev.filter((e) => e.id !== eventId));
-    await deleteAgendaEventFromDb(eventId);
+    await deleteAgendaEventFromDb(eventId, userProfile?.companyId);
   };
 
   const handleToggleAgendaEventStatus = async (eventId: string) => {
@@ -1517,7 +1592,7 @@ export default function App() {
     const partner = partners.find((p) => p.id === partnerId);
     if (!partner) return;
     if (window.confirm(`Tem certeza que deseja excluir o parceiro "${partner.name}"?`)) {
-      await deletePartnerFromDb(partnerId);
+      await deletePartnerFromDb(partnerId, userProfile?.companyId);
       setPartners((prev) => prev.filter((p) => p.id !== partnerId));
     }
   };
@@ -1555,38 +1630,67 @@ export default function App() {
   };
 
   const handleImportData = async (jsonStr: string) => {
-    const success = importBackupData(jsonStr);
-    if (success) {
-      const importedClients = getStoredClients();
-      const importedProjects = getStoredProjects();
-      const importedIncomes = getStoredIncomes();
-      const importedExpenses = getStoredExpenses();
-      const importedPartners = getStoredPartners();
+    isImportingRef.current = true;
+    console.group('[IMPORT 📦] Iniciando importação e sincronização...');
+    try {
+      const success = importBackupData(jsonStr);
+      if (success) {
+        const importedClients = getStoredClients();
+        const importedPartners = getStoredPartners();
+        const importedProjects = getStoredProjects();
+        const importedIncomes = getStoredIncomes();
+        const importedExpenses = getStoredExpenses();
 
-      setClients(importedClients);
-      setProjects(importedProjects);
-      setIncomes(importedIncomes);
-      setExpenses(importedExpenses);
-      setCategories(getStoredCategories());
-      setPartners(importedPartners);
-      setSettings(getStoredSettings());
+        console.log(`[IMPORT 📊] Dados locais carregados: Clientes=${importedClients.length}, Parceiros=${importedPartners.length}, Projetos=${importedProjects.length}, Receitas=${importedIncomes.length}, Despesas=${importedExpenses.length}`);
 
-      // Sincronizar dados importados diretamente com o banco Supabase
-      const cid = userProfile?.companyId;
-      if (cid) {
-        try {
-          for (const c of importedClients) await upsertClientToDb(c, cid);
-          for (const p of importedProjects) await upsertProjectToDb(p, cid);
-          for (const i of importedIncomes) await upsertIncomeToDb(i, cid);
-          for (const e of importedExpenses) await upsertExpenseToDb(e, cid);
-          for (const pa of importedPartners) await upsertPartnerToDb(pa, cid);
-        } catch (err) {
-          console.warn('[Import] Erro na sincronização com o banco:', err);
+        setClients(importedClients);
+        setPartners(importedPartners);
+        setProjects(importedProjects);
+        setIncomes(importedIncomes);
+        setExpenses(importedExpenses);
+        setCategories(getStoredCategories());
+        setSettings(getStoredSettings());
+
+        // Snapshot de emergência para recuperação
+        createEmergencySnapshot();
+
+        // Sincronizar dados importados diretamente com o banco Supabase na ordem correta de dependência (sem quebra de FK)
+        const cid = userProfile?.companyId;
+        if (cid) {
+          console.log(`[IMPORT ☁️] Sincronizando com Supabase para companyId: ${cid}...`);
+          try {
+            console.log(`[IMPORT 1/5] Enviando ${importedClients.length} Clientes...`);
+            for (const c of importedClients) await upsertClientToDb(c, cid);
+
+            console.log(`[IMPORT 2/5] Enviando ${importedPartners.length} Parceiros...`);
+            for (const pa of importedPartners) await upsertPartnerToDb(pa, cid);
+
+            console.log(`[IMPORT 3/5] Enviando ${importedProjects.length} Projetos...`);
+            for (const p of importedProjects) await upsertProjectToDb(p, cid);
+
+            console.log(`[IMPORT 4/5] Enviando ${importedIncomes.length} Receitas...`);
+            for (const i of importedIncomes) await upsertIncomeToDb(i, cid);
+
+            console.log(`[IMPORT 5/5] Enviando ${importedExpenses.length} Despesas...`);
+            for (const e of importedExpenses) await upsertExpenseToDb(e, cid);
+
+            console.log('[IMPORT ✅] Todos os dados foram enviados para o Supabase com sucesso!');
+          } catch (err) {
+            console.warn('[IMPORT ⚠️] Aviso na sincronização com o banco:', err);
+          }
+        } else {
+          console.warn('[IMPORT ⚠️] companyId não disponível — dados salvos no cache local deste dispositivo.');
         }
+        alert('Dados restaurados e sincronizados com a base de dados com sucesso!');
+      } else {
+        console.error('[IMPORT ❌] Erro ao decodificar arquivo JSON de backup.');
+        alert('Erro ao importar arquivo de backup.');
       }
-      alert('Dados restaurados e sincronizados com a base de dados com sucesso!');
-    } else {
-      alert('Erro ao importar arquivo de backup.');
+    } finally {
+      isImportingRef.current = false;
+      console.log('[IMPORT 🔄] Executando atualização final...');
+      await loadDbData();
+      console.groupEnd();
     }
   };
 

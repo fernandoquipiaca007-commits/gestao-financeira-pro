@@ -98,9 +98,11 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={() => setActiveTab('dashboard')}
               className="cursor-pointer flex items-center space-x-2.5 group"
             >
-              <div className="w-8 h-8 rounded-full bg-[#000000] flex items-center justify-center text-white shrink-0">
-                <span className="text-sm font-semibold tracking-tight">G</span>
-              </div>
+              <img
+                src="/logo.png"
+                alt="Logo"
+                className="w-8 h-8 rounded-lg object-cover shrink-0 shadow-sm"
+              />
               <div className="hidden sm:block">
                 <span className="font-semibold text-base tracking-tight text-[#1c1b1b] block leading-tight">
                   Gestão<span className="text-[#0050d7]">FO</span>

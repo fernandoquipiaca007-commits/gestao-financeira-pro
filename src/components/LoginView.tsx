@@ -164,9 +164,11 @@ export function LoginView({ onLoginSuccess }: LoginViewProps) {
       <div className="w-full max-w-sm bg-white border border-[#c4c7c7]/40 rounded-[24px] p-8 shadow-[0_4px_32px_rgba(0,0,0,0.04)] relative z-10">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#000000] text-white mb-5 shadow-sm">
-            <span className="text-lg font-semibold tracking-tight">G</span>
-          </div>
+          <img
+            src="/logo.png"
+            alt="Logo"
+            className="inline-block w-14 h-14 rounded-2xl object-cover mb-4 shadow-md"
+          />
           <h1 className="text-xl font-semibold text-[#1c1b1b] tracking-tight">
             Gestão <span className="text-[#0050d7]">Pro</span>
           </h1>

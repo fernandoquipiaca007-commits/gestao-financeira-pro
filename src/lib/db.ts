@@ -102,9 +102,11 @@ export async function upsertCategoryToDb(category: CategoryItem, companyId: stri
   }
 }
 
-export async function deleteCategoryFromDb(categoryId: string): Promise<void> {
+export async function deleteCategoryFromDb(categoryId: string, companyId?: string): Promise<void> {
   try {
-    await supabase.from('categories').delete().eq('id', categoryId);
+    let query = supabase.from('categories').delete().eq('id', categoryId);
+    if (companyId) query = query.eq('company_id', companyId);
+    await query;
   } catch (e) {
     console.error('[deleteCategoryFromDb]', e);
   }
@@ -166,19 +168,15 @@ export function saveAgendaEvents(events: AgendaEvent[]): void {
 // ----------------------------------------------------
 
 export async function fetchClientsFromDb(companyId?: string): Promise<Client[]> {
+  // PROTEÇÃO: Sem companyId, retornar cache local — NUNCA buscar sem filtro de empresa
+  if (!companyId) {
+    console.warn('[DB ⚠️] fetchClientsFromDb chamado sem companyId — usando cache local');
+    return getStoredClients();
+  }
   try {
-    let query = supabase.from('clients').select('*').order('created_at', { ascending: false });
-    if (companyId) query = query.eq('company_id', companyId);
-    let { data, error } = await query;
-    if (error || !data || data.length === 0) {
-      if (companyId) {
-        const fallback = await supabase.from('clients').select('*').order('created_at', { ascending: false });
-        if (!fallback.error && fallback.data && fallback.data.length > 0) {
-          data = fallback.data;
-          error = null;
-        }
-      }
-    }
+    console.log(`[DB 📥] Buscando clientes no Supabase para companyId: ${companyId}...`);
+    const query = supabase.from('clients').select('*').eq('company_id', companyId).order('created_at', { ascending: false });
+    const { data, error } = await query;
     if (error) throw error;
     const formatted: Client[] = (data || []).map((item) => ({
       id: item.id,
@@ -192,10 +190,23 @@ export async function fetchClientsFromDb(companyId?: string): Promise<Client[]> 
       notes: item.notes || '',
       createdAt: item.created_at ? item.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
     }));
-    saveClients(formatted);
-    return formatted;
+
+    const localData = getStoredClients();
+    console.log(`[DB 📥] Clientes retornados: Supabase=${formatted.length} | Local=${localData.length}`);
+
+    // PROTEÇÃO: Só atualizar cache se recebemos dados válidos do servidor
+    if (formatted.length > 0) {
+      saveClients(formatted);
+      return formatted;
+    } else {
+      if (localData.length > 0) {
+        console.warn(`[DB 🛡️] Servidor retornou 0 clientes, mas cache local tem ${localData.length} registros — PRESERVANDO E RETORNANDO CACHE LOCAL`);
+        return localData;
+      }
+      return [];
+    }
   } catch (err) {
-    console.warn('[DB] fetchClientsFromDb failed, using local cache:', err);
+    console.warn('[DB ⚠️] fetchClientsFromDb falhou, recorrendo ao cache local:', err);
     return getStoredClients();
   }
 }
@@ -203,8 +214,10 @@ export async function fetchClientsFromDb(companyId?: string): Promise<Client[]> 
 
 
 export async function upsertClientToDb(client: Client, companyId: string): Promise<{ success: boolean; error?: string }> {
+  // Sempre garantir persistência local imediata
   saveClients([client, ...getStoredClients().filter(c => c.id !== client.id)]);
   try {
+    console.log(`[DB 💾] Enviando cliente "${client.name}" (${client.id}) para o Supabase...`);
     const { error } = await supabase.from('clients').upsert({
       id: client.id,
       company_id: companyId,
@@ -218,25 +231,29 @@ export async function upsertClientToDb(client: Client, companyId: string): Promi
       notes: client.notes,
     });
     if (error) {
-      console.error('[DB] upsertClientToDb error:', error.message);
+      console.error('[DB ❌] upsertClientToDb erro Supabase:', error.message);
       return { success: false, error: error.message };
     }
+    console.log(`[DB ✅] Cliente "${client.name}" salvo com sucesso no Supabase`);
     return { success: true };
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Erro desconhecido';
-    console.error('[DB] upsertClientToDb exception:', msg);
+    console.error('[DB ❌] upsertClientToDb exceção:', msg);
     return { success: false, error: msg };
   }
 }
 
-export async function deleteClientFromDb(clientId: string): Promise<{ success: boolean; error?: string }> {
-  saveClients(getStoredClients().filter(c => c.id !== clientId));
+export async function deleteClientFromDb(clientId: string, companyId?: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const { error } = await supabase.from('clients').delete().eq('id', clientId);
+    let query = supabase.from('clients').delete().eq('id', clientId);
+    if (companyId) query = query.eq('company_id', companyId);
+    const { error } = await query;
     if (error) {
       console.error('[DB] deleteClientFromDb error:', error.message);
       return { success: false, error: error.message };
     }
+    // PROTEÇÃO: Só atualizar cache local APÓS confirmação de exclusão do Supabase
+    saveClients(getStoredClients().filter(c => c.id !== clientId));
     return { success: true };
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Erro desconhecido';
@@ -246,19 +263,15 @@ export async function deleteClientFromDb(clientId: string): Promise<{ success: b
 
 
 export async function fetchProjectsFromDb(companyId?: string): Promise<Project[]> {
+  // PROTEÇÃO: Sem companyId, retornar cache local — NUNCA buscar sem filtro de empresa
+  if (!companyId) {
+    console.warn('[DB ⚠️] fetchProjectsFromDb chamado sem companyId — usando cache local');
+    return getStoredProjects();
+  }
   try {
-    let query = supabase.from('projects').select('*').order('created_at', { ascending: false });
-    if (companyId) query = query.eq('company_id', companyId);
-    let { data, error } = await query;
-    if (error || !data || data.length === 0) {
-      if (companyId) {
-        const fallback = await supabase.from('projects').select('*').order('created_at', { ascending: false });
-        if (!fallback.error && fallback.data && fallback.data.length > 0) {
-          data = fallback.data;
-          error = null;
-        }
-      }
-    }
+    console.log(`[DB 📥] Buscando projetos no Supabase para companyId: ${companyId}...`);
+    const query = supabase.from('projects').select('*').eq('company_id', companyId).order('created_at', { ascending: false });
+    const { data, error } = await query;
     if (error) throw error;
 
     const formatted: Project[] = (data || []).map((item) => {
@@ -294,76 +307,111 @@ export async function fetchProjectsFromDb(companyId?: string): Promise<Project[]
       };
     });
 
-    // BD é a fonte de verdade — não misturar com dados locais
-    saveProjects(formatted);
-    return formatted;
+    const localData = getStoredProjects();
+    console.log(`[DB 📥] Projetos retornados: Supabase=${formatted.length} | Local=${localData.length}`);
+
+    // PROTEÇÃO: Só atualizar cache se recebemos dados válidos
+    if (formatted.length > 0) {
+      saveProjects(formatted);
+      return formatted;
+    } else {
+      if (localData.length > 0) {
+        console.warn(`[DB 🛡️] Servidor retornou 0 projetos, mas cache local tem ${localData.length} registros — PRESERVANDO E RETORNANDO CACHE LOCAL`);
+        return localData;
+      }
+      return [];
+    }
   } catch (err) {
-    console.warn('[DB] fetchProjectsFromDb failed, using local cache:', err);
+    console.warn('[DB ⚠️] fetchProjectsFromDb falhou, usando cache local:', err);
     return getStoredProjects();
   }
 }
 
 export async function upsertProjectToDb(project: Project, companyId: string): Promise<{ success: boolean; error?: string }> {
-  const allProjects = getStoredProjects();
-  const updatedProjects = [project, ...allProjects.filter((p) => p.id !== project.id)];
-  saveProjects(updatedProjects);
+  // Sempre garantir persistência local imediata
+  saveProjects([project, ...getStoredProjects().filter((p) => p.id !== project.id)]);
 
   try {
-    const payload = {
+    console.log(`[DB 💾] Enviando projeto "${project.name}" (${project.id}) para o Supabase...`);
+
+    // Payload básico garantido no schema PostgreSQL
+    const payloadCore: any = {
       id: project.id,
       company_id: companyId,
       name: project.name,
       client_id: project.clientId || null,
-      client_ids: project.clientIds && project.clientIds.length > 0 ? project.clientIds : [project.clientId],
-      category: project.category,
+      category: project.category || 'Outro',
       total_amount: Number(project.totalAmount) || 0,
       paid_amount: Number(project.paidAmount) || 0,
-      currency: project.currency,
+      currency: project.currency || 'BRL',
       start_date: project.startDate || null,
       due_date: project.dueDate || null,
       next_payment_date: project.nextPaymentDate || null,
-      status: project.status,
+      status: project.status || 'Em andamento',
       notes: project.notes || null,
-      rating: Number(project.rating) || 0,
-      attachments: project.attachments || [],
       partner_id: project.partnerId || null,
       partner_name: project.partnerName || null,
       commission_type: project.commissionType || 'percent',
       commission_value: Number(project.commissionValue) || 0,
       commission_amount: Number(project.commissionAmount) || 0,
       commission_paid: Boolean(project.commissionPaid),
+    };
+
+    // Payload completo com campos adicionais (caso colunas existam)
+    const payloadAdvanced: any = {
+      ...payloadCore,
+      rating: Number(project.rating) || 0,
+      attachments: project.attachments || [],
+      client_ids: project.clientIds && project.clientIds.length > 0 ? project.clientIds : (project.clientId ? [project.clientId] : null),
       invoice_footer: project.invoiceFooter || null,
       invoice_notes: project.invoiceNotes || null,
     };
 
-    const { error } = await supabase.from('projects').upsert(payload);
+    let { error } = await supabase.from('projects').upsert(payloadAdvanced);
+
     if (error) {
-      // Retry without client_ids (schema compatibility)
-      const { error: err2 } = await supabase.from('projects').upsert({
-        ...payload,
-        client_ids: undefined,
-      });
-      if (err2) {
-        console.error('[DB] upsertProjectToDb error:', err2.message);
-        return { success: false, error: err2.message };
+      console.warn(`[DB ⚠️] upsertProjectToDb payload avançado falhou (${error.message}). Tentando schema core...`);
+      // Retry com apenas campos fundamentais da tabela
+      const retryCore = await supabase.from('projects').upsert(payloadCore);
+      error = retryCore.error;
+
+      // Se falhar por foreign key de client_id ou partner_id
+      if (error && (error.message?.includes('violates foreign key constraint') || (error as any).code === '23503')) {
+        console.warn(`[DB 🛡️] upsertProjectToDb violou chave estrangeira (${error.message}). Salvando projeto desvinculado no servidor para não perder dados:`, project.id);
+        const retrySafe = await supabase.from('projects').upsert({
+          ...payloadCore,
+          client_id: null,
+          partner_id: null,
+        });
+        error = retrySafe.error;
+      }
+
+      if (error) {
+        console.error('[DB ❌] upsertProjectToDb erro definitivo:', error.message);
+        return { success: false, error: error.message };
       }
     }
+
+    console.log(`[DB ✅] Projeto "${project.name}" salvo com sucesso no Supabase`);
     return { success: true };
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Erro desconhecido';
-    console.error('[DB] upsertProjectToDb exception:', msg);
+    console.error('[DB ❌] upsertProjectToDb exceção:', msg);
     return { success: false, error: msg };
   }
 }
 
-export async function deleteProjectFromDb(projectId: string): Promise<{ success: boolean; error?: string }> {
-  saveProjects(getStoredProjects().filter(p => p.id !== projectId));
+export async function deleteProjectFromDb(projectId: string, companyId?: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const { error } = await supabase.from('projects').delete().eq('id', projectId);
+    let query = supabase.from('projects').delete().eq('id', projectId);
+    if (companyId) query = query.eq('company_id', companyId);
+    const { error } = await query;
     if (error) {
       console.error('[DB] deleteProjectFromDb error:', error.message);
       return { success: false, error: error.message };
     }
+    // PROTEÇÃO: Só atualizar cache local APÓS confirmação de exclusão do Supabase
+    saveProjects(getStoredProjects().filter(p => p.id !== projectId));
     return { success: true };
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Erro desconhecido';
@@ -373,19 +421,15 @@ export async function deleteProjectFromDb(projectId: string): Promise<{ success:
 
 
 export async function fetchIncomesFromDb(companyId?: string): Promise<Income[]> {
+  // PROTEÇÃO: Sem companyId, retornar cache local
+  if (!companyId) {
+    console.warn('[DB ⚠️] fetchIncomesFromDb chamado sem companyId — usando cache local');
+    return getStoredIncomes();
+  }
   try {
-    let query = supabase.from('incomes').select('*').order('created_at', { ascending: false });
-    if (companyId) query = query.eq('company_id', companyId);
-    let { data, error } = await query;
-    if (error || !data || data.length === 0) {
-      if (companyId) {
-        const fallback = await supabase.from('incomes').select('*').order('created_at', { ascending: false });
-        if (!fallback.error && fallback.data && fallback.data.length > 0) {
-          data = fallback.data;
-          error = null;
-        }
-      }
-    }
+    console.log(`[DB 📥] Buscando receitas no Supabase para companyId: ${companyId}...`);
+    const query = supabase.from('incomes').select('*').eq('company_id', companyId).order('created_at', { ascending: false });
+    const { data, error } = await query;
     if (error) throw error;
     const formatted: Income[] = (data || []).map((item) => ({
       id: item.id,
@@ -411,19 +455,36 @@ export async function fetchIncomesFromDb(companyId?: string): Promise<Income[]> 
       stripeStatus: item.stripe_status || undefined,
       createdAt: item.created_at ? item.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
     }));
-    saveIncomes(formatted);
-    return formatted;
+
+    const localData = getStoredIncomes();
+    console.log(`[DB 📥] Receitas retornadas: Supabase=${formatted.length} | Local=${localData.length}`);
+
+    // PROTEÇÃO: Só atualizar cache se recebemos dados válidos
+    if (formatted.length > 0) {
+      saveIncomes(formatted);
+      return formatted;
+    } else {
+      if (localData.length > 0) {
+        console.warn(`[DB 🛡️] Servidor retornou 0 receitas, mas cache local tem ${localData.length} registros — PRESERVANDO E RETORNANDO CACHE LOCAL`);
+        return localData;
+      }
+      return [];
+    }
   } catch (err) {
-    console.warn('[DB] fetchIncomesFromDb failed, using local cache:', err);
+    console.warn('[DB ⚠️] fetchIncomesFromDb falhou, usando cache local:', err);
     return getStoredIncomes();
   }
 }
 
 
 export async function upsertIncomeToDb(income: Income, companyId: string): Promise<{ success: boolean; error?: string }> {
+  // Sempre garantir persistência local imediata
   saveIncomes([income, ...getStoredIncomes().filter(i => i.id !== income.id)]);
+
   try {
-    const payload = {
+    console.log(`[DB 💾] Enviando receita "${income.description}" (${income.id}) para o Supabase...`);
+
+    const payloadCore: any = {
       id: income.id,
       company_id: companyId,
       client_id: income.clientId || null,
@@ -440,6 +501,10 @@ export async function upsertIncomeToDb(income: Income, companyId: string): Promi
       partner_name: income.partnerName || null,
       commission_amount: Number(income.commissionAmount) || 0,
       commission_paid: Boolean(income.commissionPaid),
+    };
+
+    const payloadFull: any = {
+      ...payloadCore,
       stripe_invoice_id: income.stripeInvoiceId || null,
       stripe_customer_id: income.stripeCustomerId || null,
       stripe_invoice_url: income.stripeInvoiceUrl || null,
@@ -448,45 +513,50 @@ export async function upsertIncomeToDb(income: Income, companyId: string): Promi
       stripe_status: income.stripeStatus || null,
     };
 
-    const { error } = await supabase.from('incomes').upsert(payload);
+    let { error } = await supabase.from('incomes').upsert(payloadFull);
     if (error) {
-      console.warn('[DB] upsertIncomeToDb standard failed, retrying core schema:', error.message);
-      const payloadCore = {
-        id: income.id,
-        company_id: companyId,
-        client_id: income.clientId || null,
-        project_id: income.projectId || null,
-        description: income.description,
-        amount: Number(income.amount) || 0,
-        currency: income.currency,
-        due_date: income.dueDate,
-        received_date: income.receivedDate || null,
-        payment_method: income.paymentMethod || 'PIX',
-        status: income.status,
-        notes: income.notes || null,
-      };
-      const { error: err2 } = await supabase.from('incomes').upsert(payloadCore);
-      if (err2) {
-        console.error('[DB] CRITICAL: upsertIncomeToDb core error:', err2.message);
-        return { success: false, error: err2.message };
+      console.warn(`[DB ⚠️] upsertIncomeToDb falhou no payload completo (${error.message}). Tentando schema core...`);
+      const retryCore = await supabase.from('incomes').upsert(payloadCore);
+      error = retryCore.error;
+
+      // Se falhar por foreign key de project_id ou client_id
+      if (error && (error.message?.includes('violates foreign key constraint') || (error as any).code === '23503')) {
+        console.warn(`[DB 🛡️] upsertIncomeToDb violou chave estrangeira de projeto/cliente (${error.message}). Salvando receita desvinculada no servidor para não perder o registro financeiro:`, income.id);
+        const retrySafe = await supabase.from('incomes').upsert({
+          ...payloadCore,
+          project_id: null,
+          client_id: null,
+          partner_id: null,
+        });
+        error = retrySafe.error;
+      }
+
+      if (error) {
+        console.error('[DB ❌] CRITICAL: upsertIncomeToDb erro definitivo no Supabase:', error.message);
+        return { success: false, error: error.message };
       }
     }
+
+    console.log(`[DB ✅] Receita "${income.description}" salva com sucesso no Supabase`);
     return { success: true };
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Erro desconhecido';
-    console.error('[DB] upsertIncomeToDb exception:', msg);
+    console.error('[DB ❌] upsertIncomeToDb exceção:', msg);
     return { success: false, error: msg };
   }
 }
 
-export async function deleteIncomeFromDb(incomeId: string): Promise<{ success: boolean; error?: string }> {
-  saveIncomes(getStoredIncomes().filter(i => i.id !== incomeId));
+export async function deleteIncomeFromDb(incomeId: string, companyId?: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const { error } = await supabase.from('incomes').delete().eq('id', incomeId);
+    let query = supabase.from('incomes').delete().eq('id', incomeId);
+    if (companyId) query = query.eq('company_id', companyId);
+    const { error } = await query;
     if (error) {
       console.error('[DB] deleteIncomeFromDb error:', error.message);
       return { success: false, error: error.message };
     }
+    // PROTEÇÃO: Só atualizar cache local APÓS confirmação de exclusão do Supabase
+    saveIncomes(getStoredIncomes().filter(i => i.id !== incomeId));
     return { success: true };
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Erro desconhecido';
@@ -495,19 +565,15 @@ export async function deleteIncomeFromDb(incomeId: string): Promise<{ success: b
 }
 
 export async function fetchExpensesFromDb(companyId?: string): Promise<Expense[]> {
+  // PROTEÇÃO: Sem companyId, retornar cache local
+  if (!companyId) {
+    console.warn('[DB ⚠️] fetchExpensesFromDb chamado sem companyId — usando cache local');
+    return getStoredExpenses();
+  }
   try {
-    let query = supabase.from('expenses').select('*').order('created_at', { ascending: false });
-    if (companyId) query = query.eq('company_id', companyId);
-    let { data, error } = await query;
-    if (error || !data || data.length === 0) {
-      if (companyId) {
-        const fallback = await supabase.from('expenses').select('*').order('created_at', { ascending: false });
-        if (!fallback.error && fallback.data && fallback.data.length > 0) {
-          data = fallback.data;
-          error = null;
-        }
-      }
-    }
+    console.log(`[DB 📥] Buscando despesas no Supabase para companyId: ${companyId}...`);
+    const query = supabase.from('expenses').select('*').eq('company_id', companyId).order('created_at', { ascending: false });
+    const { data, error } = await query;
     if (error) throw error;
     const formatted: Expense[] = (data || []).map((item) => ({
       id: item.id,
@@ -522,19 +588,34 @@ export async function fetchExpensesFromDb(companyId?: string): Promise<Expense[]
       receiptUrl: item.receipt_url || undefined,
       createdAt: item.created_at ? item.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
     }));
-    saveExpenses(formatted);
-    return formatted;
+
+    const localData = getStoredExpenses();
+    console.log(`[DB 📥] Despesas retornadas: Supabase=${formatted.length} | Local=${localData.length}`);
+
+    // PROTEÇÃO: Só atualizar cache se recebemos dados válidos
+    if (formatted.length > 0) {
+      saveExpenses(formatted);
+      return formatted;
+    } else {
+      if (localData.length > 0) {
+        console.warn(`[DB 🛡️] Servidor retornou 0 despesas, mas cache local tem ${localData.length} registros — PRESERVANDO E RETORNANDO CACHE LOCAL`);
+        return localData;
+      }
+      return [];
+    }
   } catch (err) {
-    console.warn('[DB] fetchExpensesFromDb failed, using local cache:', err);
+    console.warn('[DB ⚠️] fetchExpensesFromDb falhou, usando cache local:', err);
     return getStoredExpenses();
   }
 }
 
 
 export async function upsertExpenseToDb(expense: Expense, companyId: string): Promise<{ success: boolean; error?: string }> {
+  // Sempre garantir persistência local imediata
   saveExpenses([expense, ...getStoredExpenses().filter(e => e.id !== expense.id)]);
   try {
-    const { error } = await supabase.from('expenses').upsert({
+    console.log(`[DB 💾] Enviando despesa "${expense.description}" (${expense.id}) para o Supabase...`);
+    const payloadCore = {
       id: expense.id,
       company_id: companyId,
       category: expense.category,
@@ -546,27 +627,42 @@ export async function upsertExpenseToDb(expense: Expense, companyId: string): Pr
       partner_id: expense.partnerId || null,
       partner_name: expense.partnerName || null,
       receipt_url: expense.receiptUrl || null,
-    });
+    };
+
+    let { error } = await supabase.from('expenses').upsert(payloadCore);
+    if (error && (error.message?.includes('violates foreign key constraint') || (error as any).code === '23503')) {
+      console.warn(`[DB 🛡️] upsertExpenseToDb violou FK (${error.message}). Salvando despesa desvinculada no servidor:`, expense.id);
+      const retrySafe = await supabase.from('expenses').upsert({
+        ...payloadCore,
+        partner_id: null,
+      });
+      error = retrySafe.error;
+    }
+
     if (error) {
-      console.error('[DB] upsertExpenseToDb error:', error.message);
+      console.error('[DB ❌] upsertExpenseToDb erro Supabase:', error.message);
       return { success: false, error: error.message };
     }
+    console.log(`[DB ✅] Despesa "${expense.description}" salva com sucesso no Supabase`);
     return { success: true };
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Erro desconhecido';
-    console.error('[DB] upsertExpenseToDb exception:', msg);
+    console.error('[DB ❌] upsertExpenseToDb exceção:', msg);
     return { success: false, error: msg };
   }
 }
 
-export async function deleteExpenseFromDb(expenseId: string): Promise<{ success: boolean; error?: string }> {
-  saveExpenses(getStoredExpenses().filter(e => e.id !== expenseId));
+export async function deleteExpenseFromDb(expenseId: string, companyId?: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const { error } = await supabase.from('expenses').delete().eq('id', expenseId);
+    let query = supabase.from('expenses').delete().eq('id', expenseId);
+    if (companyId) query = query.eq('company_id', companyId);
+    const { error } = await query;
     if (error) {
       console.error('[DB] deleteExpenseFromDb error:', error.message);
       return { success: false, error: error.message };
     }
+    // PROTEÇÃO: Só atualizar cache local APÓS confirmação de exclusão do Supabase
+    saveExpenses(getStoredExpenses().filter(e => e.id !== expenseId));
     return { success: true };
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Erro desconhecido';
@@ -579,19 +675,15 @@ export async function deleteExpenseFromDb(expenseId: string): Promise<{ success:
 // ----------------------------------------------------
 
 export async function fetchPartnersFromDb(companyId?: string): Promise<Partner[]> {
+  // PROTEÇÃO: Sem companyId, retornar cache local
+  if (!companyId) {
+    console.warn('[DB ⚠️] fetchPartnersFromDb chamado sem companyId — usando cache local');
+    return getStoredPartners();
+  }
   try {
-    let query = supabase.from('partners').select('*').order('created_at', { ascending: false });
-    if (companyId) query = query.eq('company_id', companyId);
-    let { data, error } = await query;
-    if (error || !data || data.length === 0) {
-      if (companyId) {
-        const fallback = await supabase.from('partners').select('*').order('created_at', { ascending: false });
-        if (!fallback.error && fallback.data && fallback.data.length > 0) {
-          data = fallback.data;
-          error = null;
-        }
-      }
-    }
+    console.log(`[DB 📥] Buscando parceiros no Supabase para companyId: ${companyId}...`);
+    const query = supabase.from('partners').select('*').eq('company_id', companyId).order('created_at', { ascending: false });
+    const { data, error } = await query;
     if (error) throw error;
     const formatted: Partner[] = (data || []).map((item) => ({
       id: item.id,
@@ -602,17 +694,32 @@ export async function fetchPartnersFromDb(companyId?: string): Promise<Partner[]
       notes: item.notes || '',
       createdAt: item.created_at ? item.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
     }));
-    savePartners(formatted);
-    return formatted;
+
+    const localData = getStoredPartners();
+    console.log(`[DB 📥] Parceiros retornados: Supabase=${formatted.length} | Local=${localData.length}`);
+
+    // PROTEÇÃO: Só atualizar cache se recebemos dados válidos
+    if (formatted.length > 0) {
+      savePartners(formatted);
+      return formatted;
+    } else {
+      if (localData.length > 0) {
+        console.warn(`[DB 🛡️] Servidor retornou 0 parceiros, mas cache local tem ${localData.length} registros — PRESERVANDO E RETORNANDO CACHE LOCAL`);
+        return localData;
+      }
+      return [];
+    }
   } catch (err) {
-    console.warn('[DB] fetchPartnersFromDb failed, using local cache:', err);
+    console.warn('[DB ⚠️] fetchPartnersFromDb falhou, usando cache local:', err);
     return getStoredPartners();
   }
 }
 
 export async function upsertPartnerToDb(partner: Partner, companyId: string): Promise<{ success: boolean; error?: string }> {
+  // Sempre garantir persistência local imediata
   savePartners([partner, ...getStoredPartners().filter(p => p.id !== partner.id)]);
   try {
+    console.log(`[DB 💾] Enviando parceiro "${partner.name}" (${partner.id}) para o Supabase...`);
     const { error } = await supabase.from('partners').upsert({
       id: partner.id,
       company_id: companyId,
@@ -623,25 +730,29 @@ export async function upsertPartnerToDb(partner: Partner, companyId: string): Pr
       notes: partner.notes || null,
     });
     if (error) {
-      console.error('[DB] upsertPartnerToDb error:', error.message);
+      console.error('[DB ❌] upsertPartnerToDb erro Supabase:', error.message);
       return { success: false, error: error.message };
     }
+    console.log(`[DB ✅] Parceiro "${partner.name}" salvo com sucesso no Supabase`);
     return { success: true };
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Erro desconhecido';
-    console.error('[DB] upsertPartnerToDb exception:', msg);
+    console.error('[DB ❌] upsertPartnerToDb exceção:', msg);
     return { success: false, error: msg };
   }
 }
 
-export async function deletePartnerFromDb(partnerId: string): Promise<{ success: boolean; error?: string }> {
-  savePartners(getStoredPartners().filter(p => p.id !== partnerId));
+export async function deletePartnerFromDb(partnerId: string, companyId?: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const { error } = await supabase.from('partners').delete().eq('id', partnerId);
+    let query = supabase.from('partners').delete().eq('id', partnerId);
+    if (companyId) query = query.eq('company_id', companyId);
+    const { error } = await query;
     if (error) {
       console.error('[DB] deletePartnerFromDb error:', error.message);
       return { success: false, error: error.message };
     }
+    // PROTEÇÃO: Só atualizar cache local APÓS confirmação de exclusão do Supabase
+    savePartners(getStoredPartners().filter(p => p.id !== partnerId));
     return { success: true };
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Erro desconhecido';
@@ -654,19 +765,15 @@ export async function deletePartnerFromDb(partnerId: string): Promise<{ success:
 // ----------------------------------------------------
 
 export async function fetchAgendaEventsFromDb(companyId?: string): Promise<AgendaEvent[]> {
+  // PROTEÇÃO: Sem companyId, retornar cache local
+  if (!companyId) {
+    console.warn('[DB ⚠️] fetchAgendaEventsFromDb chamado sem companyId — usando cache local');
+    return getStoredAgendaEvents();
+  }
   try {
-    let query = supabase.from('agenda_events').select('*').order('date', { ascending: true });
-    if (companyId) query = query.eq('company_id', companyId);
-    let { data, error } = await query;
-    if (error || !data || data.length === 0) {
-      if (companyId) {
-        const fallback = await supabase.from('agenda_events').select('*').order('date', { ascending: true });
-        if (!fallback.error && fallback.data && fallback.data.length > 0) {
-          data = fallback.data;
-          error = null;
-        }
-      }
-    }
+    console.log(`[DB 📥] Buscando eventos da agenda no Supabase para companyId: ${companyId}...`);
+    const query = supabase.from('agenda_events').select('*').eq('company_id', companyId).order('date', { ascending: true });
+    const { data, error } = await query;
     if (error) throw error;
     const formatted: AgendaEvent[] = (data || []).map((item) => ({
       id: item.id,
@@ -681,18 +788,33 @@ export async function fetchAgendaEventsFromDb(companyId?: string): Promise<Agend
       notifyPush: item.notify_push ?? true,
       createdAt: item.created_at || new Date().toISOString(),
     }));
-    saveAgendaEvents(formatted);
-    return formatted;
+
+    const localData = getStoredAgendaEvents();
+    console.log(`[DB 📥] Eventos da agenda retornados: Supabase=${formatted.length} | Local=${localData.length}`);
+
+    // PROTEÇÃO: Só atualizar cache se recebemos dados válidos
+    if (formatted.length > 0) {
+      saveAgendaEvents(formatted);
+      return formatted;
+    } else {
+      if (localData.length > 0) {
+        console.warn(`[DB 🛡️] Servidor retornou 0 eventos, mas cache local tem ${localData.length} registros — PRESERVANDO E RETORNANDO CACHE LOCAL`);
+        return localData;
+      }
+      return [];
+    }
   } catch (err) {
-    console.warn('[DB] fetchAgendaEventsFromDb failed, using local cache:', err);
+    console.warn('[DB ⚠️] fetchAgendaEventsFromDb falhou, usando cache local:', err);
     return getStoredAgendaEvents();
   }
 }
 
 export async function upsertAgendaEventToDb(event: AgendaEvent, companyId: string): Promise<{ success: boolean; error?: string }> {
+  // Sempre garantir persistência local imediata
   saveAgendaEvents([event, ...getStoredAgendaEvents().filter(e => e.id !== event.id)]);
   try {
-    const { error } = await supabase.from('agenda_events').upsert({
+    console.log(`[DB 💾] Enviando evento da agenda "${event.title}" (${event.id}) para o Supabase...`);
+    const payloadCore = {
       id: event.id,
       company_id: companyId,
       title: event.title,
@@ -704,27 +826,43 @@ export async function upsertAgendaEventToDb(event: AgendaEvent, companyId: strin
       description: event.description || null,
       status: event.status,
       notify_push: event.notifyPush,
-    });
+    };
+
+    let { error } = await supabase.from('agenda_events').upsert(payloadCore);
+    if (error && (error.message?.includes('violates foreign key constraint') || (error as any).code === '23503')) {
+      console.warn(`[DB 🛡️] upsertAgendaEventToDb violou FK (${error.message}). Salvando evento desvinculado no servidor:`, event.id);
+      const retrySafe = await supabase.from('agenda_events').upsert({
+        ...payloadCore,
+        client_id: null,
+        project_id: null,
+      });
+      error = retrySafe.error;
+    }
+
     if (error) {
-      console.error('[DB] upsertAgendaEventToDb error:', error.message);
+      console.error('[DB ❌] upsertAgendaEventToDb erro Supabase:', error.message);
       return { success: false, error: error.message };
     }
+    console.log(`[DB ✅] Evento da agenda "${event.title}" salvo com sucesso no Supabase`);
     return { success: true };
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Erro desconhecido';
-    console.error('[DB] upsertAgendaEventToDb exception:', msg);
+    console.error('[DB ❌] upsertAgendaEventToDb exceção:', msg);
     return { success: false, error: msg };
   }
 }
 
-export async function deleteAgendaEventFromDb(eventId: string): Promise<{ success: boolean; error?: string }> {
-  saveAgendaEvents(getStoredAgendaEvents().filter(e => e.id !== eventId));
+export async function deleteAgendaEventFromDb(eventId: string, companyId?: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const { error } = await supabase.from('agenda_events').delete().eq('id', eventId);
+    let query = supabase.from('agenda_events').delete().eq('id', eventId);
+    if (companyId) query = query.eq('company_id', companyId);
+    const { error } = await query;
     if (error) {
       console.error('[DB] deleteAgendaEventFromDb error:', error.message);
       return { success: false, error: error.message };
     }
+    // PROTEÇÃO: Só atualizar cache local APÓS confirmação de exclusão do Supabase
+    saveAgendaEvents(getStoredAgendaEvents().filter(e => e.id !== eventId));
     return { success: true };
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Erro desconhecido';
@@ -1046,15 +1184,29 @@ export async function setUserPermissions(
   userId: string,
   permissions: Array<{ permissionId: string; scope: PermissionScope; granted: boolean }>,
   grantedBy: string
-): Promise<void> {
+): Promise<{ success: boolean; error?: string }> {
   try {
-    // Delete existing custom permissions for this user
-    await supabase.from('user_permissions').delete().eq('user_id', userId);
+    // 1. Backup das permissões existentes caso o insert falhe
+    const { data: previousPerms } = await supabase
+      .from('user_permissions')
+      .select('*')
+      .eq('user_id', userId);
 
-    if (permissions.length === 0) return;
+    // 2. Excluir permissões antigas
+    const { error: deleteError } = await supabase
+      .from('user_permissions')
+      .delete()
+      .eq('user_id', userId);
 
-    // Insert new permissions
-    await supabase.from('user_permissions').insert(
+    if (deleteError) {
+      console.error('[DB] setUserPermissions delete error:', deleteError.message);
+      return { success: false, error: deleteError.message };
+    }
+
+    if (permissions.length === 0) return { success: true };
+
+    // 3. Inserir novas permissões
+    const { error: insertError } = await supabase.from('user_permissions').insert(
       permissions.map((p) => ({
         user_id: userId,
         permission_id: p.permissionId,
@@ -1064,8 +1216,20 @@ export async function setUserPermissions(
         granted_at: new Date().toISOString(),
       }))
     );
+
+    if (insertError) {
+      console.error('[DB] setUserPermissions insert error, restaurando permissões anteriores:', insertError.message);
+      if (previousPerms && previousPerms.length > 0) {
+        await supabase.from('user_permissions').insert(previousPerms);
+      }
+      return { success: false, error: insertError.message };
+    }
+
+    return { success: true };
   } catch (err) {
-    console.warn('[DB] setUserPermissions failed:', err);
+    const msg = err instanceof Error ? err.message : 'Erro desconhecido';
+    console.warn('[DB] setUserPermissions failed:', msg);
+    return { success: false, error: msg };
   }
 }
 
