@@ -81,6 +81,7 @@ export function computeNotifications(
   // 2. Project due dates (e.g. delivery tomorrow or due in <= 3 days)
   projects.forEach((proj) => {
     if (proj.status === 'Concluído' || proj.status === 'Cancelado' || proj.status === 'Aguardando cliente') return;
+    if (!proj.dueDate) return; // entrega sem data definida: nada a avisar
 
     const diff = getDaysDiff(proj.dueDate);
     const client = clientMap.get(proj.clientId);

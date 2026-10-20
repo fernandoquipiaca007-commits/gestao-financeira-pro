@@ -111,7 +111,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
     } else if (statusFilter === 'atencao') {
       if (p.status === 'Concluído' || p.status === 'Cancelado') return false;
       const days = getDaysDiff(p.dueDate);
-      if (p.status !== 'Aguardando cliente' && days > 1) return false;
+      if (p.status !== 'Aguardando cliente' && (!p.dueDate || days > 1)) return false;
     } else if (statusFilter === 'a-receber') {
       if (p.totalAmount - p.paidAmount <= 0) return false;
     } else if (
@@ -409,7 +409,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             const isFullyPaid = remaining === 0;
             const progressPct = p.totalAmount > 0 ? Math.min(100, Math.round((p.paidAmount / p.totalAmount) * 100)) : 0;
             const daysToDue = getDaysDiff(p.dueDate);
-            const isUrgent = daysToDue <= 2 && p.status !== 'Concluído' && p.status !== 'Cancelado' && p.status !== 'Aguardando cliente';
+            const isUrgent = !!p.dueDate && daysToDue <= 2 && p.status !== 'Concluído' && p.status !== 'Cancelado' && p.status !== 'Aguardando cliente';
 
             const isAssignedToMe = p.assignedTo === userProfile?.id;
             const isAvailable = p.assignmentType === 'available';
@@ -589,8 +589,8 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                         <Calendar className="w-3.5 h-3.5 text-fg-muted " /> {isEn ? 'Expected delivery:' : 'Entrega prevista:'}
                       </span>
                       <strong className={isUrgent ? 'text-danger-fg font-semibold' : 'text-fg font-medium'}>
-                        {formatDate(p.dueDate)}
-                        {p.status === 'Concluído' || p.status === 'Cancelado' ? '' : daysToDue >= 0 ? ` (${isEn ? `in ${daysToDue}d` : `em ${daysToDue}d`})` : ` (${isEn ? `overdue ${Math.abs(daysToDue)}d` : `atrasado ${Math.abs(daysToDue)}d`})`}
+                        {p.dueDate ? formatDate(p.dueDate) : (isEn ? 'No date set' : 'Data indefinida')}
+                        {!p.dueDate || p.status === 'Concluído' || p.status === 'Cancelado' ? '' : daysToDue >= 0 ? ` (${isEn ? `in ${daysToDue}d` : `em ${daysToDue}d`})` : ` (${isEn ? `overdue ${Math.abs(daysToDue)}d` : `atrasado ${Math.abs(daysToDue)}d`})`}
                       </strong>
                     </div>
 

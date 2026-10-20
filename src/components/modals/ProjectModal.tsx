@@ -43,6 +43,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   const [startDate, setStartDate] = useState(getTodayIso());
   const [dueDate, setDueDate] = useState(addDaysIso(30));
   const [nextPaymentDate, setNextPaymentDate] = useState(addDaysIso(15));
+  // Entrega sem data definida (ex.: funis sem fim marcado)
+  const [noDueDate, setNoDueDate] = useState(false);
   const [status, setStatus] = useState<ProjectStatus>('Em andamento');
   const [notes, setNotes] = useState('');
   const [attachments, setAttachments] = useState<ProjectAttachment[]>([]);
@@ -76,7 +78,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       setPaidAmount(projectToEdit.paidAmount);
       setCurrency(projectToEdit.currency);
       setStartDate(projectToEdit.startDate);
-      setDueDate(projectToEdit.dueDate);
+      setDueDate(projectToEdit.dueDate || addDaysIso(30));
+      setNoDueDate(!projectToEdit.dueDate);
       setNextPaymentDate(projectToEdit.nextPaymentDate || '');
       setStatus(projectToEdit.status);
       setNotes(projectToEdit.notes || '');
@@ -107,6 +110,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       setPaidAmount(0);
       setStartDate(getTodayIso());
       setDueDate(addDaysIso(30));
+      setNoDueDate(false);
       setNextPaymentDate(addDaysIso(15));
       setStatus('Em andamento');
       setNotes('');
@@ -188,6 +192,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
 
   const numTotal = Number(totalAmount) || 0;
   const numPaid = Number(paidAmount) || 0;
+  const isFullyPaid = numTotal > 0 && numPaid >= numTotal;
   const remainingAmount = Math.max(0, numTotal - numPaid);
 
   let calculatedCommission = 0;
@@ -226,8 +231,9 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       paidAmount: numPaid,
       currency,
       startDate,
-      dueDate,
-      nextPaymentDate: nextPaymentDate ? nextPaymentDate : undefined,
+      dueDate: noDueDate ? '' : dueDate,
+      // pago na totalidade: não há próximo pagamento
+      nextPaymentDate: !isFullyPaid && nextPaymentDate ? nextPaymentDate : undefined,
       status,
       notes: notes.trim(),
       attachments,
@@ -556,15 +562,24 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
                 {isEn ? 'Due Date' : 'Entrega'}
               </label>
-              <input
-                type="date"
-                required
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="w-full bg-surface-2 border border-line-subtle rounded-md px-4 py-3 text-sm text-fg focus:outline-none focus:border-accent "
-              />
+              {noDueDate ? (
+                <div className="w-full bg-surface-2 border border-line-subtle rounded-md px-4 py-3 text-sm text-fg-muted">{isEn ? 'No date set' : 'Data indefinida'}</div>
+              ) : (
+                <input
+                  type="date"
+                  required
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  className="w-full bg-surface-2 border border-line-subtle rounded-md px-4 py-3 text-sm text-fg focus:outline-none focus:border-accent "
+                />
+              )}
+              <label className="mt-1.5 flex items-center gap-2 text-[12px] text-fg-secondary cursor-pointer">
+                <input type="checkbox" checked={noDueDate} onChange={(e) => setNoDueDate(e.target.checked)} />
+                {isEn ? 'No end date yet' : 'Data indefinida'}
+              </label>
             </div>
 
+            {!isFullyPaid && (
             <div>
               <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
                 {isEn ? 'Next Payment' : 'Próx. Pagamento'}
@@ -576,6 +591,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                 className="w-full bg-surface-2 border border-line-subtle rounded-md px-4 py-3 text-sm text-fg focus:outline-none focus:border-accent "
               />
             </div>
+            )}
           </div>
 
           {/* Descrição rica do projeto */}

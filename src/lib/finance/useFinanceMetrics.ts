@@ -161,8 +161,8 @@ export function useFinanceMetrics({ clients, projects, incomes, expenses, settin
 
     // --- Projetos
     const activeProjects = proj.filter((p) => p.status === 'Em andamento' || p.status === 'Aguardando cliente');
-    const projectsDueSoon = activeProjects.filter((p) => { const d = getDaysDiff(p.dueDate); return d >= -30 && d <= 14; }).sort((a, b) => a.dueDate.localeCompare(b.dueDate));
-    const projectsWithIssues = proj.filter((p) => p.status !== 'Concluído' && p.status !== 'Cancelado' && (getDaysDiff(p.dueDate) <= 1 || p.status === 'Aguardando cliente'));
+    const projectsDueSoon = activeProjects.filter((p) => { if (!p.dueDate) return false; const d = getDaysDiff(p.dueDate); return d >= -30 && d <= 14; }).sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+    const projectsWithIssues = proj.filter((p) => p.status !== 'Concluído' && p.status !== 'Cancelado' && ((!!p.dueDate && getDaysDiff(p.dueDate) <= 1) || p.status === 'Aguardando cliente'));
     const completedProjects = proj.filter((p) => p.status === 'Concluído').length;
     const contracted = proj.reduce((s, p) => s + conv(p.totalAmount, p.currency), 0);
     const pendingCommissions = proj.filter((p) => !p.commissionPaid && (p.commissionAmount || 0) > 0).reduce((s, p) => s + conv(p.commissionAmount || 0, p.currency), 0);

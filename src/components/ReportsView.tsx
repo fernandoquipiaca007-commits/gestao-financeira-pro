@@ -29,6 +29,10 @@ import { Client, Project, Income, Expense, CurrencyCode, AppSettings, getProject
 import { formatCurrency, convertCurrency } from '../lib/formatters';
 import { paidCommissions } from '../lib/finance/projectPayments';
 import { isProfitDistribution } from '../types';
+import type { CashReserve } from '../types';
+import { buildFinancialReport } from '../lib/reports/financialReportData';
+import { downloadFinancialReport } from '../lib/reports/excelReport';
+import { toast } from '../lib/feedback';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface ReportsViewProps {
@@ -38,6 +42,7 @@ interface ReportsViewProps {
   expenses: Expense[];
   settings: AppSettings;
   currencyFilter: CurrencyCode | 'ALL';
+  reserves?: CashReserve[];
 }
 
 const PIE_COLORS = ['var(--viz-1)', 'var(--viz-2)', 'var(--viz-3)', 'var(--viz-4)', 'var(--viz-5)', 'var(--viz-6)'];
@@ -72,8 +77,10 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   expenses,
   settings,
   currencyFilter,
+  reserves = [],
 }) => {
   const { lang } = useLanguage();
+  const [exportingExcel, setExportingExcel] = useState(false);
   const isEn = lang === 'en';
   const currentYear = new Date().getFullYear();
 
@@ -388,6 +395,22 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   }, [filteredProjects, lang]);
 
   // CSV Export Handler
+  // Relatório Excel formatado e pronto a imprimir, para o ano/mês escolhidos.
+  const handleExportExcel = async () => {
+    setExportingExcel(true);
+    try {
+      const report = buildFinancialReport({ incomes, expenses, projects, clients, reserves, settings, currency: mainCurrency, period: { year: selectedYear, month: selectedMonth } });
+      const suffix = selectedYear === 'ALL' ? 'completo' : selectedMonth === 'ALL' ? selectedYear : `${selectedYear}-${selectedMonth}`;
+      const company = (settings.businessName || 'CodeEngine').replace(/\s+/g, '-');
+      await downloadFinancialReport(report, `Relatorio-financeiro-${company}-${suffix}.xlsx`);
+    } catch (err) {
+      console.error('[Excel] export failed:', err);
+      toast({ tone: 'danger', title: isEn ? 'Could not create the Excel report' : 'Não foi possível criar o relatório Excel', description: err instanceof Error ? err.message : '' });
+    } finally {
+      setExportingExcel(false);
+    }
+  };
+
   const handleExportCSV = () => {
     const headers = isEn
       ? ['Type', 'Client/Category', 'Description', 'Amount', 'Currency', 'Date', 'Status']
@@ -457,10 +480,18 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           </button>
           <button
             onClick={handleExportCSV}
+            className="aura-btn aura-btn--secondary aura-btn--sm w-full sm:w-auto justify-center"
+          >
+            <Download className="w-4 h-4" />
+            <span>CSV</span>
+          </button>
+          <button
+            onClick={handleExportExcel}
+            disabled={exportingExcel}
             className="aura-btn aura-btn--primary aura-btn--sm w-full sm:w-auto justify-center"
           >
             <Download className="w-4 h-4" />
-            <span>{isEn ? 'Export CSV' : 'Exportar CSV'}</span>
+            <span>{exportingExcel ? (isEn ? 'Creating…' : 'A criar…') : (isEn ? 'Export Excel' : 'Exportar Excel')}</span>
           </button>
         </div>
       </div>

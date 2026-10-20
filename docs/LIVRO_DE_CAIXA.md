@@ -4,6 +4,22 @@ Registo das movimentações e do raciocínio por trás de cada fecho. As entrada
 
 ---
 
+## 2026-10-21 — Novos registos feitos no sistema e situação do caixa
+
+Registos feitos diretamente na app desde o fecho de setembro (conferidos no relatório Excel gerado com os dados reais):
+
+| Data | Movimento | Valor |
+|---|---|---|
+| 03/10/2026 | Entrada — Funil de palestra (Dra. Nayara Xavier) | + R$ 2.325,00 |
+| 19/10/2026 | Saída — Jorge Reis (registado como "Salário & Equipa") | − R$ 2.325,00 |
+| 20/10/2026 | Entrada — Funil de palestra EURO KL (Karen Tiago Lopes) | + R$ 1.500,00 |
+
+**Caixa a 21/10/2026: R$ 4.100,00** = R$ 1.600,00 reservados + R$ 1.000,00 por enviar ao Jorge (lote de setembro) + R$ 1.500,00 livres.
+
+A confirmar: o pagamento de R$ 2.325,00 ao Jorge (19/10) é salário/serviço (custo) ou distribuição de sócio? Se for distribuição, mudar a categoria para "Distribuição a sócios" — o caixa não muda, mas o lucro sobe R$ 2.325,00.
+
+---
+
 ## 2026-10-20 — Fecho do lote de setembro
 
 Registado no sistema em 20/10/2026 (`supabase/data/2026-09-fecho-setembro.sql`). Bate com o relatório enviado ao Jorge.
