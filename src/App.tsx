@@ -144,6 +144,23 @@ import { UsersView } from './components/UsersView';
 import { AuditLogView } from './components/AuditLogView';
 import { NotificationsModal } from './components/NotificationsModal';
 
+const OPEN_PROJECT_STATUSES: ProjectStatus[] = ['Em andamento', 'Aguardando cliente'];
+
+function reconcileProjectWithIncomes(project: Project, allIncomes: Income[]): Project {
+  const projectIncomes = allIncomes.filter((i) => i.projectId === project.id);
+  if (projectIncomes.length === 0) return project;
+
+  const paidAmount = projectIncomes
+    .filter((i) => i.status === 'Recebido')
+    .reduce((acc, i) => acc + i.amount, 0);
+  const isFullyPaid = project.totalAmount > 0 && paidAmount >= project.totalAmount;
+  const status: ProjectStatus =
+    isFullyPaid && OPEN_PROJECT_STATUSES.includes(project.status) ? 'Concluído' : project.status;
+
+  if (paidAmount === project.paidAmount && status === project.status) return project;
+  return { ...project, paidAmount, status };
+}
+
 const getStoredDismissedNotifs = (): string[] => {
   try {
     const raw = localStorage.getItem('gestao_dismissed_notifications');
@@ -403,27 +420,11 @@ export default function App() {
         });
       }
 
-      // Reconcile project paid amount with linked incomes (bidirecional)
+      // O valor pago de cada projeto vem das receitas recebidas ligadas a ele. O estado
+      // só sobe para "Concluído" quando está tudo pago; nunca é rebaixado ao carregar,
+      // porque um contrato encerrado à mão voltava a "Em andamento" a cada sincronização.
       if (dbProjects && dbIncomes) {
-        const reconciled = dbProjects.map((p) => {
-          const projectIncomes = dbIncomes.filter((i) => i.projectId === p.id);
-          if (projectIncomes.length > 0) {
-            const sumPaid = projectIncomes
-              .filter((i) => i.status === 'Recebido')
-              .reduce((acc, i) => acc + i.amount, 0);
-
-            const isFullyPaid = sumPaid >= p.totalAmount && p.totalAmount > 0;
-            const updatedStatus: ProjectStatus = isFullyPaid ? 'Concluído' : (p.status === 'Concluído' ? 'Em andamento' : p.status);
-
-            if (sumPaid !== p.paidAmount || updatedStatus !== p.status) {
-              return { ...p, paidAmount: sumPaid, status: updatedStatus };
-            }
-          }
-          return p;
-        });
-
-        setProjects(reconciled);
-        saveProjects(reconciled);
+        setProjects(dbProjects.map((p) => reconcileProjectWithIncomes(p, dbIncomes)));
       } else if (dbProjects) {
         setProjects(dbProjects);
       }
@@ -480,6 +481,24 @@ export default function App() {
       console.groupEnd();
     }
   }, [userProfile?.companyId, userProfile?.id, isOwner, isAdmin, settings.defaultCurrency]);
+
+  // Eventos em tempo real chegam em rajadas (cada gravação gera um ou mais). Recarregar a
+  // cada um, a meio de uma gravação em várias etapas, substituía o estado por dados
+  // incompletos. Agrupamos e recarregamos uma vez, depois de a rajada acalmar.
+  const loadDbDataRef = useRef(loadDbData);
+  loadDbDataRef.current = loadDbData;
+  const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleReload = useCallback(() => {
+    if (isImportingRef.current) return;
+    if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current);
+    reloadTimerRef.current = setTimeout(() => {
+      reloadTimerRef.current = null;
+      loadDbDataRef.current();
+    }, 1500);
+  }, []);
+  useEffect(() => () => {
+    if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current);
+  }, []);
 
   // PROTEÇÃO: loadDbData só é chamado se houver sessão E companyId confirmado
   useEffect(() => {
@@ -573,7 +592,7 @@ export default function App() {
             console.log('[Realtime] Ignorando evento durante processo de importação');
             return;
           }
-          loadDbData();
+          scheduleReload();
           playNotificationSound();
 
           const clientName = payload.new?.name || 'Cliente';
@@ -594,7 +613,7 @@ export default function App() {
             console.log('[Realtime] Ignorando evento durante processo de importação');
             return;
           }
-          loadDbData();
+          scheduleReload();
           playNotificationSound();
 
           sendWebPushNotification(payload.new?.title || '🚀 Notificação do Sistema', {
@@ -608,7 +627,7 @@ export default function App() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userSession, loadDbData]);
+  }, [userSession, scheduleReload]);
 
   // Background Push Notification Poller
   useEffect(() => {
@@ -626,21 +645,17 @@ export default function App() {
       .channel('stripe-db-realtime-changes')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'incomes' },
-        () => {
-          loadDbData();
-        }
+        { event: '*', schema: 'public', table: 'incomes', filter: `company_id=eq.${userProfile.companyId}` },
+        scheduleReload
       )
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'projects' },
-        () => {
-          loadDbData();
-        }
+        { event: '*', schema: 'public', table: 'projects', filter: `company_id=eq.${userProfile.companyId}` },
+        scheduleReload
       )
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'user_profiles' },
+        { event: '*', schema: 'public', table: 'user_profiles', filter: `company_id=eq.${userProfile.companyId}` },
         async () => {
           if (userProfile?.companyId) {
             const freshUsers = await fetchCompanyUsers(userProfile.companyId);
@@ -653,7 +668,7 @@ export default function App() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userSession, userProfile?.companyId, loadDbData]);
+  }, [userSession, userProfile?.companyId, scheduleReload]);
 
   // Adjust activeTab if current tab is not in visibleTabs
   useEffect(() => {
@@ -726,23 +741,27 @@ export default function App() {
     const client = clients.find((c) => c.id === clientId);
     if (!client) return;
 
-    if (
-      window.confirm(
-        `Tem certeza que deseja excluir o cliente "${client.name}"?\nTodos os projetos e faturas associados também serão afetados.`
-      )
-    ) {
-      const updatedClients = clients.filter((c) => c.id !== clientId);
-      const updatedProjects = projects.filter((p) => p.clientId !== clientId);
-      const updatedIncomes = incomes.filter((i) => i.clientId !== clientId);
+    // Um cliente com contratos ou receitas faz parte do histórico financeiro: apagá-lo
+    // deixava projetos e receitas sem dono e os relatórios por cliente deixavam de os contar.
+    const linkedProjects = projects.filter((p) => p.clientId === clientId || p.clientIds?.includes(clientId));
+    const linkedIncomes = incomes.filter((i) => i.clientId === clientId);
+    if (linkedProjects.length > 0 || linkedIncomes.length > 0) {
+      alert(
+        `O cliente "${client.name}" tem ${linkedProjects.length} projeto(s) e ${linkedIncomes.length} receita(s) no histórico, por isso não pode ser apagado.\n\n` +
+        'Para encerrar a relação, marque os projetos dele como "Concluído" ou "Cancelado": o histórico e os relatórios ficam intactos.'
+      );
+      return;
+    }
 
+    if (window.confirm(`Tem certeza que deseja excluir o cliente "${client.name}"?`)) {
+      const result = await deleteClientFromDb(clientId, userProfile?.companyId);
+      if (!result.success) {
+        alert(`Não foi possível excluir o cliente: ${result.error || 'tente novamente.'}`);
+        return;
+      }
+      const updatedClients = clients.filter((c) => c.id !== clientId);
       setClients(updatedClients);
       saveClients(updatedClients);
-      setProjects(updatedProjects);
-      saveProjects(updatedProjects);
-      setIncomes(updatedIncomes);
-      saveIncomes(updatedIncomes);
-
-      await deleteClientFromDb(clientId, userProfile?.companyId);
 
       if (userProfile) {
         logAction({
@@ -769,29 +788,9 @@ export default function App() {
     const project = currentProjects.find((p) => p.id === targetProjectId);
     if (!project) return;
 
-    const projectIncomes = currentIncomes.filter((i) => i.projectId === targetProjectId);
-    const sumPaid = projectIncomes
-      .filter((i) => i.status === 'Recebido')
-      .reduce((acc, i) => acc + i.amount, 0);
-
-    const isFullyPaid = sumPaid >= project.totalAmount && project.totalAmount > 0;
-    const updatedStatus: ProjectStatus = isFullyPaid ? 'Concluído' : project.status;
-
-    if (project.paidAmount !== sumPaid || project.status !== updatedStatus) {
-      const updatedProject: Project = {
-        ...project,
-        paidAmount: sumPaid,
-        status: updatedStatus,
-      };
-
-      const updatedProjects = currentProjects.map((p) =>
-        p.id === targetProjectId ? updatedProject : p
-      );
-      setProjects(updatedProjects);
-      saveProjects(updatedProjects);
-      if (userProfile?.companyId) {
-        await upsertProjectToDb(updatedProject, userProfile.companyId);
-      }
+    const updatedProject = reconcileProjectWithIncomes(project, currentIncomes);
+    if (updatedProject !== project) {
+      await persistProjectChange(updatedProject);
     }
   };
 
@@ -841,9 +840,6 @@ export default function App() {
           createdAt: getTodayIso(),
         };
         initialIncomes.push(paidIncome);
-        if (userProfile?.companyId) {
-          await upsertIncomeToDb(paidIncome, userProfile.companyId);
-        }
       }
 
       const remainingAmount = newProject.totalAmount - newProject.paidAmount;
@@ -861,8 +857,15 @@ export default function App() {
           createdAt: getTodayIso(),
         };
         initialIncomes.push(pendingIncome);
-        if (userProfile?.companyId) {
-          await upsertIncomeToDb(pendingIncome, userProfile.companyId);
+      }
+
+      if (userProfile?.companyId) {
+        for (const inc of [...initialIncomes]) {
+          const result = await upsertIncomeToDb(inc, userProfile.companyId);
+          if (!result.success) {
+            initialIncomes.splice(initialIncomes.indexOf(inc), 1);
+            alert(`O projeto foi guardado, mas a receita "${inc.description}" não: ${result.error || 'tente novamente.'}\nRegiste-a no Financeiro.`);
+          }
         }
       }
 
@@ -900,42 +903,66 @@ export default function App() {
     }
   };
 
+  // Quitar um contrato regista o dinheiro no financeiro: as receitas pendentes passam a
+  // "Recebido" e, se elas não cobrirem o valor total, é criada uma receita com a diferença.
+  // Antes só o projeto mudava, e na sincronização seguinte o valor pago voltava atrás.
   const handleMarkProjectAsPaid = async (project: Project) => {
-    const updatedProject: Project = {
-      ...project,
-      paidAmount: project.totalAmount,
-      status: 'Concluído',
-    };
+    const companyId = userProfile?.companyId;
+    const today = getTodayIso();
+    const changedIncomes: Income[] = incomes
+      .filter((i) => i.projectId === project.id && i.status !== 'Recebido')
+      .map((i) => ({ ...i, status: 'Recebido' as const, receivedDate: i.receivedDate || today }));
 
-    const updatedProjects = projects.map((p) =>
-      p.id === project.id ? updatedProject : p
-    );
+    const alreadyReceived = incomes
+      .filter((i) => i.projectId === project.id && i.status === 'Recebido')
+      .reduce((acc, i) => acc + i.amount, 0);
+    const covered = alreadyReceived + changedIncomes.reduce((acc, i) => acc + i.amount, 0);
+    const remainder = Math.round((project.totalAmount - covered) * 100) / 100;
+    if (remainder > 0) {
+      changedIncomes.push({
+        id: `inc-${Date.now()}-q`,
+        clientId: project.clientId,
+        projectId: project.id,
+        description: `Quitação - ${project.name}`,
+        amount: remainder,
+        currency: project.currency,
+        dueDate: today,
+        receivedDate: today,
+        status: 'Recebido',
+        paymentMethod: 'Transferência',
+        createdAt: today,
+      });
+    }
+
+    if (companyId) {
+      for (const inc of changedIncomes) {
+        const result = await upsertIncomeToDb(inc, companyId);
+        if (!result.success) {
+          alert(`Não foi possível registar o pagamento "${inc.description}": ${result.error || 'tente novamente.'}`);
+          await loadDbData();
+          return;
+        }
+      }
+    }
+
+    const changedIds = new Set(changedIncomes.map((i) => i.id));
+    const nextIncomes = [
+      ...changedIncomes.filter((i) => !incomes.some((existing) => existing.id === i.id)),
+      ...incomes.map((i) => (changedIds.has(i.id) ? changedIncomes.find((c) => c.id === i.id)! : i)),
+    ];
+    setIncomes(nextIncomes);
+    saveIncomes(nextIncomes);
+
+    const updatedProject: Project = { ...project, paidAmount: project.totalAmount, status: 'Concluído' };
+    if (companyId) {
+      const result = await upsertProjectToDb(updatedProject, companyId);
+      if (!result.success) {
+        alert(`Pagamentos registados, mas o projeto não foi atualizado: ${result.error || 'tente novamente.'}`);
+      }
+    }
+    const updatedProjects = projects.map((p) => (p.id === project.id ? updatedProject : p));
     setProjects(updatedProjects);
     saveProjects(updatedProjects);
-    if (userProfile?.companyId) {
-      await upsertProjectToDb(updatedProject, userProfile.companyId);
-    }
-
-    // Update or create linked income as Recebido
-    const projectIncomes = incomes.filter((i) => i.projectId === project.id);
-    if (projectIncomes.length > 0) {
-      const updatedIncomes = incomes.map((inc) => {
-        if (inc.projectId === project.id && inc.status !== 'Recebido') {
-          const updatedInc: Income = {
-            ...inc,
-            status: 'Recebido',
-            receivedDate: inc.receivedDate || getTodayIso(),
-          };
-          if (userProfile?.companyId) {
-            upsertIncomeToDb(updatedInc, userProfile.companyId);
-          }
-          return updatedInc;
-        }
-        return inc;
-      });
-      setIncomes(updatedIncomes);
-      saveIncomes(updatedIncomes);
-    }
   };
 
   const handleDuplicateProject = (project: Project) => {
@@ -954,30 +981,55 @@ export default function App() {
     setIsProjectModalOpen(true);
   };
 
-  const handleRateProject = async (project: Project, rating: number) => {
-    const updatedProject: Project = { ...project, rating };
-    const updated = projects.map((p) => (p.id === project.id ? updatedProject : p));
-    setProjects(updated);
-    saveProjects(updated);
+  // Grava primeiro no servidor; o ecrã só muda depois de confirmado.
+  const persistProjectChange = async (updatedProject: Project): Promise<boolean> => {
     if (userProfile?.companyId) {
-      await upsertProjectToDb(updatedProject, userProfile.companyId);
+      const result = await upsertProjectToDb(updatedProject, userProfile.companyId);
+      if (!result.success) {
+        alert(`Não foi possível atualizar o projeto: ${result.error || 'tente novamente.'}`);
+        return false;
+      }
     }
+    setProjects((prev) => {
+      const next = prev.map((p) => (p.id === updatedProject.id ? updatedProject : p));
+      saveProjects(next);
+      return next;
+    });
+    return true;
+  };
+
+  const handleRateProject = async (project: Project, rating: number) => {
+    await persistProjectChange({ ...project, rating });
   };
 
   const handleDeleteProject = async (projectId: string) => {
     const project = projects.find((p) => p.id === projectId);
     if (!project) return;
 
-    if (window.confirm(`Tem certeza que deseja excluir o projeto "${project.name}"?`)) {
-      const updatedProjects = projects.filter((p) => p.id !== projectId);
-      const updatedIncomes = incomes.filter((i) => i.projectId !== projectId);
+    // Apagar um contrato com receitas desligava-as do projeto (e as tarefas eram apagadas
+    // em cascata), por isso o histórico do contrato "desaparecia". Encerrar preserva tudo.
+    const linkedIncomes = incomes.filter((i) => i.projectId === projectId);
+    if (linkedIncomes.length > 0) {
+      const closeInstead = window.confirm(
+        `O projeto "${project.name}" tem ${linkedIncomes.length} receita(s) no histórico, por isso não pode ser apagado.\n\n` +
+        'Quer encerrá-lo como "Concluído"? O histórico financeiro e os relatórios ficam intactos.'
+      );
+      if (closeInstead && project.status !== 'Concluído') {
+        await handleSaveProject({ ...project, status: 'Concluído' });
+      }
+      return;
+    }
 
+    if (window.confirm(`Tem certeza que deseja excluir o projeto "${project.name}"?\nAs tarefas deste projeto também serão apagadas.`)) {
+      const result = await deleteProjectFromDb(projectId, userProfile?.companyId);
+      if (!result.success) {
+        alert(`Não foi possível excluir o projeto: ${result.error || 'tente novamente.'}`);
+        return;
+      }
+      const updatedProjects = projects.filter((p) => p.id !== projectId);
       setProjects(updatedProjects);
       saveProjects(updatedProjects);
-      setIncomes(updatedIncomes);
-      saveIncomes(updatedIncomes);
-
-      await deleteProjectFromDb(projectId, userProfile?.companyId);
+      setTasks((prev) => prev.filter((t) => t.projectId !== projectId));
 
       if (userProfile) {
         logAction({
@@ -1381,10 +1433,14 @@ export default function App() {
     if (!income) return;
 
     if (window.confirm(`Excluir a receita "${income.description}"?`)) {
+      const result = await deleteIncomeFromDb(incomeId, userProfile?.companyId);
+      if (!result.success) {
+        alert(`Não foi possível excluir a receita: ${result.error || 'tente novamente.'}`);
+        return;
+      }
       const updated = incomes.filter((i) => i.id !== incomeId);
       setIncomes(updated);
       saveIncomes(updated);
-      await deleteIncomeFromDb(incomeId, userProfile?.companyId);
 
       if (income.projectId) {
         await syncProjectPaidAmountFromIncomes(income.projectId, updated, projects);
@@ -1400,12 +1456,16 @@ export default function App() {
       receivedDate: nextStatus === 'Recebido' ? (income.receivedDate || getTodayIso()) : undefined,
     };
 
+    if (userProfile?.companyId) {
+      const result = await upsertIncomeToDb(updatedIncome, userProfile.companyId);
+      if (!result.success) {
+        alert(`Não foi possível atualizar a receita: ${result.error || 'tente novamente.'}`);
+        return;
+      }
+    }
     const updated = incomes.map((i) => (i.id === income.id ? updatedIncome : i));
     setIncomes(updated);
     saveIncomes(updated);
-    if (userProfile?.companyId) {
-      await upsertIncomeToDb(updatedIncome, userProfile.companyId);
-    }
 
     if (income.projectId) {
       await syncProjectPaidAmountFromIncomes(income.projectId, updated, projects);
@@ -1461,10 +1521,14 @@ export default function App() {
     if (!expense) return;
 
     if (window.confirm(`Excluir a despesa "${expense.description}"?`)) {
+      const result = await deleteExpenseFromDb(expenseId, userProfile?.companyId);
+      if (!result.success) {
+        alert(`Não foi possível excluir a despesa: ${result.error || 'tente novamente.'}`);
+        return;
+      }
       const updated = expenses.filter((e) => e.id !== expenseId);
       setExpenses(updated);
       saveExpenses(updated);
-      await deleteExpenseFromDb(expenseId, userProfile?.companyId);
     }
   };
 
@@ -1474,24 +1538,22 @@ export default function App() {
       paid: !expense.paid,
     };
 
+    if (userProfile?.companyId) {
+      const result = await upsertExpenseToDb(updatedExpense, userProfile.companyId);
+      if (!result.success) {
+        alert(`Não foi possível atualizar a despesa: ${result.error || 'tente novamente.'}`);
+        return;
+      }
+    }
     const updated = expenses.map((e) => (e.id === expense.id ? updatedExpense : e));
     setExpenses(updated);
     saveExpenses(updated);
-    if (userProfile?.companyId) {
-      await upsertExpenseToDb(updatedExpense, userProfile.companyId);
-    }
   };
 
   const handleToggleProjectCommissionPaid = async (project: Project) => {
     const nextPaid = !project.commissionPaid;
     const updatedProject: Project = { ...project, commissionPaid: nextPaid };
-
-    const updated = projects.map((p) => (p.id === project.id ? updatedProject : p));
-    setProjects(updated);
-    saveProjects(updated);
-    if (userProfile?.companyId) {
-      await upsertProjectToDb(updatedProject, userProfile.companyId);
-    }
+    await persistProjectChange(updatedProject);
   };
 
   // ------------------------------------------------------------------
@@ -1505,29 +1567,41 @@ export default function App() {
       id: catId,
       createdAt: isNew ? getTodayIso() : (categories.find((c) => c.id === catId)?.createdAt || getTodayIso()),
     };
+    if (userProfile?.companyId) {
+      const result = await upsertCategoryToDb(newCategory, userProfile.companyId);
+      if (!result.success) {
+        alert(`Não foi possível guardar a categoria: ${result.error || 'tente novamente.'}`);
+        return;
+      }
+    }
     const updated = isNew
       ? [newCategory, ...categories]
       : categories.map((c) => (c.id === catId ? newCategory : c));
     setCategories(updated);
     saveCategories(updated);
-    if (userProfile?.companyId) {
-      await upsertCategoryToDb(newCategory, userProfile.companyId);
-    }
   };
 
   const handleDeleteCategory = async (categoryId: string) => {
+    const result = await deleteCategoryFromDb(categoryId, userProfile?.companyId);
+    if (!result.success) {
+      alert(`Não foi possível excluir a categoria: ${result.error || 'tente novamente.'}`);
+      return;
+    }
     const updated = categories.filter((c) => c.id !== categoryId);
     setCategories(updated);
     saveCategories(updated);
-    await deleteCategoryFromDb(categoryId, userProfile?.companyId);
   };
 
   const handleSaveSettings = async (newSettings: AppSettings) => {
+    if (userProfile?.companyId) {
+      const result = await upsertSettingsToDb(newSettings, userProfile.companyId);
+      if (!result.success) {
+        alert(`Não foi possível guardar as configurações: ${result.error || 'tente novamente.'}`);
+        return;
+      }
+    }
     setSettings(newSettings);
     saveSettings(newSettings);
-    if (userProfile?.companyId) {
-      await upsertSettingsToDb(newSettings, userProfile.companyId);
-    }
   };
 
   const handleSaveAgendaEvent = async (eventData: Omit<AgendaEvent, 'id' | 'createdAt'> & { id?: string }) => {
@@ -1538,18 +1612,23 @@ export default function App() {
       id: eventId,
       createdAt: isNew ? getTodayIso() : (agendaEvents.find((e) => e.id === eventId)?.createdAt || getTodayIso()),
     };
-    const updated = isNew
-      ? [newEvent, ...agendaEvents]
-      : agendaEvents.map((e) => (e.id === eventId ? newEvent : e));
-    setAgendaEvents(updated);
     if (userProfile?.companyId) {
-      await upsertAgendaEventToDb(newEvent, userProfile.companyId);
+      const result = await upsertAgendaEventToDb(newEvent, userProfile.companyId);
+      if (!result.success) {
+        alert(`Não foi possível guardar o evento: ${result.error || 'tente novamente.'}`);
+        return;
+      }
     }
+    setAgendaEvents((prev) => (isNew ? [newEvent, ...prev] : prev.map((e) => (e.id === eventId ? newEvent : e))));
   };
 
   const handleDeleteAgendaEvent = async (eventId: string) => {
+    const result = await deleteAgendaEventFromDb(eventId, userProfile?.companyId);
+    if (!result.success) {
+      alert(`Não foi possível excluir o evento: ${result.error || 'tente novamente.'}`);
+      return;
+    }
     setAgendaEvents((prev) => prev.filter((e) => e.id !== eventId));
-    await deleteAgendaEventFromDb(eventId, userProfile?.companyId);
   };
 
   const handleToggleAgendaEventStatus = async (eventId: string) => {
@@ -1557,10 +1636,14 @@ export default function App() {
     if (!evt) return;
     const nextStatus = evt.status === 'completed' ? 'pending' : 'completed';
     const updatedEvt: AgendaEvent = { ...evt, status: nextStatus };
-    setAgendaEvents((prev) => prev.map((e) => (e.id === eventId ? updatedEvt : e)));
     if (userProfile?.companyId) {
-      await upsertAgendaEventToDb(updatedEvt, userProfile.companyId);
+      const result = await upsertAgendaEventToDb(updatedEvt, userProfile.companyId);
+      if (!result.success) {
+        alert(`Não foi possível atualizar o evento: ${result.error || 'tente novamente.'}`);
+        return;
+      }
     }
+    setAgendaEvents((prev) => prev.map((e) => (e.id === eventId ? updatedEvt : e)));
   };
 
   const handleSavePartner = async (partnerData: Omit<Partner, 'id' | 'createdAt'> & { id?: string }) => {
@@ -1591,8 +1674,19 @@ export default function App() {
   const handleDeletePartner = async (partnerId: string) => {
     const partner = partners.find((p) => p.id === partnerId);
     if (!partner) return;
+    const linkedProjects = projects.filter((p) => p.partnerId === partnerId);
+    if (linkedProjects.length > 0) {
+      alert(
+        `O parceiro "${partner.name}" está ligado a ${linkedProjects.length} projeto(s) e às comissões deles, por isso não pode ser apagado.`
+      );
+      return;
+    }
     if (window.confirm(`Tem certeza que deseja excluir o parceiro "${partner.name}"?`)) {
-      await deletePartnerFromDb(partnerId, userProfile?.companyId);
+      const result = await deletePartnerFromDb(partnerId, userProfile?.companyId);
+      if (!result.success) {
+        alert(`Não foi possível excluir o parceiro: ${result.error || 'tente novamente.'}`);
+        return;
+      }
       setPartners((prev) => prev.filter((p) => p.id !== partnerId));
     }
   };
