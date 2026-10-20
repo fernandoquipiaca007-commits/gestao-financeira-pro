@@ -20,6 +20,7 @@ import {
   ExternalLink,
   Download,
   CreditCard,
+  PiggyBank,
 } from 'lucide-react';
 import {
   Income,
@@ -29,7 +30,10 @@ import {
   CurrencyCode,
   getIncomeStatusLabel,
   getPaymentMethodLabel,
-  getExpenseCategoryLabel, EXPENSE_CATEGORY_LABELS,
+  getExpenseCategoryLabel,
+  EXPENSE_CATEGORY_LABELS,
+  AppSettings,
+  CashReserve,
 } from '../types';
 import {
   formatCurrency,
@@ -37,6 +41,7 @@ import {
   getDaysDiff,
 } from '../lib/formatters';
 import { useLanguage } from '../contexts/LanguageContext';
+import { CashPanel } from './finance/CashPanel';
 
 interface FinancialViewProps {
   incomes: Income[];
@@ -44,8 +49,13 @@ interface FinancialViewProps {
   clients: Client[];
   projects: Project[];
   currencyFilter: CurrencyCode | 'ALL';
-  initialTab?: 'receitas' | 'despesas' | 'agenda';
+  initialTab?: 'receitas' | 'despesas' | 'agenda' | 'caixa';
   initialFilter?: string;
+  settings?: AppSettings;
+  reserves?: CashReserve[];
+  canEditCash?: boolean;
+  onSaveReserve?: (reserve: Omit<CashReserve, 'id' | 'createdAt'> & { id?: string }) => Promise<boolean>;
+  onDistribute?: (params: { amount: number; date: string; reference: string; sent: Record<string, boolean> }) => Promise<boolean>;
   onOpenNewIncomeModal: () => void;
   onOpenNewExpenseModal: () => void;
   onEditIncome: (income: Income) => void;
@@ -82,11 +92,16 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
   onToggleExpensePaid,
   onOpenWhatsAppCharge,
   onOpenSendEmailModal,
+  settings,
+  reserves = [],
+  canEditCash = false,
+  onSaveReserve,
+  onDistribute,
 }) => {
   const { t, lang } = useLanguage();
   // "despesas"/"despesas-mes" abrem o separador Despesas; os restantes filtros aplicam-se às receitas
   const wantsExpenses = initialFilter === 'despesas' || initialFilter === 'despesas-mes';
-  const [subTab, setSubTab] = useState<'receitas' | 'despesas' | 'agenda'>(wantsExpenses ? 'despesas' : initialTab);
+  const [subTab, setSubTab] = useState<'receitas' | 'despesas' | 'agenda' | 'caixa'>(initialFilter === 'reservas' ? 'caixa' : wantsExpenses ? 'despesas' : initialTab);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>(initialFilter && !wantsExpenses ? initialFilter : 'ALL');
   const [expenseCategoryFilter, setExpenseCategoryFilter] = useState<string>('ALL');
@@ -96,6 +111,8 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
     if (initialFilter) {
       if (initialFilter === 'despesas' || initialFilter === 'despesas-mes') {
         setSubTab('despesas');
+      } else if (initialFilter === 'reservas') {
+        setSubTab('caixa');
       } else {
         setSubTab('receitas');
         setStatusFilter(initialFilter);
@@ -321,7 +338,33 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
         >
           <CalendarIcon className="w-3.5 h-3.5" /> <span>{t('financial.tabCalendar', 'Agenda Financeira')}</span>
         </button>
+
+        {settings && onSaveReserve && onDistribute && (
+          <button
+            onClick={() => setSubTab('caixa')}
+            className={`px-4 py-2 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+              subTab === 'caixa' ? 'bg-primary shadow-primary-3d text-primary-fg' : 'text-fg-secondary hover:text-fg '
+            }`}
+          >
+            <PiggyBank className="w-3.5 h-3.5" /> <span>{lang === 'en' ? 'Cash & partners' : 'Caixa e sócios'}</span>
+          </button>
+        )}
       </div>
+
+      {subTab === 'caixa' && settings && onSaveReserve && onDistribute && (
+        <CashPanel
+          incomes={incomes}
+          expenses={expenses}
+          projects={projects}
+          settings={settings}
+          reserves={reserves}
+          currencyFilter={currencyFilter}
+          lang={lang}
+          canEdit={canEditCash}
+          onSaveReserve={onSaveReserve}
+          onDistribute={onDistribute}
+        />
+      )}
 
       {/* TAB 1: RECEITAS */}
       {subTab === 'receitas' && (

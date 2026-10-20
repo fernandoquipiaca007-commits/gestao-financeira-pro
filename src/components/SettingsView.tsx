@@ -34,6 +34,7 @@ import { ROLE_LABELS, ROLE_COLORS, getRoleLabel } from '../types/rbac';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { SettingsNav } from './settings/SettingsNav';
+import { PartnerSplitSettings } from './settings/PartnerSplitSettings';
 import { useLanguage } from '../contexts/LanguageContext';
 import { supabase } from '../lib/supabase';
 
@@ -489,6 +490,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </button>
         </div>
       </form>
+
+      {isOwner && <PartnerSplitSettings settings={settings} lang={lang === 'en' ? 'en' : 'pt'} onSaveSettings={onSaveSettings} />}
 
       {/* Company / System Settings (Owner / Settings.edit only) */}
       {canEditSettings && (

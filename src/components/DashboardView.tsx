@@ -47,6 +47,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface DashboardViewProps {
+  reserves?: import('../types').CashReserve[];
   clients: Client[];
   projects: Project[];
   incomes: Income[];
@@ -65,6 +66,7 @@ interface DashboardViewProps {
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
+  reserves,
   clients,
   projects,
   incomes,
@@ -429,6 +431,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       tasks={tasks}
       billingRequests={billingRequests}
       settings={settings}
+      reserves={reserves}
       currencyFilter={currencyFilter}
       onNavigateTab={onNavigateTab}
       onOpenWhatsAppCharge={onOpenWhatsAppCharge}

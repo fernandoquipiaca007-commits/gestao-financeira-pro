@@ -40,6 +40,7 @@ import {
   CurrencyCode,
   NotificationItem,
   Partner,
+  CashReserve,
 } from './types';
 import {
   UserProfile,
@@ -90,6 +91,8 @@ import {
   upsertAgendaEventToDb,
   deleteAgendaEventFromDb,
   fetchPartnersFromDb,
+  fetchCashReservesFromDb,
+  upsertCashReserveToDb,
   upsertPartnerToDb,
   deletePartnerFromDb,
   fetchCompanyUsers,
@@ -129,6 +132,7 @@ import { logAction } from './lib/audit';
 import { checkFinancialIntegrity } from './lib/integrity';
 import { formatCurrency } from './lib/formatters';
 import { reconcileProjectWithIncomes, buildSettlementIncomes, paymentDeltaIncome } from './lib/finance/projectPayments';
+import { buildPartnerDistribution } from './lib/finance/cashPosition';
 import { useAuth } from './contexts/AuthContext';
 import { useTheme } from './contexts/ThemeContext';
 import { EmailAttachment } from './types/email';
@@ -263,6 +267,7 @@ export default function App() {
   const [categories, setCategories] = useState<CategoryItem[]>(() => getStoredCategories());
   const [agendaEvents, setAgendaEvents] = useState<AgendaEvent[]>([]);
   const [partners, setPartners] = useState<Partner[]>([]);
+  const [cashReserves, setCashReserves] = useState<CashReserve[]>([]);
   const [settings, setSettings] = useState<AppSettings>(() => getStoredSettings());
 
   // RBAC Data State
@@ -408,6 +413,10 @@ export default function App() {
       if (dbEvents) setAgendaEvents(dbEvents);
       if (dbPartners) setPartners(dbPartners);
       if (dbNotifs) setDbNotifications(dbNotifs);
+      if (cid) {
+        const dbReserves = await fetchCashReservesFromDb(cid);
+        if (dbReserves) setCashReserves(dbReserves);
+      }
 
       // Sync categories from Supabase if available, otherwise keep localStorage
       if (dbCategories && dbCategories.length > 0) {
@@ -1659,6 +1668,57 @@ export default function App() {
     setAgendaEvents((prev) => prev.map((e) => (e.id === eventId ? updatedEvt : e)));
   };
 
+  // Reservas de caixa: escritas à mão; fechar uma reserva deixa de prender caixa.
+  const handleSaveReserve = async (data: Omit<CashReserve, 'id' | 'createdAt'> & { id?: string }): Promise<boolean> => {
+    if (!userProfile?.companyId) return false;
+    const reserve: CashReserve = {
+      ...data,
+      id: data.id || `res-${Date.now()}`,
+      createdAt: cashReserves.find((r) => r.id === data.id)?.createdAt || new Date().toISOString(),
+    };
+    const result = await upsertCashReserveToDb(reserve, userProfile.companyId);
+    if (!result.success) {
+      toast({ tone: 'danger', title: 'Não foi possível guardar a reserva', description: result.error });
+      return false;
+    }
+    setCashReserves((prev) => (prev.some((r) => r.id === reserve.id) ? prev.map((r) => (r.id === reserve.id ? reserve : r)) : [...prev, reserve]));
+    toast({ tone: 'success', title: reserve.closed ? `Reserva "${reserve.name}" fechada` : `Reserva "${reserve.name}" guardada` });
+    return true;
+  };
+
+  // Divide um valor pelos sócios (percentagens das Definições). Cada parte é uma despesa
+  // "Distribuição a sócios": enviada sai do caixa; por enviar fica no caixa até ser paga.
+  const handleDistribute = async (params: { amount: number; date: string; reference: string; sent: Record<string, boolean> }): Promise<boolean> => {
+    if (!userProfile?.companyId) return false;
+    const shares = buildPartnerDistribution({
+      ...params,
+      currency: settings.defaultCurrency,
+      split: settings.profitSplit || [],
+      idPrefix: `dist-${Date.now()}`,
+    });
+    const saved: Expense[] = [];
+    for (const share of shares) {
+      const result = await upsertExpenseToDb(share, userProfile.companyId);
+      if (!result.success) {
+        toast({ tone: 'danger', title: `Não foi possível registar a parte de ${share.partnerName}`, description: `${result.error || ''} As restantes partes foram registadas; verifique em Despesas.`.trim() });
+        break;
+      }
+      saved.push(share);
+    }
+    if (saved.length > 0) {
+      setExpenses((prev) => {
+        const next = [...saved, ...prev];
+        saveExpenses(next);
+        return next;
+      });
+    }
+    if (saved.length === shares.length) {
+      toast({ tone: 'success', title: 'Distribuição registada', description: `${formatCurrency(params.amount, settings.defaultCurrency)} · ${params.reference}` });
+      return true;
+    }
+    return false;
+  };
+
   const handleSavePartner = async (partnerData: Omit<Partner, 'id' | 'createdAt'> & { id?: string }) => {
     const isNew = !partnerData.id;
     const partnerId = partnerData.id || `part-${Date.now()}`;
@@ -1969,6 +2029,7 @@ export default function App() {
           >
           {activeTab === 'dashboard' && (
             <DashboardView
+              reserves={cashReserves}
               clients={clients}
               projects={projects}
               incomes={incomes}
@@ -2071,6 +2132,11 @@ export default function App() {
               expenses={expenses}
               clients={clients}
               projects={projects}
+              settings={settings}
+              reserves={cashReserves}
+              canEditCash={isOwner || hasPermission('financial.edit')}
+              onSaveReserve={handleSaveReserve}
+              onDistribute={handleDistribute}
               currencyFilter={currencyFilter}
               initialFilter={tabFilter}
               onOpenNewIncomeModal={() => { setIncomeToEdit(null); setIsIncomeModalOpen(true); }}
