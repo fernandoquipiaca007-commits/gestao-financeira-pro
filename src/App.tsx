@@ -115,6 +115,7 @@ import { supabase } from './lib/supabase';
 import { computeNotifications } from './lib/notifications';
 import { logAction } from './lib/audit';
 import { checkFinancialIntegrity } from './lib/integrity';
+import { formatCurrency } from './lib/formatters';
 import { useAuth } from './contexts/AuthContext';
 import { EmailAttachment } from './types/email';
 import {
@@ -144,8 +145,9 @@ import { UsersView } from './components/UsersView';
 import { AuditLogView } from './components/AuditLogView';
 import { NotificationsModal } from './components/NotificationsModal';
 
-const OPEN_PROJECT_STATUSES: ProjectStatus[] = ['Em andamento', 'Aguardando cliente'];
-
+// O valor pago de um projeto vem das receitas recebidas ligadas a ele. O estado do
+// projeto nunca muda por causa de pagamentos: muitos clientes pagam tudo à cabeça e o
+// trabalho continua "Em andamento" até ser entregue.
 function reconcileProjectWithIncomes(project: Project, allIncomes: Income[]): Project {
   const projectIncomes = allIncomes.filter((i) => i.projectId === project.id);
   if (projectIncomes.length === 0) return project;
@@ -153,12 +155,9 @@ function reconcileProjectWithIncomes(project: Project, allIncomes: Income[]): Pr
   const paidAmount = projectIncomes
     .filter((i) => i.status === 'Recebido')
     .reduce((acc, i) => acc + i.amount, 0);
-  const isFullyPaid = project.totalAmount > 0 && paidAmount >= project.totalAmount;
-  const status: ProjectStatus =
-    isFullyPaid && OPEN_PROJECT_STATUSES.includes(project.status) ? 'Concluído' : project.status;
 
-  if (paidAmount === project.paidAmount && status === project.status) return project;
-  return { ...project, paidAmount, status };
+  if (paidAmount === project.paidAmount) return project;
+  return { ...project, paidAmount };
 }
 
 const getStoredDismissedNotifs = (): string[] => {
@@ -420,9 +419,8 @@ export default function App() {
         });
       }
 
-      // O valor pago de cada projeto vem das receitas recebidas ligadas a ele. O estado
-      // só sobe para "Concluído" quando está tudo pago; nunca é rebaixado ao carregar,
-      // porque um contrato encerrado à mão voltava a "Em andamento" a cada sincronização.
+      // Antes, um contrato encerrado à mão voltava a "Em andamento" a cada sincronização;
+      // agora só o valor pago é recalculado e o estado fica como foi gravado.
       if (dbProjects && dbIncomes) {
         setProjects(dbProjects.map((p) => reconcileProjectWithIncomes(p, dbIncomes)));
       } else if (dbProjects) {
@@ -907,6 +905,11 @@ export default function App() {
   // "Recebido" e, se elas não cobrirem o valor total, é criada uma receita com a diferença.
   // Antes só o projeto mudava, e na sincronização seguinte o valor pago voltava atrás.
   const handleMarkProjectAsPaid = async (project: Project) => {
+    const pending = project.totalAmount - project.paidAmount;
+    if (!window.confirm(
+      `Registar o recebimento de ${formatCurrency(pending, project.currency)} de "${project.name}"?\n\n` +
+      'As receitas pendentes passam a "Recebido" (e a diferença em falta é registada hoje). O estado do projeto não muda.'
+    )) return;
     const companyId = userProfile?.companyId;
     const today = getTodayIso();
     const changedIncomes: Income[] = incomes
@@ -953,7 +956,8 @@ export default function App() {
     setIncomes(nextIncomes);
     saveIncomes(nextIncomes);
 
-    const updatedProject: Project = { ...project, paidAmount: project.totalAmount, status: 'Concluído' };
+    // Só o pagamento muda: o projeto continua no estado em que está até ser entregue.
+    const updatedProject: Project = { ...project, paidAmount: project.totalAmount };
     if (companyId) {
       const result = await upsertProjectToDb(updatedProject, companyId);
       if (!result.success) {
