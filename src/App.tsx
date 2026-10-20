@@ -128,6 +128,7 @@ import { computeNotifications } from './lib/notifications';
 import { logAction } from './lib/audit';
 import { checkFinancialIntegrity } from './lib/integrity';
 import { formatCurrency } from './lib/formatters';
+import { reconcileProjectWithIncomes, buildSettlementIncomes, paymentDeltaIncome } from './lib/finance/projectPayments';
 import { useAuth } from './contexts/AuthContext';
 import { useTheme } from './contexts/ThemeContext';
 import { EmailAttachment } from './types/email';
@@ -160,21 +161,6 @@ import { PartnersView } from './components/PartnersView';
 import { UsersView } from './components/UsersView';
 import { AuditLogView } from './components/AuditLogView';
 import { NotificationsModal } from './components/NotificationsModal';
-
-// O valor pago de um projeto vem das receitas recebidas ligadas a ele. O estado do
-// projeto nunca muda por causa de pagamentos: muitos clientes pagam tudo à cabeça e o
-// trabalho continua "Em andamento" até ser entregue.
-function reconcileProjectWithIncomes(project: Project, allIncomes: Income[]): Project {
-  const projectIncomes = allIncomes.filter((i) => i.projectId === project.id);
-  if (projectIncomes.length === 0) return project;
-
-  const paidAmount = projectIncomes
-    .filter((i) => i.status === 'Recebido')
-    .reduce((acc, i) => acc + i.amount, 0);
-
-  if (paidAmount === project.paidAmount) return project;
-  return { ...project, paidAmount };
-}
 
 const getStoredDismissedNotifs = (): string[] => {
   try {
@@ -898,22 +884,9 @@ export default function App() {
     } else {
       // Aumentar o "valor pago" de um projeto existente é um pagamento recebido: regista-o no
       // financeiro. Antes ficava só no projeto e o saldo em caixa nunca o via.
-      const previous = projects.find((p) => p.id === projectId);
-      const delta = Math.round(((newProject.paidAmount || 0) - (previous?.paidAmount || 0)) * 100) / 100;
-      if (previous && delta > 0) {
-        await recordProjectIncomes([{
-          id: `inc-${Date.now()}-p`,
-          clientId: newProject.clientId,
-          projectId: newProject.id,
-          description: `Pagamento - ${newProject.name}`,
-          amount: delta,
-          currency: newProject.currency,
-          dueDate: getTodayIso(),
-          receivedDate: getTodayIso(),
-          status: 'Recebido',
-          paymentMethod: 'Transferência',
-          createdAt: getTodayIso(),
-        }], 'O projeto foi guardado, mas');
+      const payment = paymentDeltaIncome(projects.find((p) => p.id === projectId), newProject, getTodayIso(), `inc-${Date.now()}-p`);
+      if (payment) {
+        await recordProjectIncomes([payment], 'O projeto foi guardado, mas');
       }
     }
 
@@ -957,31 +930,7 @@ export default function App() {
     if (!ok) return;
 
     const companyId = userProfile?.companyId;
-    const today = getTodayIso();
-    const changedIncomes: Income[] = incomes
-      .filter((i) => i.projectId === project.id && i.status !== 'Recebido')
-      .map((i) => ({ ...i, status: 'Recebido' as const, receivedDate: i.receivedDate || today }));
-
-    const alreadyReceived = incomes
-      .filter((i) => i.projectId === project.id && i.status === 'Recebido')
-      .reduce((acc, i) => acc + i.amount, 0);
-    const covered = alreadyReceived + changedIncomes.reduce((acc, i) => acc + i.amount, 0);
-    const remainder = Math.round((project.totalAmount - covered) * 100) / 100;
-    if (remainder > 0) {
-      changedIncomes.push({
-        id: `inc-${Date.now()}-q`,
-        clientId: project.clientId,
-        projectId: project.id,
-        description: `Quitação - ${project.name}`,
-        amount: remainder,
-        currency: project.currency,
-        dueDate: today,
-        receivedDate: today,
-        status: 'Recebido',
-        paymentMethod: 'Transferência',
-        createdAt: today,
-      });
-    }
+    const changedIncomes = buildSettlementIncomes(project, incomes, getTodayIso(), `inc-${Date.now()}-q`);
 
     if (companyId) {
       for (const inc of changedIncomes) {
