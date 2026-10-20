@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { motion } from 'motion/react';
+import { confirmAction, toast } from './lib/feedback';
 import {
   LayoutDashboard,
   Calendar as CalendarIcon,
@@ -16,6 +18,15 @@ import {
   UserCog,
   History,
   FileText,
+  ChevronLeft,
+  ChevronRight,
+  Lock,
+  Zap,
+  Globe,
+  BookOpen,
+  Sun,
+  Moon,
+  RefreshCw,
 } from 'lucide-react';
 import {
   Client,
@@ -52,6 +63,8 @@ import {
   saveSettings,
   getStoredPartners,
   savePartners,
+  getStoredTasks,
+  saveTasks,
   getTodayIso,
   addDaysIso,
   clearAllData,
@@ -102,9 +115,8 @@ import {
   deleteCategoryFromDb,
   fetchSettingsFromDb,
   upsertSettingsToDb,
-  getStoredAgendaEvents,
+  DEFAULT_CATEGORIES,
 } from './lib/db';
-import { createEmergencySnapshot } from './lib/dataGuard';
 import { fetchLiveExchangeRates } from './lib/exchange';
 import {
   registerServiceWorker,
@@ -117,6 +129,7 @@ import { logAction } from './lib/audit';
 import { checkFinancialIntegrity } from './lib/integrity';
 import { formatCurrency } from './lib/formatters';
 import { useAuth } from './contexts/AuthContext';
+import { useTheme } from './contexts/ThemeContext';
 import { EmailAttachment } from './types/email';
 import {
   sendClientPaymentReminderEmail,
@@ -130,6 +143,9 @@ import {
 
 import { LoginView } from './components/LoginView';
 import { Header } from './components/Header';
+import { AppSidebar } from './components/shell/AppSidebar';
+import { useHideOnScroll } from './components/shell/useHideOnScroll';
+import { MobileNav } from './components/shell/MobileNav';
 import { DashboardView } from './components/DashboardView';
 import { CalendarView } from './components/CalendarView';
 import { ProjectsView } from './components/ProjectsView';
@@ -190,9 +206,12 @@ import { AgendaModal } from './components/modals/AgendaModal';
 import { PartnerModal } from './components/modals/PartnerModal';
 import { UserModal } from './components/modals/UserModal';
 import { UserPermissionsModal } from './components/modals/UserPermissionsModal';
-import { StripeInvoiceModal } from './components/modals/StripeInvoiceModal';
+import { useLanguage } from './contexts/LanguageContext';
+import { APP_CONFIG } from './config/app';
 
 export default function App() {
+  const { lang, setLang, t, toggleLang } = useLanguage();
+  const { isDark, toggleTheme } = useTheme();
   const {
     userSession,
     userProfile,
@@ -207,30 +226,61 @@ export default function App() {
     refreshProfile,
   } = useAuth();
 
+  // Sync system language with userProfile language preference
+  useEffect(() => {
+    if (userProfile?.language && userProfile.language !== lang) {
+      setLang(userProfile.language);
+    }
+  }, [userProfile?.language, lang, setLang]);
+
   // Navigation State
   const [activeTab, setActiveTab] = useState<string>('dashboard');
+
   const [tabFilter, setTabFilter] = useState<string | undefined>(undefined);
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('gestao_sidebar_collapsed') === 'true';
+    } catch {}
+    return false;
+  });
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('gestao_sidebar_collapsed', String(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  // Barra superior: esconde ao descer, reaparece ao subir
+  const { slotRef: headerSlotRef, onScroll: onMainScroll, reveal: revealHeader } = useHideOnScroll();
+  // Cada módulo abre no topo, com a barra visível
+  const mainRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    mainRef.current?.scrollTo({ top: 0 });
+    revealHeader();
+  }, [activeTab, revealHeader]);
 
   // Global Currency Filter
   const [currencyFilter, setCurrencyFilter] = useState<CurrencyCode | 'ALL'>('ALL');
 
-  // Core Data State (Hidratado a partir do armazenamento local)
-  const [clients, setClients] = useState<Client[]>(getStoredClients);
-  const [projects, setProjects] = useState<Project[]>(getStoredProjects);
-  const [incomes, setIncomes] = useState<Income[]>(getStoredIncomes);
-  const [expenses, setExpenses] = useState<Expense[]>(getStoredExpenses);
-  const [categories, setCategories] = useState<CategoryItem[]>(getStoredCategories);
-  const [agendaEvents, setAgendaEvents] = useState<AgendaEvent[]>(getStoredAgendaEvents);
-  const [partners, setPartners] = useState<Partner[]>(getStoredPartners);
-  const [settings, setSettings] = useState<AppSettings>(getStoredSettings);
-
-  // Proteção contra corrida e sobrescrita em importações
-  const isImportingRef = useRef(false);
+  // Core Data State
+  const [clients, setClients] = useState<Client[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [incomes, setIncomes] = useState<Income[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [categories, setCategories] = useState<CategoryItem[]>(() => getStoredCategories());
+  const [agendaEvents, setAgendaEvents] = useState<AgendaEvent[]>([]);
+  const [partners, setPartners] = useState<Partner[]>([]);
+  const [settings, setSettings] = useState<AppSettings>(() => getStoredSettings());
 
   // RBAC Data State
   const [companyUsers, setCompanyUsers] = useState<UserProfile[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<Task[]>(() => getStoredTasks());
   const [billingRequests, setBillingRequests] = useState<BillingRequest[]>([]);
 
   // Modals & Drawers State
@@ -274,6 +324,7 @@ export default function App() {
   >([]);
   const [isDataSyncing, setIsDataSyncing] = useState(false);
   const [integrityWarnings, setIntegrityWarnings] = useState<string[]>([]);
+  const [isIntegrityDismissed, setIsIntegrityDismissed] = useState(false);
 
   // Direct Resend Email Modal State
   const [isSendEmailModalOpen, setIsSendEmailModalOpen] = useState(false);
@@ -296,40 +347,9 @@ export default function App() {
     setIsSendEmailModalOpen(true);
   };
 
-  // Stripe Invoice Modal State
-  const [isStripeInvoiceModalOpen, setIsStripeInvoiceModalOpen] = useState(false);
-  const [projectForStripeInvoice, setProjectForStripeInvoice] = useState<Project | null>(null);
-
-  const handleOpenStripeInvoiceModal = (p: Project) => {
-    setProjectForStripeInvoice(p);
-    setIsStripeInvoiceModalOpen(true);
-  };
-
-  const handleStripeInvoiceCreated = (
-    incomeId: string,
-    stripeData: {
-      stripeInvoiceId: string;
-      stripeInvoiceUrl: string;
-      stripeInvoicePdf: string;
-      stripeCustomerId: string;
-      stripeStatus: any;
-    }
-  ) => {
-    setIncomes((prev) =>
-      prev.map((inc) =>
-        inc.id === incomeId
-          ? ({
-              ...inc,
-              ...stripeData,
-            } as Income)
-          : inc
-      )
-    );
-    loadDbData();
-  };
 
   const [dbNotifications, setDbNotifications] = useState<NotificationItem[]>([]);
-  const [dismissedNotifIds, setDismissedNotifIds] = useState<string[]>(getStoredDismissedNotifs);
+  const [dismissedNotifIds, setDismissedNotifIds] = useState<string[]>(() => getStoredDismissedNotifs());
 
   const handleMarkNotificationAsRead = async (notifId: string) => {
     setDismissedNotifIds((prev) => {
@@ -342,7 +362,7 @@ export default function App() {
   };
 
   const handleMarkAllNotificationsAsRead = async () => {
-    const computedNotifs = computeNotifications(clients, projects, incomes, expenses);
+    const computedNotifs = computeNotifications(clients, projects, incomes, expenses, lang);
     const combined = [...dbNotifications, ...computedNotifs];
     const allIds = combined.map((n) => n.id);
 
@@ -357,22 +377,20 @@ export default function App() {
 
   // Active Computed & Database Notifications (filtered by non-dismissed & unread)
   const notifications: NotificationItem[] = useMemo(() => {
-    const computedNotifs = computeNotifications(clients, projects, incomes, expenses);
+    const computedNotifs = computeNotifications(clients, projects, incomes, expenses, lang);
     const combined = [...dbNotifications, ...computedNotifs];
     return combined.filter((n) => !dismissedNotifIds.includes(n.id) && !n.read);
-  }, [clients, projects, incomes, expenses, dbNotifications, dismissedNotifIds]);
+  }, [clients, projects, incomes, expenses, dbNotifications, dismissedNotifIds, lang]);
 
   // ------------------------------------------------------------------
   // Initial Data Fetch & Synchronization
   // ------------------------------------------------------------------
   const loadDbData = useCallback(async () => {
     setIsDataSyncing(true);
-    console.group('[SYNC 🚀] Iniciando sincronização com Supabase...');
     try {
       registerServiceWorker();
 
       const cid = userProfile?.companyId;
-      console.log(`[SYNC 🏢] Company ID atual: ${cid || 'nenhum'}`);
 
       const [dbClients, dbProjects, dbIncomes, dbExpenses, dbEvents, dbPartners, liveRates, dbNotifs, dbCategories, dbSettings] =
         await Promise.all([
@@ -388,15 +406,6 @@ export default function App() {
           cid ? fetchSettingsFromDb(cid) : Promise.resolve(null),
         ]);
 
-      console.log('[SYNC 📦] Registros recebidos (ou recuperados do cache de proteção):', {
-        clientes: dbClients?.length ?? 0,
-        projetos: dbProjects?.length ?? 0,
-        receitas: dbIncomes?.length ?? 0,
-        despesas: dbExpenses?.length ?? 0,
-        agenda: dbEvents?.length ?? 0,
-        parceiros: dbPartners?.length ?? 0,
-      });
-
       if (dbClients) setClients(dbClients);
       if (dbIncomes) setIncomes(dbIncomes);
       if (dbExpenses) setExpenses(dbExpenses);
@@ -406,8 +415,11 @@ export default function App() {
 
       // Sync categories from Supabase if available, otherwise keep localStorage
       if (dbCategories && dbCategories.length > 0) {
-        setCategories(dbCategories);
-        saveCategories(dbCategories);
+        const catMap = new Map(DEFAULT_CATEGORIES.filter((c) => c?.name).map((c) => [c.name.toLowerCase(), c]));
+        dbCategories.filter((c) => c?.name).forEach((c) => catMap.set(c.name.toLowerCase(), c));
+        const mergedCategories = Array.from(catMap.values());
+        setCategories(mergedCategories);
+        saveCategories(mergedCategories);
       }
 
       // Sync settings from Supabase if available
@@ -419,8 +431,8 @@ export default function App() {
         });
       }
 
-      // Antes, um contrato encerrado à mão voltava a "Em andamento" a cada sincronização;
-      // agora só o valor pago é recalculado e o estado fica como foi gravado.
+      // Só o valor pago acompanha as receitas recebidas. O estado e o valor do contrato ficam
+      // como foram gravados: pagar tudo à cabeça não conclui um projeto que ainda está a decorrer.
       if (dbProjects && dbIncomes) {
         setProjects(dbProjects.map((p) => reconcileProjectWithIncomes(p, dbIncomes)));
       } else if (dbProjects) {
@@ -451,35 +463,58 @@ export default function App() {
           fetchBillingRequests(userProfile.companyId, userProfile.id, isOwner || isAdmin),
         ]);
         if (usersData) setCompanyUsers(usersData);
-        if (tasksData) setTasks(tasksData);
+        if (tasksData && tasksData.length > 0) {
+          setTasks(tasksData);
+          saveTasks(tasksData);
+        }
         if (billingData) setBillingRequests(billingData);
       }
 
       // Run financial integrity check with freshly loaded data
       const freshIncomes  = dbIncomes  || [];
       const freshExpenses = dbExpenses || [];
-      const freshProjects = dbProjects || [];
+      const freshProjects = (dbProjects || []).map((p) => reconcileProjectWithIncomes(p, freshIncomes));
       const integrityResult = checkFinancialIntegrity(
         freshIncomes,
         freshExpenses,
         freshProjects,
-        settings.defaultCurrency
+        settings.defaultCurrency,
+        lang
       );
-      setIntegrityWarnings(integrityResult.warnings);
+      if (!isIntegrityDismissed) {
+        setIntegrityWarnings(integrityResult.warnings);
+      }
       if (!integrityResult.isValid) {
         console.warn('[Integrity] Avisos de integridade financeira:', integrityResult.warnings);
       }
-
-      // Criar snapshot de segurança após sincronismo bem sucedido
-      createEmergencySnapshot();
     } catch (err) {
       console.warn('Failed to sync data with Supabase on load:', err);
     } finally {
       setIsDataSyncing(false);
-      console.groupEnd();
     }
-  }, [userProfile?.companyId, userProfile?.id, isOwner, isAdmin, settings.defaultCurrency]);
+  }, [userProfile?.companyId, userProfile?.id, isOwner, isAdmin, isIntegrityDismissed]);
 
+  useEffect(() => {
+    if (userSession) {
+      loadDbData();
+    }
+  }, [userSession, userProfile?.companyId, loadDbData]);
+
+  // Re-run integrity check when language changes so warnings match selected language
+  useEffect(() => {
+    if (!isIntegrityDismissed && (incomes.length > 0 || expenses.length > 0 || projects.length > 0)) {
+      const integrityResult = checkFinancialIntegrity(
+        incomes,
+        expenses,
+        projects,
+        settings.defaultCurrency,
+        lang
+      );
+      setIntegrityWarnings(integrityResult.warnings);
+    }
+  }, [lang, settings.defaultCurrency, incomes, expenses, projects, isIntegrityDismissed]);
+
+  // Realtime Supabase Subscription for instant landing page leads & notifications
   // Eventos em tempo real chegam em rajadas (cada gravação gera um ou mais). Recarregar a
   // cada um, a meio de uma gravação em várias etapas, substituía o estado por dados
   // incompletos. Agrupamos e recarregamos uma vez, depois de a rajada acalmar.
@@ -487,7 +522,6 @@ export default function App() {
   loadDbDataRef.current = loadDbData;
   const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scheduleReload = useCallback(() => {
-    if (isImportingRef.current) return;
     if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current);
     reloadTimerRef.current = setTimeout(() => {
       reloadTimerRef.current = null;
@@ -498,57 +532,6 @@ export default function App() {
     if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current);
   }, []);
 
-  // PROTEÇÃO: loadDbData só é chamado se houver sessão E companyId confirmado
-  useEffect(() => {
-    if (userSession && userProfile?.companyId) {
-      loadDbData();
-    }
-  }, [userSession, userProfile?.companyId, loadDbData]);
-
-  // Hidratar estado com cache local do utilizador imediatamente no login
-  useEffect(() => {
-    if (userSession) {
-      setClients(getStoredClients());
-      setProjects(getStoredProjects());
-      setIncomes(getStoredIncomes());
-      setExpenses(getStoredExpenses());
-      setPartners(getStoredPartners());
-      setAgendaEvents(getStoredAgendaEvents());
-      setSettings(getStoredSettings());
-    }
-  }, [userSession]);
-
-  // Ferramenta de auditoria de dados acessível via console do navegador (window.__checkDataStatus())
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      (window as any).__checkDataStatus = () => {
-        console.group('🛡️ [DIAGNÓSTICO GESTÃO FO - ESTADO DE DADOS]');
-        console.table({
-          'Clientes': { 'Estado React': clients.length, 'LocalStorage': getStoredClients().length },
-          'Projetos': { 'Estado React': projects.length, 'LocalStorage': getStoredProjects().length },
-          'Receitas': { 'Estado React': incomes.length, 'LocalStorage': getStoredIncomes().length },
-          'Despesas': { 'Estado React': expenses.length, 'LocalStorage': getStoredExpenses().length },
-          'Parceiros': { 'Estado React': partners.length, 'LocalStorage': getStoredPartners().length },
-        });
-        console.log('Empresa / Sessão:', {
-          companyId: userProfile?.companyId,
-          userId: userProfile?.id,
-          userName: userProfile?.name,
-          role: userProfile?.role,
-        });
-        console.groupEnd();
-        return {
-          clientsCount: clients.length,
-          projectsCount: projects.length,
-          incomesCount: incomes.length,
-          expensesCount: expenses.length,
-          partnersCount: partners.length,
-        };
-      };
-    }
-  }, [clients, projects, incomes, expenses, partners, userProfile]);
-
-  // Realtime Supabase Subscription for instant landing page leads & notifications
   useEffect(() => {
     if (!userSession) return;
 
@@ -585,17 +568,12 @@ export default function App() {
         { event: 'INSERT', schema: 'public', table: 'clients' },
         (payload: any) => {
           console.log('[Realtime] Novo cliente recebido da Landing Page:', payload);
-          // PROTEÇÃO: Não disparar reload durante migração ou importação ativa
-          if (isImportingRef.current) {
-            console.log('[Realtime] Ignorando evento durante processo de importação');
-            return;
-          }
           scheduleReload();
           playNotificationSound();
 
           const clientName = payload.new?.name || 'Cliente';
           const clientType = payload.new?.type || 'Serviço';
-          sendWebPushNotification(`🚀 Novo Lead na Landing Page: ${clientName}`, {
+          sendWebPushNotification(`Novo Lead na Landing Page: ${clientName}`, {
             body: `Solicitou [${clientType}]. WhatsApp: ${payload.new?.whatsapp || 'Disponível'}`,
             tag: `client-${payload.new?.id || Date.now()}`,
           });
@@ -606,15 +584,10 @@ export default function App() {
         { event: 'INSERT', schema: 'public', table: 'notifications' },
         (payload: any) => {
           console.log('[Realtime] Nova notificação recebida:', payload);
-          // PROTEÇÃO: Não disparar reload durante migração ou importação ativa
-          if (isImportingRef.current) {
-            console.log('[Realtime] Ignorando evento durante processo de importação');
-            return;
-          }
           scheduleReload();
           playNotificationSound();
 
-          sendWebPushNotification(payload.new?.title || '🚀 Notificação do Sistema', {
+          sendWebPushNotification(payload.new?.title || 'Notificação do Sistema', {
             body: payload.new?.message || 'Nova notificação recebida da Landing Page.',
             tag: `notif-${payload.new?.id || Date.now()}`,
           });
@@ -670,6 +643,7 @@ export default function App() {
 
   // Adjust activeTab if current tab is not in visibleTabs
   useEffect(() => {
+    if (activeTab === 'landing') return;
     if (visibleTabs.length > 0 && !visibleTabs.includes(activeTab)) {
       setActiveTab(visibleTabs[0] || 'dashboard');
     }
@@ -710,7 +684,7 @@ export default function App() {
       const result = await upsertClientToDb(newClient, userProfile.companyId);
       if (!result.success) {
         console.error('[App] handleSaveClient failed:', result.error);
-        alert(`Erro ao guardar cliente no servidor: ${result.error || 'Tente novamente.'}`);
+        toast({ tone: 'danger', title: 'Não foi possível guardar o cliente', description: result.error || 'Verifique a ligação à internet e tente novamente.' });
         return;
       }
     }
@@ -744,17 +718,18 @@ export default function App() {
     const linkedProjects = projects.filter((p) => p.clientId === clientId || p.clientIds?.includes(clientId));
     const linkedIncomes = incomes.filter((i) => i.clientId === clientId);
     if (linkedProjects.length > 0 || linkedIncomes.length > 0) {
-      alert(
-        `O cliente "${client.name}" tem ${linkedProjects.length} projeto(s) e ${linkedIncomes.length} receita(s) no histórico, por isso não pode ser apagado.\n\n` +
-        'Para encerrar a relação, marque os projetos dele como "Concluído" ou "Cancelado": o histórico e os relatórios ficam intactos.'
-      );
+      toast({
+        tone: 'warning',
+        title: `"${client.name}" tem histórico e não pode ser eliminado`,
+        description: `${linkedProjects.length} projeto(s) e ${linkedIncomes.length} receita(s) dependem deste cliente. Para encerrar a relação, marque os projetos como "Concluído" ou "Cancelado".`,
+      });
       return;
     }
 
-    if (window.confirm(`Tem certeza que deseja excluir o cliente "${client.name}"?`)) {
-      const result = await deleteClientFromDb(clientId, userProfile?.companyId);
+    if (await confirmAction({ title: `Eliminar o cliente "${client.name}"?`, description: 'Este cliente não tem projetos nem receitas.', confirmLabel: 'Eliminar cliente', danger: true })) {
+      const result = await deleteClientFromDb(clientId);
       if (!result.success) {
-        alert(`Não foi possível excluir o cliente: ${result.error || 'tente novamente.'}`);
+        toast({ tone: 'danger', title: 'Não foi possível eliminar o cliente', description: result.error });
         return;
       }
       const updatedClients = clients.filter((c) => c.id !== clientId);
@@ -778,6 +753,23 @@ export default function App() {
   // ------------------------------------------------------------------
   // CRUD Handlers: Projects
   // ------------------------------------------------------------------
+  // Grava primeiro no servidor; o ecrã só muda depois de confirmado.
+  const persistProjectChange = async (updatedProject: Project): Promise<boolean> => {
+    if (userProfile?.companyId) {
+      const result = await upsertProjectToDb(updatedProject, userProfile.companyId);
+      if (!result.success) {
+        toast({ tone: 'danger', title: 'Não foi possível atualizar o projeto', description: result.error || 'Tente novamente.' });
+        return false;
+      }
+    }
+    setProjects((prev) => {
+      const next = prev.map((p) => (p.id === updatedProject.id ? updatedProject : p));
+      saveProjects(next);
+      return next;
+    });
+    return true;
+  };
+
   const syncProjectPaidAmountFromIncomes = async (
     targetProjectId: string,
     currentIncomes: Income[],
@@ -789,6 +781,27 @@ export default function App() {
     const updatedProject = reconcileProjectWithIncomes(project, currentIncomes);
     if (updatedProject !== project) {
       await persistProjectChange(updatedProject);
+    }
+  };
+
+  const recordProjectIncomes = async (newIncomes: Income[], context: string) => {
+    const saved: Income[] = [];
+    for (const inc of newIncomes) {
+      if (userProfile?.companyId) {
+        const result = await upsertIncomeToDb(inc, userProfile.companyId);
+        if (!result.success) {
+          toast({ tone: 'danger', title: `${context} a receita "${inc.description}" não foi registada`, description: `${result.error || ''} Registe-a no Financeiro.`.trim() });
+          continue;
+        }
+      }
+      saved.push(inc);
+    }
+    if (saved.length > 0) {
+      setIncomes((prev) => {
+        const next = [...saved, ...prev];
+        saveIncomes(next);
+        return next;
+      });
     }
   };
 
@@ -809,7 +822,7 @@ export default function App() {
       const result = await upsertProjectToDb(newProject, userProfile.companyId);
       if (!result.success) {
         console.error('[App] handleSaveProject failed:', result.error);
-        alert(`Erro ao guardar projeto no servidor: ${result.error || 'Tente novamente.'}`);
+        toast({ tone: 'danger', title: 'Não foi possível guardar o projeto', description: result.error || 'Verifique a ligação à internet e tente novamente.' });
         return;
       }
     }
@@ -857,20 +870,26 @@ export default function App() {
         initialIncomes.push(pendingIncome);
       }
 
-      if (userProfile?.companyId) {
-        for (const inc of [...initialIncomes]) {
-          const result = await upsertIncomeToDb(inc, userProfile.companyId);
-          if (!result.success) {
-            initialIncomes.splice(initialIncomes.indexOf(inc), 1);
-            alert(`O projeto foi guardado, mas a receita "${inc.description}" não: ${result.error || 'tente novamente.'}\nRegiste-a no Financeiro.`);
-          }
-        }
-      }
-
-      if (initialIncomes.length > 0) {
-        const nextIncomes = [...initialIncomes, ...incomes];
-        setIncomes(nextIncomes);
-        saveIncomes(nextIncomes);
+      await recordProjectIncomes(initialIncomes, 'O projeto foi guardado, mas');
+    } else {
+      // Aumentar o "valor pago" de um projeto existente é um pagamento recebido: regista-o no
+      // financeiro. Antes ficava só no projeto e o saldo em caixa nunca o via.
+      const previous = projects.find((p) => p.id === projectId);
+      const delta = Math.round(((newProject.paidAmount || 0) - (previous?.paidAmount || 0)) * 100) / 100;
+      if (previous && delta > 0) {
+        await recordProjectIncomes([{
+          id: `inc-${Date.now()}-p`,
+          clientId: newProject.clientId,
+          projectId: newProject.id,
+          description: `Pagamento - ${newProject.name}`,
+          amount: delta,
+          currency: newProject.currency,
+          dueDate: getTodayIso(),
+          receivedDate: getTodayIso(),
+          status: 'Recebido',
+          paymentMethod: 'Transferência',
+          createdAt: getTodayIso(),
+        }], 'O projeto foi guardado, mas');
       }
     }
 
@@ -892,9 +911,9 @@ export default function App() {
         const client = clients.find((c) => c.id === newProject.clientId);
         sendEmployeeProjectAssignedEmail({
           employeeEmail: assignedEmployee.email,
-          employeeName: assignedEmployee.name,
-          projectName: newProject.name,
-          clientName: client?.name,
+          employeeName: assignedEmployee?.name || 'Colaborador',
+          projectName: newProject?.name || 'Projeto',
+          clientName: client?.name || 'Cliente',
           dueDate: newProject.dueDate,
         }).catch((err) => console.warn('[Resend] Project assign email failed:', err));
       }
@@ -902,14 +921,17 @@ export default function App() {
   };
 
   // Quitar um contrato regista o dinheiro no financeiro: as receitas pendentes passam a
-  // "Recebido" e, se elas não cobrirem o valor total, é criada uma receita com a diferença.
-  // Antes só o projeto mudava, e na sincronização seguinte o valor pago voltava atrás.
+  // "Recebido" e, se não cobrirem o valor total, é criada uma receita com a diferença.
+  // O estado do projeto não muda: o trabalho segue até ser entregue.
   const handleMarkProjectAsPaid = async (project: Project) => {
     const pending = project.totalAmount - project.paidAmount;
-    if (!window.confirm(
-      `Registar o recebimento de ${formatCurrency(pending, project.currency)} de "${project.name}"?\n\n` +
-      'As receitas pendentes passam a "Recebido" (e a diferença em falta é registada hoje). O estado do projeto não muda.'
-    )) return;
+    const ok = await confirmAction({
+      title: `Registar o recebimento de ${formatCurrency(pending, project.currency)}?`,
+      description: `As receitas pendentes de "${project.name}" passam a "Recebido" e a diferença em falta é registada hoje. O estado do projeto não muda.`,
+      confirmLabel: 'Registar recebimento',
+    });
+    if (!ok) return;
+
     const companyId = userProfile?.companyId;
     const today = getTodayIso();
     const changedIncomes: Income[] = incomes
@@ -941,32 +963,23 @@ export default function App() {
       for (const inc of changedIncomes) {
         const result = await upsertIncomeToDb(inc, companyId);
         if (!result.success) {
-          alert(`Não foi possível registar o pagamento "${inc.description}": ${result.error || 'tente novamente.'}`);
+          toast({ tone: 'danger', title: `Não foi possível registar "${inc.description}"`, description: result.error });
           await loadDbData();
           return;
         }
       }
     }
 
-    const changedIds = new Set(changedIncomes.map((i) => i.id));
+    const changedById = new Map(changedIncomes.map((i) => [i.id, i]));
     const nextIncomes = [
       ...changedIncomes.filter((i) => !incomes.some((existing) => existing.id === i.id)),
-      ...incomes.map((i) => (changedIds.has(i.id) ? changedIncomes.find((c) => c.id === i.id)! : i)),
+      ...incomes.map((i) => changedById.get(i.id) || i),
     ];
     setIncomes(nextIncomes);
     saveIncomes(nextIncomes);
 
-    // Só o pagamento muda: o projeto continua no estado em que está até ser entregue.
-    const updatedProject: Project = { ...project, paidAmount: project.totalAmount };
-    if (companyId) {
-      const result = await upsertProjectToDb(updatedProject, companyId);
-      if (!result.success) {
-        alert(`Pagamentos registados, mas o projeto não foi atualizado: ${result.error || 'tente novamente.'}`);
-      }
-    }
-    const updatedProjects = projects.map((p) => (p.id === project.id ? updatedProject : p));
-    setProjects(updatedProjects);
-    saveProjects(updatedProjects);
+    await persistProjectChange({ ...project, paidAmount: project.totalAmount });
+    toast({ tone: 'success', title: 'Recebimento registado', description: `${formatCurrency(pending, project.currency)} de "${project.name}".` });
   };
 
   const handleDuplicateProject = (project: Project) => {
@@ -985,23 +998,6 @@ export default function App() {
     setIsProjectModalOpen(true);
   };
 
-  // Grava primeiro no servidor; o ecrã só muda depois de confirmado.
-  const persistProjectChange = async (updatedProject: Project): Promise<boolean> => {
-    if (userProfile?.companyId) {
-      const result = await upsertProjectToDb(updatedProject, userProfile.companyId);
-      if (!result.success) {
-        alert(`Não foi possível atualizar o projeto: ${result.error || 'tente novamente.'}`);
-        return false;
-      }
-    }
-    setProjects((prev) => {
-      const next = prev.map((p) => (p.id === updatedProject.id ? updatedProject : p));
-      saveProjects(next);
-      return next;
-    });
-    return true;
-  };
-
   const handleRateProject = async (project: Project, rating: number) => {
     await persistProjectChange({ ...project, rating });
   };
@@ -1010,24 +1006,25 @@ export default function App() {
     const project = projects.find((p) => p.id === projectId);
     if (!project) return;
 
-    // Apagar um contrato com receitas desligava-as do projeto (e as tarefas eram apagadas
-    // em cascata), por isso o histórico do contrato "desaparecia". Encerrar preserva tudo.
+    // Apagar um contrato com receitas desligava-as do projeto (e as tarefas eram apagadas em
+    // cascata), por isso o histórico do contrato "desaparecia". Encerrar preserva tudo.
     const linkedIncomes = incomes.filter((i) => i.projectId === projectId);
     if (linkedIncomes.length > 0) {
-      const closeInstead = window.confirm(
-        `O projeto "${project.name}" tem ${linkedIncomes.length} receita(s) no histórico, por isso não pode ser apagado.\n\n` +
-        'Quer encerrá-lo como "Concluído"? O histórico financeiro e os relatórios ficam intactos.'
-      );
+      const closeInstead = await confirmAction({
+        title: `"${project.name}" tem ${linkedIncomes.length} receita(s) e não pode ser eliminado`,
+        description: 'Quer encerrá-lo como "Concluído"? O histórico financeiro e os relatórios ficam intactos.',
+        confirmLabel: 'Marcar como Concluído',
+      });
       if (closeInstead && project.status !== 'Concluído') {
-        await handleSaveProject({ ...project, status: 'Concluído' });
+        await persistProjectChange({ ...project, status: 'Concluído' });
       }
       return;
     }
 
-    if (window.confirm(`Tem certeza que deseja excluir o projeto "${project.name}"?\nAs tarefas deste projeto também serão apagadas.`)) {
-      const result = await deleteProjectFromDb(projectId, userProfile?.companyId);
+    if (await confirmAction({ title: `Eliminar o projeto "${project.name}"?`, description: 'Este projeto não tem receitas. As tarefas dele também são eliminadas.', confirmLabel: 'Eliminar projeto', danger: true })) {
+      const result = await deleteProjectFromDb(projectId);
       if (!result.success) {
-        alert(`Não foi possível excluir o projeto: ${result.error || 'tente novamente.'}`);
+        toast({ tone: 'danger', title: 'Não foi possível eliminar o projeto', description: result.error });
         return;
       }
       const updatedProjects = projects.filter((p) => p.id !== projectId);
@@ -1068,47 +1065,67 @@ export default function App() {
   const handleSaveTask = async (
     taskData: Partial<Task> & { title: string; companyId: string; createdBy: string }
   ) => {
-    const saved = await upsertTask(taskData);
-    if (saved) {
-      setTasks((prev) => {
-        const exists = prev.some((t) => t.id === saved.id);
-        return exists ? prev.map((t) => (t.id === saved.id ? saved : t)) : [saved, ...prev];
+    // Ensure companyId fallback from userProfile
+    const enrichedData = {
+      ...taskData,
+      companyId: taskData.companyId || userProfile?.companyId || 'company_default',
+      createdBy: taskData.createdBy || userProfile?.id || 'anonymous',
+    };
+
+    const saved = await upsertTask(enrichedData);
+    setTasks((prev) => {
+      const exists = prev.some((t) => t.id === saved.id);
+      const updated = exists ? prev.map((t) => (t.id === saved.id ? saved : t)) : [saved, ...prev];
+      saveTasks(updated);
+      return updated;
+    });
+
+    if (userProfile) {
+      logAction({
+        companyId: userProfile.companyId,
+        userId: userProfile.id,
+        userName: userProfile.name,
+        userRole: userProfile.role,
+        action: taskData.id ? 'task.edit' : 'task.create',
+        resourceType: 'task',
+        resourceId: saved.id,
       });
+    }
 
-      if (userProfile) {
-        logAction({
-          companyId: userProfile.companyId,
-          userId: userProfile.id,
-          userName: userProfile.name,
-          userRole: userProfile.role,
-          action: taskData.id ? 'task.edit' : 'task.create',
-          resourceType: 'task',
-          resourceId: saved.id,
-        });
-      }
-
-      if (saved.assignedTo) {
-        const assignedEmployee = companyUsers.find((u) => u.id === saved.assignedTo);
-        if (assignedEmployee?.email) {
-          const project = projects.find((p) => p.id === saved.projectId);
-          sendEmployeeTaskAssignedEmail({
-            employeeEmail: assignedEmployee.email,
-            employeeName: assignedEmployee.name,
-            taskTitle: saved.title,
-            projectName: project?.name,
-            dueDate: saved.dueDate,
-            priority: saved.priority,
-          }).catch((err) => console.warn('[Resend] Task assign email failed:', err));
-        }
+    if (saved.assignedTo) {
+      const assignedEmployee = companyUsers.find((u) => u.id === saved.assignedTo);
+      if (assignedEmployee?.email) {
+        const project = projects.find((p) => p.id === saved.projectId);
+        sendEmployeeTaskAssignedEmail({
+          employeeEmail: assignedEmployee.email,
+          employeeName: assignedEmployee?.name || 'Colaborador',
+          taskTitle: saved.title,
+          projectName: project?.name || 'Projeto',
+          dueDate: saved.dueDate,
+          priority: saved.priority,
+        }).catch((err) => console.warn('[Resend] Task assign email failed:', err));
       }
     }
   };
 
   const handleUpdateTaskStatus = async (taskId: string, newStatus: TaskStatus) => {
-    setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t))
-    );
-    await updateTaskStatus(taskId, newStatus);
+    const previous = tasks.find((t) => t.id === taskId)?.status;
+    // Atualização otimista (o cartão muda logo de coluna)…
+    setTasks((prev) => {
+      const updated = prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t));
+      saveTasks(updated);
+      return updated;
+    });
+    const ok = await updateTaskStatus(taskId, newStatus);
+    // …e volta atrás se a base de dados recusar.
+    if (!ok && previous) {
+      setTasks((prev) => {
+        const reverted = prev.map((t) => (t.id === taskId ? { ...t, status: previous } : t));
+        saveTasks(reverted);
+        return reverted;
+      });
+      return;
+    }
 
     if (userProfile) {
       logAction({
@@ -1124,21 +1141,27 @@ export default function App() {
   };
 
   const handleDeleteTask = async (taskId: string) => {
-    if (window.confirm('Tem certeza que deseja excluir esta tarefa?')) {
-      setTasks((prev) => prev.filter((t) => t.id !== taskId));
+    if (await confirmAction({ title: 'Eliminar esta tarefa?', description: 'Esta ação não pode ser anulada.', confirmLabel: 'Eliminar tarefa', danger: true })) {
+      setTasks((prev) => {
+        const updated = prev.filter((t) => t.id !== taskId);
+        saveTasks(updated);
+        return updated;
+      });
       await deleteTask(taskId);
     }
   };
 
   const handleAssignTaskToMe = async (taskId: string) => {
     if (!userProfile) return;
-    setTasks((prev) =>
-      prev.map((t) =>
+    setTasks((prev) => {
+      const updated = prev.map((t) =>
         t.id === taskId
-          ? { ...t, assignedTo: userProfile.id, assignedToName: userProfile.name, status: 'Em andamento' }
+          ? { ...t, assignedTo: userProfile.id, assignedToName: userProfile.name, status: 'Em andamento' as TaskStatus }
           : t
-      )
-    );
+      );
+      saveTasks(updated);
+      return updated;
+    });
     await upsertTask({
       id: taskId,
       companyId: userProfile.companyId,
@@ -1230,7 +1253,7 @@ export default function App() {
         if (reqEmp?.email && (data.status === 'Aprovada' || data.status === 'Rejeitada')) {
           sendEmployeeBillingStatusEmail({
             employeeEmail: reqEmp.email,
-            employeeName: reqEmp.name,
+            employeeName: reqEmp?.name || 'Colaborador',
             description: req.description,
             amount: req.amount,
             currency: req.currency,
@@ -1286,6 +1309,7 @@ export default function App() {
     password?: string;
     role: UserRole;
     status: 'active' | 'suspended';
+    language?: 'pt' | 'en';
   }) => {
     if (!userProfile?.companyId) return;
 
@@ -1303,7 +1327,11 @@ export default function App() {
       }
 
       const freshUsers = await fetchCompanyUsers(userProfile.companyId);
-      setCompanyUsers(freshUsers);
+      setCompanyUsers(
+        data.language
+          ? freshUsers.map((u) => (u.id === res.userId || u.email === data.email ? { ...u, language: data.language } : u))
+          : freshUsers
+      );
 
       logAction({
         companyId: userProfile.companyId,
@@ -1330,10 +1358,19 @@ export default function App() {
         name: data.name,
         role: data.role,
         status: data.status,
+        language: data.language,
       });
 
       const freshUsers = await fetchCompanyUsers(userProfile.companyId);
-      setCompanyUsers(freshUsers);
+      setCompanyUsers(
+        freshUsers.map((u) => (u.id === data.id ? { ...u, language: data.language || u.language } : u))
+      );
+
+      // If updating current user's profile, switch active language immediately
+      if (data.language && userProfile.id === data.id) {
+        setLang(data.language);
+        await refreshProfile();
+      }
 
       logAction({
         companyId: userProfile.companyId,
@@ -1416,7 +1453,7 @@ export default function App() {
       const result = await upsertIncomeToDb(newIncome, userProfile.companyId);
       if (!result.success) {
         console.error('[App] handleSaveIncome failed:', result.error);
-        alert(`Erro ao guardar receita no servidor: ${result.error || 'Tente novamente.'}`);
+        toast({ tone: 'danger', title: 'Não foi possível guardar a receita', description: result.error || 'Verifique a ligação à internet e tente novamente.' });
         return;
       }
     }
@@ -1436,10 +1473,10 @@ export default function App() {
     const income = incomes.find((i) => i.id === incomeId);
     if (!income) return;
 
-    if (window.confirm(`Excluir a receita "${income.description}"?`)) {
-      const result = await deleteIncomeFromDb(incomeId, userProfile?.companyId);
+    if (await confirmAction({ title: `Eliminar a receita "${income.description}"?`, confirmLabel: 'Eliminar receita', danger: true })) {
+      const result = await deleteIncomeFromDb(incomeId);
       if (!result.success) {
-        alert(`Não foi possível excluir a receita: ${result.error || 'tente novamente.'}`);
+        toast({ tone: 'danger', title: 'Não foi possível eliminar a receita', description: result.error });
         return;
       }
       const updated = incomes.filter((i) => i.id !== incomeId);
@@ -1463,7 +1500,7 @@ export default function App() {
     if (userProfile?.companyId) {
       const result = await upsertIncomeToDb(updatedIncome, userProfile.companyId);
       if (!result.success) {
-        alert(`Não foi possível atualizar a receita: ${result.error || 'tente novamente.'}`);
+        toast({ tone: 'danger', title: 'Não foi possível atualizar a receita', description: result.error });
         return;
       }
     }
@@ -1480,7 +1517,7 @@ export default function App() {
       if (client?.email) {
         sendClientReceiptEmail({
           clientEmail: client.email,
-          clientName: client.name,
+          clientName: client?.name || 'Cliente',
           description: income.description,
           amount: income.amount,
           currency: income.currency,
@@ -1508,7 +1545,7 @@ export default function App() {
       const result = await upsertExpenseToDb(newExpense, userProfile.companyId);
       if (!result.success) {
         console.error('[App] handleSaveExpense failed:', result.error);
-        alert(`Erro ao guardar despesa no servidor: ${result.error || 'Tente novamente.'}`);
+        toast({ tone: 'danger', title: 'Não foi possível guardar a despesa', description: result.error || 'Verifique a ligação à internet e tente novamente.' });
         return;
       }
     }
@@ -1524,10 +1561,10 @@ export default function App() {
     const expense = expenses.find((e) => e.id === expenseId);
     if (!expense) return;
 
-    if (window.confirm(`Excluir a despesa "${expense.description}"?`)) {
-      const result = await deleteExpenseFromDb(expenseId, userProfile?.companyId);
+    if (await confirmAction({ title: `Eliminar a despesa "${expense.description}"?`, confirmLabel: 'Eliminar despesa', danger: true })) {
+      const result = await deleteExpenseFromDb(expenseId);
       if (!result.success) {
-        alert(`Não foi possível excluir a despesa: ${result.error || 'tente novamente.'}`);
+        toast({ tone: 'danger', title: 'Não foi possível eliminar a despesa', description: result.error });
         return;
       }
       const updated = expenses.filter((e) => e.id !== expenseId);
@@ -1545,7 +1582,7 @@ export default function App() {
     if (userProfile?.companyId) {
       const result = await upsertExpenseToDb(updatedExpense, userProfile.companyId);
       if (!result.success) {
-        alert(`Não foi possível atualizar a despesa: ${result.error || 'tente novamente.'}`);
+        toast({ tone: 'danger', title: 'Não foi possível atualizar a despesa', description: result.error });
         return;
       }
     }
@@ -1556,8 +1593,7 @@ export default function App() {
 
   const handleToggleProjectCommissionPaid = async (project: Project) => {
     const nextPaid = !project.commissionPaid;
-    const updatedProject: Project = { ...project, commissionPaid: nextPaid };
-    await persistProjectChange(updatedProject);
+    await persistProjectChange({ ...project, commissionPaid: nextPaid });
   };
 
   // ------------------------------------------------------------------
@@ -1574,7 +1610,7 @@ export default function App() {
     if (userProfile?.companyId) {
       const result = await upsertCategoryToDb(newCategory, userProfile.companyId);
       if (!result.success) {
-        alert(`Não foi possível guardar a categoria: ${result.error || 'tente novamente.'}`);
+        toast({ tone: 'danger', title: 'Não foi possível guardar a categoria', description: result.error });
         return;
       }
     }
@@ -1586,9 +1622,9 @@ export default function App() {
   };
 
   const handleDeleteCategory = async (categoryId: string) => {
-    const result = await deleteCategoryFromDb(categoryId, userProfile?.companyId);
+    const result = await deleteCategoryFromDb(categoryId);
     if (!result.success) {
-      alert(`Não foi possível excluir a categoria: ${result.error || 'tente novamente.'}`);
+      toast({ tone: 'danger', title: 'Não foi possível eliminar a categoria', description: result.error });
       return;
     }
     const updated = categories.filter((c) => c.id !== categoryId);
@@ -1600,7 +1636,7 @@ export default function App() {
     if (userProfile?.companyId) {
       const result = await upsertSettingsToDb(newSettings, userProfile.companyId);
       if (!result.success) {
-        alert(`Não foi possível guardar as configurações: ${result.error || 'tente novamente.'}`);
+        toast({ tone: 'danger', title: 'Não foi possível guardar as definições', description: result.error });
         return;
       }
     }
@@ -1619,7 +1655,7 @@ export default function App() {
     if (userProfile?.companyId) {
       const result = await upsertAgendaEventToDb(newEvent, userProfile.companyId);
       if (!result.success) {
-        alert(`Não foi possível guardar o evento: ${result.error || 'tente novamente.'}`);
+        toast({ tone: 'danger', title: 'Não foi possível guardar o evento', description: result.error });
         return;
       }
     }
@@ -1627,9 +1663,9 @@ export default function App() {
   };
 
   const handleDeleteAgendaEvent = async (eventId: string) => {
-    const result = await deleteAgendaEventFromDb(eventId, userProfile?.companyId);
+    const result = await deleteAgendaEventFromDb(eventId);
     if (!result.success) {
-      alert(`Não foi possível excluir o evento: ${result.error || 'tente novamente.'}`);
+      toast({ tone: 'danger', title: 'Não foi possível eliminar o evento', description: result.error });
       return;
     }
     setAgendaEvents((prev) => prev.filter((e) => e.id !== eventId));
@@ -1643,7 +1679,7 @@ export default function App() {
     if (userProfile?.companyId) {
       const result = await upsertAgendaEventToDb(updatedEvt, userProfile.companyId);
       if (!result.success) {
-        alert(`Não foi possível atualizar o evento: ${result.error || 'tente novamente.'}`);
+        toast({ tone: 'danger', title: 'Não foi possível atualizar o evento', description: result.error });
         return;
       }
     }
@@ -1663,7 +1699,7 @@ export default function App() {
       const result = await upsertPartnerToDb(newPartner, userProfile.companyId);
       if (!result.success) {
         console.error('[App] handleSavePartner failed:', result.error);
-        alert(`Erro ao guardar parceiro no servidor: ${result.error || 'Tente novamente.'}`);
+        toast({ tone: 'danger', title: 'Não foi possível guardar o parceiro', description: result.error || 'Verifique a ligação à internet e tente novamente.' });
         return;
       }
     }
@@ -1680,33 +1716,33 @@ export default function App() {
     if (!partner) return;
     const linkedProjects = projects.filter((p) => p.partnerId === partnerId);
     if (linkedProjects.length > 0) {
-      alert(
-        `O parceiro "${partner.name}" está ligado a ${linkedProjects.length} projeto(s) e às comissões deles, por isso não pode ser apagado.`
-      );
+      toast({
+        tone: 'warning',
+        title: `"${partner.name}" tem histórico e não pode ser eliminado`,
+        description: `Está ligado a ${linkedProjects.length} projeto(s) e às comissões deles.`,
+      });
       return;
     }
-    if (window.confirm(`Tem certeza que deseja excluir o parceiro "${partner.name}"?`)) {
-      const result = await deletePartnerFromDb(partnerId, userProfile?.companyId);
+    if (await confirmAction({ title: `Eliminar o parceiro "${partner.name}"?`, confirmLabel: 'Eliminar parceiro', danger: true })) {
+      const result = await deletePartnerFromDb(partnerId);
       if (!result.success) {
-        alert(`Não foi possível excluir o parceiro: ${result.error || 'tente novamente.'}`);
+        toast({ tone: 'danger', title: 'Não foi possível eliminar o parceiro', description: result.error });
         return;
       }
       setPartners((prev) => prev.filter((p) => p.id !== partnerId));
     }
   };
 
-  const handleResetData = () => {
-    if (window.confirm('Deseja recarregar o sistema e sincronizar com o servidor?')) {
+  const handleResetData = async () => {
+    if (await confirmAction({ title: 'Recarregar e sincronizar?', description: 'A página é recarregada com os dados mais recentes do servidor.', confirmLabel: 'Recarregar' })) {
       clearAllData();
       window.location.reload();
     }
   };
 
-  const handleClearData = () => {
+  const handleClearData = async () => {
     if (
-      window.confirm(
-        'ATENÇÃO: Deseja realmente limpar os dados locais do cache deste dispositivo? Os dados salvos no servidor permanecerão intactos.\n\nUm backup será criado automaticamente antes de limpar.'
-      )
+      await confirmAction({ title: 'Limpar os dados deste dispositivo?', description: 'Os dados no servidor ficam intactos. Antes de limpar é criada uma cópia de segurança.', confirmLabel: 'Limpar dados locais', danger: true })
     ) {
       // Auto-backup before clearing (uses current live state)
       exportBackupData({ clients, projects, incomes, expenses, partners });
@@ -1728,67 +1764,38 @@ export default function App() {
   };
 
   const handleImportData = async (jsonStr: string) => {
-    isImportingRef.current = true;
-    console.group('[IMPORT 📦] Iniciando importação e sincronização...');
-    try {
-      const success = importBackupData(jsonStr);
-      if (success) {
-        const importedClients = getStoredClients();
-        const importedPartners = getStoredPartners();
-        const importedProjects = getStoredProjects();
-        const importedIncomes = getStoredIncomes();
-        const importedExpenses = getStoredExpenses();
+    const success = importBackupData(jsonStr);
+    if (success) {
+      const importedClients = getStoredClients();
+      const importedProjects = getStoredProjects();
+      const importedIncomes = getStoredIncomes();
+      const importedExpenses = getStoredExpenses();
+      const importedPartners = getStoredPartners();
 
-        console.log(`[IMPORT 📊] Dados locais carregados: Clientes=${importedClients.length}, Parceiros=${importedPartners.length}, Projetos=${importedProjects.length}, Receitas=${importedIncomes.length}, Despesas=${importedExpenses.length}`);
+      setClients(importedClients);
+      setProjects(importedProjects);
+      setIncomes(importedIncomes);
+      setExpenses(importedExpenses);
+      setCategories(getStoredCategories());
+      setPartners(importedPartners);
+      setSettings(getStoredSettings());
 
-        setClients(importedClients);
-        setPartners(importedPartners);
-        setProjects(importedProjects);
-        setIncomes(importedIncomes);
-        setExpenses(importedExpenses);
-        setCategories(getStoredCategories());
-        setSettings(getStoredSettings());
-
-        // Snapshot de emergência para recuperação
-        createEmergencySnapshot();
-
-        // Sincronizar dados importados diretamente com o banco Supabase na ordem correta de dependência (sem quebra de FK)
-        const cid = userProfile?.companyId;
-        if (cid) {
-          console.log(`[IMPORT ☁️] Sincronizando com Supabase para companyId: ${cid}...`);
-          try {
-            console.log(`[IMPORT 1/5] Enviando ${importedClients.length} Clientes...`);
-            for (const c of importedClients) await upsertClientToDb(c, cid);
-
-            console.log(`[IMPORT 2/5] Enviando ${importedPartners.length} Parceiros...`);
-            for (const pa of importedPartners) await upsertPartnerToDb(pa, cid);
-
-            console.log(`[IMPORT 3/5] Enviando ${importedProjects.length} Projetos...`);
-            for (const p of importedProjects) await upsertProjectToDb(p, cid);
-
-            console.log(`[IMPORT 4/5] Enviando ${importedIncomes.length} Receitas...`);
-            for (const i of importedIncomes) await upsertIncomeToDb(i, cid);
-
-            console.log(`[IMPORT 5/5] Enviando ${importedExpenses.length} Despesas...`);
-            for (const e of importedExpenses) await upsertExpenseToDb(e, cid);
-
-            console.log('[IMPORT ✅] Todos os dados foram enviados para o Supabase com sucesso!');
-          } catch (err) {
-            console.warn('[IMPORT ⚠️] Aviso na sincronização com o banco:', err);
-          }
-        } else {
-          console.warn('[IMPORT ⚠️] companyId não disponível — dados salvos no cache local deste dispositivo.');
+      // Sincronizar dados importados diretamente com o banco Supabase
+      const cid = userProfile?.companyId;
+      if (cid) {
+        try {
+          for (const c of importedClients) await upsertClientToDb(c, cid);
+          for (const p of importedProjects) await upsertProjectToDb(p, cid);
+          for (const i of importedIncomes) await upsertIncomeToDb(i, cid);
+          for (const e of importedExpenses) await upsertExpenseToDb(e, cid);
+          for (const pa of importedPartners) await upsertPartnerToDb(pa, cid);
+        } catch (err) {
+          console.warn('[Import] Erro na sincronização com o banco:', err);
         }
-        alert('Dados restaurados e sincronizados com a base de dados com sucesso!');
-      } else {
-        console.error('[IMPORT ❌] Erro ao decodificar arquivo JSON de backup.');
-        alert('Erro ao importar arquivo de backup.');
       }
-    } finally {
-      isImportingRef.current = false;
-      console.log('[IMPORT 🔄] Executando atualização final...');
-      await loadDbData();
-      console.groupEnd();
+      toast({ tone: 'success', title: 'Cópia de segurança restaurada', description: 'Os dados foram sincronizados com o servidor.' });
+    } else {
+      toast({ tone: 'danger', title: 'Não foi possível importar a cópia de segurança', description: 'Confirme que escolheu um ficheiro .json exportado por esta app.' });
     }
   };
 
@@ -1798,10 +1805,10 @@ export default function App() {
   // ------------------------------------------------------------------
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-[#fcf8f8] flex items-center justify-center" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+      <div className="min-h-screen bg-transparent flex items-center justify-center" style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", letterSpacing: '-0.011em' }}>
         <div className="text-center space-y-4">
-          <div className="w-10 h-10 border-2 border-[#000000] border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-[#747878] text-sm font-normal">A carregar permissões...</p>
+          <div className="w-10 h-10 border-2 border-fg border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-fg-muted text-sm font-normal">A carregar permissões...</p>
         </div>
       </div>
     );
@@ -1811,25 +1818,63 @@ export default function App() {
     return <LoginView onLoginSuccess={login} />;
   }
 
+  if (userProfile?.status === 'suspended') {
+    return (
+      <div className="min-h-screen grid place-items-center p-6 bg-neutral-50">
+        <div className="max-w-md w-full rounded-3xl bg-white shadow-xl p-8 text-center space-y-4">
+          <h1 className="text-xl font-semibold text-neutral-900">{lang === 'en' ? 'Account suspended' : 'Conta suspensa'}</h1>
+          <p className="text-sm text-neutral-600">
+            {lang === 'en'
+              ? 'Access to this account has been suspended. Contact support to resolve it.'
+              : 'O acesso a esta conta foi suspenso. Fale com o suporte para resolver.'}
+          </p>
+          <a className="block text-sm underline text-neutral-800" href={`mailto:${APP_CONFIG.supportEmail}`}>{APP_CONFIG.supportEmail}</a>
+          <button type="button" onClick={logout} className="w-full rounded-full bg-neutral-900 text-white py-2.5 text-sm font-medium">
+            {lang === 'en' ? 'Sign out' : 'Terminar sessão'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!userProfile) {
+    return (
+      <div className="min-h-screen bg-transparent flex items-center justify-center" style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", letterSpacing: '-0.011em' }}>
+        <div className="text-center space-y-4">
+          <div className="w-10 h-10 border-2 border-fg border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-fg font-medium text-base">{t('common.loadingWorkspace', 'A preparar o seu espaço de trabalho...')}</p>
+          <p className="text-fg-muted text-sm font-normal">{t('common.configuringWorkspace', 'Estamos a configurar a sua empresa e período de trial.')}</p>
+        </div>
+      </div>
+    );
+  }
+
   const pendingBillingCount = billingRequests.filter(
     (r) => r.status === 'Solicitada' || r.status === 'Em análise'
   ).length;
 
+  // Badges só para o que pede ação (Regra 04): atrasado, para hoje ou pendente de decisão
+  const _d = new Date();
+  const todayISO = `${_d.getFullYear()}-${String(_d.getMonth() + 1).padStart(2, '0')}-${String(_d.getDate()).padStart(2, '0')}`;
+  const tasksNeedingAction = tasks.filter((t) => t.status !== 'Concluída' && t.status !== 'Cancelada' && !!t.dueDate && t.dueDate.slice(0, 10) <= todayISO).length;
+  const overdueIncomesCount = incomes.filter((i) => i.status === 'Atrasado' || (i.status === 'Pendente' && i.dueDate.slice(0, 10) < todayISO)).length;
+  const eventsTodayCount = agendaEvents.filter((e) => e.status === 'pending' && e.date <= todayISO).length;
+
   // Navigation Items Catalog
   const allNavItems = [
-    { id: 'dashboard',  label: 'Painel Geral',       icon: LayoutDashboard },
-    { id: 'calendar',   label: 'Agenda & Prazos',     icon: CalendarIcon, badge: agendaEvents.filter((e) => e.status === 'pending').length },
-    { id: 'projects',   label: 'Projetos & Operações', icon: FolderKanban, badge: projects.filter((p) => p.status === 'Em andamento').length },
-    { id: 'tasks',      label: 'Tarefas & Entregas',  icon: CheckSquare,  badge: tasks.filter((t) => t.status !== 'Concluída').length },
-    { id: 'billing',    label: 'Faturamento & Pedidos', icon: FileText,   badge: pendingBillingCount > 0 ? pendingBillingCount : undefined },
-    { id: 'clients',    label: 'Clientes & Contas',   icon: Users,        badge: clients.length },
-    { id: 'financial',  label: 'Transações Financeiras', icon: DollarSign, badge: incomes.filter((i) => i.status === 'Pendente').length },
-    { id: 'partners',   label: 'Gestão de Parceiros', icon: Handshake,    badge: partners.length },
-    { id: 'categories', label: 'Categorias',          icon: Tag },
-    { id: 'reports',    label: 'Relatórios',          icon: PieChart },
-    { id: 'users',      label: 'Utilizadores & Cargos', icon: UserCog,    badge: isOwner ? companyUsers.length : undefined },
-    { id: 'audit',      label: 'Registo de Auditoria', icon: History },
-    { id: 'settings',   label: 'Configurações',       icon: Settings },
+    { id: 'dashboard',  label: t('nav.dashboard', 'Painel'),       icon: LayoutDashboard },
+    { id: 'calendar',   label: t('nav.calendar', 'Agenda'),     icon: CalendarIcon, badge: eventsTodayCount || undefined },
+    { id: 'projects',   label: t('nav.projects', 'Projetos'), icon: FolderKanban, },
+    { id: 'tasks',      label: t('nav.tasks', 'Tarefas'),  icon: CheckSquare,  badge: tasksNeedingAction || undefined },
+    { id: 'billing',    label: t('nav.billing', 'Faturação'), icon: FileText,   badge: pendingBillingCount > 0 ? pendingBillingCount : undefined },
+    { id: 'clients',    label: t('nav.clients', 'Clientes'),   icon: Users },
+    { id: 'financial',  label: t('nav.financial', 'Financeiro'), icon: DollarSign, badge: overdueIncomesCount || undefined },
+    { id: 'partners',   label: t('nav.partners', 'Parceiros'), icon: Handshake },
+    { id: 'categories', label: t('nav.categories', 'Categorias'),          icon: Tag },
+    { id: 'reports',    label: t('nav.reports', 'Relatórios'),          icon: PieChart },
+    { id: 'users',      label: t('nav.users', 'Utilizadores'), icon: UserCog },
+    { id: 'audit',      label: t('nav.audit', 'Auditoria'), icon: History },
+    { id: 'settings',   label: t('nav.settings', 'Definições'),       icon: Settings },
   ];
 
   // Filter nav items by user permissions
@@ -1839,164 +1884,116 @@ export default function App() {
   });
 
   return (
-    <div className="min-h-screen bg-[#fcf8f8] text-[#1c1b1b] flex flex-col" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
-      {/* Top Header */}
-      <Header
-        activeCurrencyFilter={currencyFilter}
-        setActiveCurrencyFilter={setCurrencyFilter}
-        unreadNotificationsCount={notifications.length}
-        onOpenNotifications={() => setIsNotificationsOpen(true)}
-        onOpenGlobalSearch={() => setIsGlobalSearchOpen(true)}
-        onOpenNewClientModal={() => { setClientToEdit(null); setIsClientModalOpen(true); }}
-        onOpenNewProjectModal={() => { setProjectToEdit(null); setIsProjectModalOpen(true); }}
-        onOpenNewIncomeModal={() => { setIncomeToEdit(null); setIsIncomeModalOpen(true); }}
-        onOpenNewExpenseModal={() => { setExpenseToEdit(null); setIsExpenseModalOpen(true); }}
-        onOpenNewPartnerModal={() => { setPartnerToEdit(null); setIsPartnerModalOpen(true); }}
-        onOpenNewTaskModal={() => { setTaskToEdit(null); setIsTaskModalOpen(true); }}
-        onOpenNewUserModal={() => { setUserToEdit(null); setIsUserModalOpen(true); }}
-        onOpenNewBillingModal={() => { setBillingRequestToReview(null); setIsBillingModalOpen(true); }}
-        onSync={loadDbData}
-        isSyncing={isDataSyncing}
-        activeTab={activeTab}
-        setActiveTab={handleNavigateTab}
-        toggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        userSession={userSession}
-        onLogout={logout}
-      />
+    <>
+      <div className="aura-root aura-canvas aura-app h-screen overflow-hidden flex flex-col">
+        <div className="aura-canvas__aurora" aria-hidden="true"><span /><span /><span /><span /></div>
+        <div className="aura-canvas__grid" aria-hidden="true" />
+        <div className="aura-canvas__vignette" aria-hidden="true" />
+        <div className="aura-canvas__sheen" aria-hidden="true" />
+        <div className="aura-canvas__noise" aria-hidden="true" />
+        {/* Top Header — recolhe ao descer o conteúdo, volta ao subir */}
+        <div
+          ref={headerSlotRef}
+          className="relative z-30 shrink-0 grid"
+          style={{ gridTemplateRows: '1fr', transition: 'grid-template-rows 300ms ease-out, opacity 250ms ease-out' }}
+        >
+        <div style={{ minHeight: 0 }}>
+        <Header
+          activeCurrencyFilter={currencyFilter}
+          setActiveCurrencyFilter={setCurrencyFilter}
+          unreadNotificationsCount={notifications.length}
+          onOpenNotifications={() => setIsNotificationsOpen(true)}
+          onOpenGlobalSearch={() => setIsGlobalSearchOpen(true)}
+          onOpenNewClientModal={() => { setClientToEdit(null); setIsClientModalOpen(true); }}
+          onOpenNewProjectModal={() => { setProjectToEdit(null); setIsProjectModalOpen(true); }}
+          onOpenNewIncomeModal={() => { setIncomeToEdit(null); setIsIncomeModalOpen(true); }}
+          onOpenNewExpenseModal={() => { setExpenseToEdit(null); setIsExpenseModalOpen(true); }}
+          onOpenNewPartnerModal={() => { setPartnerToEdit(null); setIsPartnerModalOpen(true); }}
+          onOpenNewTaskModal={() => { setTaskToEdit(null); setIsTaskModalOpen(true); }}
+          onOpenNewUserModal={() => {
+            setUserToEdit(null);
+            setIsUserModalOpen(true);
+          }}
+          onOpenNewBillingModal={() => {
+            setBillingRequestToReview(null);
+            setIsBillingModalOpen(true);
+          }}
+          onSync={loadDbData}
+          isSyncing={isDataSyncing}
+          activeTab={activeTab}
+          setActiveTab={handleNavigateTab}
+          toggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          userSession={userSession}
+          onLogout={logout}
+        />
+        </div>
+        </div>
 
-      {/* Main App Container */}
-      <div className="flex-1 w-full max-w-[1700px] mx-auto px-4 sm:px-6 lg:px-8 py-6 flex gap-6">
-        {/* Desktop Sidebar Navigation */}
-        <aside className="hidden lg:block w-60 shrink-0">
-          <nav className="sticky top-20 space-y-0.5 bg-white p-3 rounded-[22px] border border-[#c4c7c7]/40 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-            <div className="px-3 py-2 text-[10px] font-semibold tracking-[0.08em] text-[#747878] uppercase mb-1">
-              Menu Principal
-            </div>
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
+      {/* Contentor principal — sidebar de vidro + conteúdo com scroll próprio */}
+      <div className="flex-1 min-h-0 w-full px-3 sm:px-4 lg:pl-4 lg:pr-6 pt-4 lg:pt-5 flex gap-5 overflow-hidden">
+        <AppSidebar
+          items={navItems}
+          active={activeTab}
+          collapsed={isSidebarCollapsed}
+          onToggle={toggleSidebar}
+          onSelect={handleNavigateTab}
+        />
 
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => handleNavigateTab(item.id)}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-full text-sm transition-all cursor-pointer ${
-                    isActive
-                      ? 'bg-[#000000] text-white'
-                      : 'text-[#444747] hover:text-[#1c1b1b] hover:bg-[#f1edec]'
-                  }`}
-                >
-                  <div className="flex items-center space-x-2.5">
-                    <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-[#747878]'}`} strokeWidth={1.5} />
-                    <span className="font-medium text-[13px]">{item.label}</span>
-                  </div>
-
-                  {item.badge !== undefined && item.badge > 0 && (
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                        isActive
-                          ? 'bg-white/20 text-white'
-                          : 'bg-[#e5e2e1] text-[#444747]'
-                      }`}
-                    >
-                      {item.badge}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </nav>
-        </aside>
-
-        {/* Mobile Sidebar Overlay Drawer */}
-        {isMobileMenuOpen && (
-          <div className="fixed inset-0 z-40 lg:hidden flex">
-            <div
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm"
-              onClick={() => setIsMobileMenuOpen(false)}
-            />
-            <div className="relative w-72 bg-white border-r border-[#c4c7c7]/40 p-5 h-full flex flex-col z-50 shadow-[4px_0_24px_rgba(0,0,0,0.06)]">
-              <div className="flex items-center justify-between mb-6 pb-4 border-b border-[#c4c7c7]/40">
-                <div className="flex items-center space-x-2.5">
-                  <div className="w-8 h-8 rounded-full bg-[#000000] flex items-center justify-center text-white shrink-0">
-                    <span className="text-sm font-semibold">G</span>
-                  </div>
-                  <span className="font-semibold text-[#1c1b1b] text-base">Gestão<span className="text-[#0050d7]">FO</span></span>
-                </div>
-                <button
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="p-1.5 rounded-full text-[#747878] hover:text-[#1c1b1b] hover:bg-[#f1edec] cursor-pointer"
-                >
-                  <X className="w-5 h-5" strokeWidth={1.5} />
-                </button>
-              </div>
-
-              <nav className="space-y-0.5 flex-1 overflow-y-auto">
-                {navItems.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = activeTab === item.id;
-
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => handleNavigateTab(item.id)}
-                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-full text-sm transition-all cursor-pointer ${
-                        isActive
-                          ? 'bg-[#000000] text-white'
-                          : 'text-[#444747] hover:text-[#1c1b1b] hover:bg-[#f1edec]'
-                      }`}
-                    >
-                      <div className="flex items-center space-x-2.5">
-                        <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-[#747878]'}`} strokeWidth={1.5} />
-                        <span className="font-medium text-[13px]">{item.label}</span>
-                      </div>
-                      {item.badge !== undefined && item.badge > 0 && (
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${isActive ? 'bg-white/20 text-white' : 'bg-[#e5e2e1] text-[#444747]'}`}>
-                          {item.badge}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </nav>
-
-              <button
-                onClick={logout}
-                className="mt-auto w-full flex items-center justify-center space-x-2 py-2.5 rounded-full bg-[#ffdad6] text-[#93000a] text-sm font-medium hover:opacity-85 transition-all cursor-pointer"
-              >
-                <LogOut className="w-4 h-4" strokeWidth={1.5} />
-                <span>Sair do Sistema</span>
-              </button>
-            </div>
-          </div>
-        )}
+        <MobileNav
+          items={navItems}
+          active={activeTab}
+          onSelect={handleNavigateTab}
+          moreOpen={isMobileMenuOpen}
+          setMoreOpen={setIsMobileMenuOpen}
+          onCreate={() => { setProjectToEdit(null); setIsProjectModalOpen(true); }}
+          isDark={isDark}
+          onToggleTheme={toggleTheme}
+          onToggleLang={toggleLang}
+          onSync={loadDbData}
+          isSyncing={isDataSyncing}
+          onLogout={logout}
+        />
 
         {/* Main View Area */}
-        <main className="flex-1 min-w-0">
+        <main ref={mainRef} onScroll={onMainScroll} className="aura-scroll aura-scroll-fade flex-1 min-w-0 max-w-[1640px] mx-auto h-full overflow-y-auto overflow-x-hidden pr-1 pt-1 pb-[calc(var(--layout-bottom-nav)+40px)] lg:pb-8">
           {/* Financial Integrity Warning Banner — only visible to owner when warnings exist */}
-          {isOwner && integrityWarnings.length > 0 && (
-            <div className="mb-4 bg-[#fff8f1] border border-[#e8b54a]/40 rounded-[16px] p-4 flex items-start gap-3">
+          {isOwner && !isIntegrityDismissed && integrityWarnings.length > 0 && (
+            <div className="mb-4 bg-warning-soft border border-[#e8b54a]/40 rounded-lg p-4 flex items-start gap-3">
               <div className="w-8 h-8 rounded-full bg-[#f9e4b7] flex items-center justify-center shrink-0 mt-0.5">
-                <Sparkles className="w-4 h-4 text-[#b45309]" />
+                <Sparkles className="w-4 h-4 text-warning-fg" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-[#92400e]">Avisos de Integridade Financeira</p>
+                <p className="text-sm font-semibold text-[#92400e]">
+                  {t('financial.integrityTitle', 'Avisos de Integridade Financeira')}
+                </p>
                 <ul className="mt-1 space-y-0.5">
                   {integrityWarnings.map((w, i) => (
-                    <li key={i} className="text-xs text-[#b45309]">• {w}</li>
+                    <li key={i} className="text-xs text-warning-fg">• {w}</li>
                   ))}
                 </ul>
-                <p className="text-[11px] text-[#b45309]/70 mt-2">Aceda às Transações Financeiras para corrigir.</p>
+                <p className="text-[11px] text-warning-fg/70 mt-2">
+                  {t('financial.integritySubtitle', 'Aceda às Transações Financeiras para corrigir.')}
+                </p>
               </div>
               <button
-                onClick={() => setIntegrityWarnings([])}
-                className="text-[#b45309]/60 hover:text-[#b45309] p-1 rounded-full hover:bg-[#f9e4b7] transition-colors cursor-pointer"
+                onClick={() => {
+                  setIsIntegrityDismissed(true);
+                  setIntegrityWarnings([]);
+                }}
+                className="text-warning-fg/60 hover:text-warning-fg p-1 rounded-full hover:bg-[#f9e4b7] transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
           )}
 
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.42, ease: [0.16, 1, 0.3, 1] }}
+            className="min-w-0"
+          >
           {activeTab === 'dashboard' && (
             <DashboardView
               clients={clients}
@@ -2009,6 +2006,7 @@ export default function App() {
               currencyFilter={currencyFilter}
               onNavigateTab={handleNavigateTab}
               onOpenWhatsAppCharge={handleOpenWhatsAppCharge}
+              onUpdateTaskStatus={handleUpdateTaskStatus}
               onOpenNewProjectModal={() => { setProjectToEdit(null); setIsProjectModalOpen(true); }}
               onOpenNewIncomeModal={() => { setIncomeToEdit(null); setIsIncomeModalOpen(true); }}
               onOpenNewExpenseModal={() => { setExpenseToEdit(null); setIsExpenseModalOpen(true); }}
@@ -2037,6 +2035,7 @@ export default function App() {
               clients={clients}
               currencyFilter={currencyFilter}
               initialStatusFilter={tabFilter}
+              categories={categories}
               onOpenNewProjectModal={() => { setProjectToEdit(null); setIsProjectModalOpen(true); }}
               onEditProject={(p) => { setProjectToEdit(p); setIsProjectModalOpen(true); }}
               onDuplicateProject={handleDuplicateProject}
@@ -2045,7 +2044,6 @@ export default function App() {
               onMarkProjectAsPaid={handleMarkProjectAsPaid}
               onAssumeProject={handleAssumeProject}
               onOpenWhatsAppCharge={handleOpenWhatsAppCharge}
-              onOpenStripeInvoiceModal={handleOpenStripeInvoiceModal}
             />
           )}
 
@@ -2054,6 +2052,8 @@ export default function App() {
               tasks={tasks}
               projects={projects}
               employees={companyUsers}
+              categories={categories}
+              initialCategoryFilter={tabFilter}
               onOpenNewTaskModal={(defProjId) => {
                 setTaskToEdit(defProjId ? { projectId: defProjId } as Task : null);
                 setIsTaskModalOpen(true);
@@ -2115,9 +2115,12 @@ export default function App() {
           {activeTab === 'categories' && (
             <CategoriesView
               categories={categories}
+              projects={projects}
+              tasks={tasks}
               onOpenNewCategoryModal={() => { setCategoryToEdit(null); setIsCategoryModalOpen(true); }}
               onEditCategory={(c) => { setCategoryToEdit(c); setIsCategoryModalOpen(true); }}
               onDeleteCategory={handleDeleteCategory}
+              onNavigateTab={handleNavigateTab}
             />
           )}
 
@@ -2152,7 +2155,10 @@ export default function App() {
           {activeTab === 'users' && (
             <UsersView
               users={companyUsers}
-              onOpenNewUserModal={() => { setUserToEdit(null); setIsUserModalOpen(true); }}
+              onOpenNewUserModal={() => {
+                setUserToEdit(null);
+                setIsUserModalOpen(true);
+              }}
               onEditUser={(u) => { setUserToEdit(u); setIsUserModalOpen(true); }}
               onOpenPermissionsModal={handleOpenPermissionsModal}
               onToggleUserStatus={handleToggleUserStatus}
@@ -2173,6 +2179,7 @@ export default function App() {
               onImportData={handleImportData}
             />
           )}
+          </motion.div>
         </main>
       </div>
 
@@ -2211,6 +2218,7 @@ export default function App() {
         clients={clients}
         partners={partners}
         employees={companyUsers}
+        categories={categories}
         defaultCurrency={settings.defaultCurrency}
       />
 
@@ -2222,6 +2230,7 @@ export default function App() {
           taskToEdit={taskToEdit}
           projects={projects}
           employees={companyUsers}
+          categories={categories}
           companyId={userProfile.companyId}
           currentUserId={userProfile.id}
           canAssign={isOwner || hasPermission('tasks.assign')}
@@ -2256,6 +2265,7 @@ export default function App() {
         expenseToEdit={expenseToEdit}
         defaultCurrency={settings.defaultCurrency}
         partners={partners}
+        categories={categories}
       />
 
       <CategoryModal
@@ -2286,6 +2296,7 @@ export default function App() {
         onClose={() => setIsUserModalOpen(false)}
         onSave={handleSaveUser}
         userToEdit={userToEdit}
+        currentUserCount={companyUsers.length}
       />
 
       <UserPermissionsModal
@@ -2306,18 +2317,7 @@ export default function App() {
         defaultAttachments={emailModalProps.attachments}
       />
 
-      {projectForStripeInvoice && isStripeInvoiceModalOpen && (
-        <StripeInvoiceModal
-          project={projectForStripeInvoice}
-          client={clients.find((c) => c.id === projectForStripeInvoice.clientId)}
-          incomes={incomes}
-          onClose={() => {
-            setIsStripeInvoiceModalOpen(false);
-            setProjectForStripeInvoice(null);
-          }}
-          onInvoiceCreated={handleStripeInvoiceCreated}
-        />
-      )}
-    </div>
+      </div>
+  </>
   );
 }

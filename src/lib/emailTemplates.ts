@@ -1,4 +1,4 @@
-import { SendEmailOptions, SendEmailResult, EmailAttachment } from '../types/email';
+import { SendEmailOptions, SendEmailResult, EmailAttachment, ResendEmailSettings } from '../types/email';
 import { sendResendEmail } from './resend';
 import { getStoredSettings } from './storage';
 import { formatCurrency, formatDate } from './formatters';
@@ -7,7 +7,7 @@ import { CurrencyCode } from '../types';
 /**
  * Base HTML email template layout
  */
-function wrapEmailHtml(contentHtml: string, title: string, businessName: string = 'GestãoFO Studio'): string {
+function wrapEmailHtml(contentHtml: string, title: string, businessName: string = 'CodeEngine Manager'): string {
   return `
 <!DOCTYPE html>
 <html lang="pt">
@@ -103,7 +103,7 @@ export async function sendClientPaymentReminderEmail(params: {
     ${params.notes ? `<p style="font-style: italic; color: #747878; font-size: 12px; background: #f7f3f2; padding: 10px; border-radius: 8px;">"${params.notes}"</p>` : ''}
 
     <p>Qualquer dúvida ou caso necessite dos dados de pagamento novamente, por favor responda a este e-mail.</p>
-    <p>Atenciosamente,<br><strong>${settings.businessName || 'Equipa GestãoFO'}</strong></p>
+    <p>Atenciosamente,<br><strong>${settings.businessName || 'Equipa CodeEngine Manager'}</strong></p>
   `, 'Aviso de Pagamento Pendente', settings.businessName);
 
   return sendResendEmail({
@@ -162,7 +162,7 @@ export async function sendClientReceiptEmail(params: {
     </div>
 
     <p>O comprovativo foi emitido. Se desejar guardar uma cópia ou tiver dúvidas, conte conosco.</p>
-    <p>Atenciosamente,<br><strong>${settings.businessName || 'Equipa GestãoFO'}</strong></p>
+    <p>Atenciosamente,<br><strong>${settings.businessName || 'Equipa CodeEngine Manager'}</strong></p>
   `, 'Comprovativo de Pagamento', settings.businessName);
 
   return sendResendEmail({
@@ -240,7 +240,7 @@ export async function sendEmployeeProjectAssignedEmail(params: {
   }
 
   const html = wrapEmailHtml(`
-    <h2 style="font-size: 18px; margin-top: 0; color: #0050d7;">Novo Projeto Atribuído a Ti 📂</h2>
+    <h2 style="font-size: 18px; margin-top: 0; color: #0050d7;">Novo Projeto Atribuído a Ti</h2>
     <p>Olá, <strong>${params.employeeName}</strong>,</p>
     <p>Foste definido como responsável do seguinte projeto operacional:</p>
 
@@ -292,7 +292,7 @@ export async function sendEmployeeTaskAssignedEmail(params: {
   }
 
   const html = wrapEmailHtml(`
-    <h2 style="font-size: 18px; margin-top: 0; color: #0050d7;">Nova Tarefa Atribuída ✅</h2>
+    <h2 style="font-size: 18px; margin-top: 0; color: #0050d7;">Nova Tarefa Atribuída</h2>
     <p>Olá, <strong>${params.employeeName}</strong>,</p>
     <p>Uma nova tarefa foi atribuída à tua fila de trabalho:</p>
 
@@ -352,7 +352,7 @@ export async function sendAdminBillingRequestEmail(params: {
   const formattedAmount = formatCurrency(params.amount, params.currency);
 
   const html = wrapEmailHtml(`
-    <h2 style="font-size: 18px; margin-top: 0; color: #7a5400;">Nova Solicitação de Faturamento Pendente 📄</h2>
+    <h2 style="font-size: 18px; margin-top: 0; color: #7a5400;">Nova Solicitação de Faturamento Pendente</h2>
     <p>Olá, Administrador,</p>
     <p>O colaborador <strong>${params.employeeName}</strong> submeteu um pedido de faturamento para revisão:</p>
 
@@ -411,7 +411,7 @@ export async function sendEmployeeBillingStatusEmail(params: {
 
   const html = wrapEmailHtml(`
     <h2 style="font-size: 18px; margin-top: 0; color: ${isApproved ? '#1a6b3a' : '#ba1a1a'};">
-      Pedido de Faturamento ${isApproved ? 'Aprovado! ✅' : 'Rejeitado ❌'}
+      Pedido de Faturamento ${isApproved ? 'Aprovado' : 'Rejeitado'}
     </h2>
     <p>Olá, <strong>${params.employeeName}</strong>,</p>
     <p>O teu pedido de faturamento foi revisado pelo Administrador:</p>
@@ -444,11 +444,15 @@ export async function sendEmployeeBillingStatusEmail(params: {
 /**
  * 8. Enviar E-mail de Teste para o Admin
  */
-export async function sendTestEmail(adminEmail: string): Promise<SendEmailResult> {
+export async function sendTestEmail(
+  adminEmail: string,
+  customSettings?: ResendEmailSettings
+): Promise<SendEmailResult> {
   const settings = getStoredSettings();
+  const effectiveSettings = customSettings || settings.emailSettings;
 
   const html = wrapEmailHtml(`
-    <h2 style="font-size: 18px; margin-top: 0; color: #1a6b3a;">Conexão com Resend Configurada com Sucesso! 🎉</h2>
+    <h2 style="font-size: 18px; margin-top: 0; color: #1a6b3a;">Conexão com Resend Configurada com Sucesso!</h2>
     <p>Olá, Administrador,</p>
     <p>Esta é uma mensagem de teste para confirmar que a tua integração com o <strong>Resend</strong> está 100% funcional no sistema <strong>${settings.businessName}</strong>.</p>
     
@@ -459,7 +463,7 @@ export async function sendTestEmail(adminEmail: string): Promise<SendEmailResult
       </div>
       <div class="card-row">
         <span class="label">Remetente:</span>
-        <span class="value">${settings.emailSettings?.fromEmail || 'Default Resend'}</span>
+        <span class="value">${effectiveSettings?.fromEmail || 'CodeEngine Manager <onboarding@resend.dev>'}</span>
       </div>
       <div class="card-row">
         <span class="label">Data de Teste:</span>
@@ -470,9 +474,13 @@ export async function sendTestEmail(adminEmail: string): Promise<SendEmailResult
     <p>A partir de agora, todas as notificações de cobranças, comprovativos, projetos, tarefas e alertas do sistema serão enviadas normalmente por e-mail.</p>
   `, 'Teste de Conexão Resend', settings.businessName);
 
-  return sendResendEmail({
-    to: adminEmail,
-    subject: `[Teste Resend] Conexão E-mail ${settings.businessName}`,
-    html,
-  });
+  return sendResendEmail(
+    {
+      to: adminEmail,
+      subject: `[Teste Resend] Conexão E-mail ${settings.businessName}`,
+      html,
+    },
+    effectiveSettings,
+    true
+  );
 }

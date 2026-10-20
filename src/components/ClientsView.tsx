@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Users,
   Plus,
@@ -12,10 +12,13 @@ import {
   Trash2,
   Calendar,
   ExternalLink,
+  Filter,
+  Globe,
 } from 'lucide-react';
-import { Client, Project, Income, CurrencyCode, COUNTRIES, CURRENCIES } from '../types';
+import { Client, Project, Income, CurrencyCode, CountryCode, COUNTRIES, CURRENCIES, DEFAULT_CLIENT_NICHES } from '../types';
 import { formatCurrency, formatDate, generateWhatsAppLink } from '../lib/formatters';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface ClientsViewProps {
   clients: Client[];
@@ -38,6 +41,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   onDeleteClient,
   onOpenWhatsAppCharge,
 }) => {
+  const { lang } = useLanguage();
+  const isEn = lang === 'en';
   const { isOwner, hasPermission, userProfile } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
@@ -46,6 +51,17 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   const canEdit = isOwner || hasPermission('clients.edit');
   const canDelete = isOwner || hasPermission('clients.delete');
   const canViewFinancials = isOwner || hasPermission('financial.view');
+
+  const allClientCategories = useMemo(() => {
+    const set = new Set<string>();
+    // Predefined popular niches
+    (DEFAULT_CLIENT_NICHES as readonly string[]).forEach((n) => set.add(n));
+    // Any existing categories from clients
+    clients.forEach((c) => {
+      if (c.type && c.type.trim()) set.add(c.type.trim());
+    });
+    return Array.from(set);
+  }, [clients]);
 
   // Filter clients
   const filteredClients = clients.filter((c) => {
@@ -66,8 +82,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
     // Search query
     if (searchTerm.trim()) {
       const q = searchTerm.toLowerCase();
-      const name = c.name.toLowerCase();
-      const company = c.company.toLowerCase();
+      const name = (c.name || '').toLowerCase();
+      const company = (c.company || '').toLowerCase();
       const email = c.email?.toLowerCase() || '';
       const phone = c.whatsapp?.toLowerCase() || '';
       const notes = c.notes?.toLowerCase() || '';
@@ -83,85 +99,134 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
     return true;
   });
 
+  const popularPills = [
+    { key: 'ALL', label: isEn ? 'All' : 'Todos' },
+    { key: 'Tráfego Pago', label: isEn ? 'Paid Traffic' : 'Tráfego Pago' },
+    { key: 'Desenvolvimento', label: isEn ? 'Development' : 'Desenvolvimento' },
+    { key: 'Consultoria', label: isEn ? 'Consulting' : 'Consultoria' },
+    { key: 'Design & Branding', label: isEn ? 'Design & Branding' : 'Design & Branding' },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Header section */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-[#1c1b1b] tracking-tight">Clientes &amp; Contas</h1>
-          <p className="text-sm text-[#747878] mt-1">
-            Gestão da carteira de clientes, contactos e saldos pendentes
+          <h1 className="font-display font-normal text-[32px] sm:text-[38px] leading-tight tracking-[-0.03em] text-fg m-0">
+            {isEn ? 'Clients' : 'Clientes'}
+          </h1>
+          <p className="text-[15px] text-fg-secondary mt-1.5 mb-0">
+            {isEn ? 'Contacts, terms and what each client owes.' : 'Contactos, condições e o que cada cliente deve.'}
           </p>
         </div>
 
         {canCreate && (
           <button
             onClick={onOpenNewClientModal}
-            className="inline-flex items-center space-x-2 bg-[#000000] hover:opacity-85 text-white px-5 py-2.5 rounded-[29px] text-sm font-medium transition-all cursor-pointer shadow-[0_2px_8px_rgba(0,0,0,0.08)] active:scale-95 shrink-0"
+            className="aura-btn aura-btn--primary inline-flex shrink-0"
           >
             <Plus className="w-4 h-4" />
-            <span>Novo Cliente</span>
+            <span>{isEn ? 'New client' : 'Novo cliente'}</span>
           </button>
         )}
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white border border-[#c4c7c7]/40 rounded-[22px] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-glass border border-line-subtle p-4 rounded-xl shadow-glass">
         {/* Search Box */}
         <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-[#747878] absolute left-3.5 top-3" />
+          <Search className="w-4 h-4 text-fg-muted absolute left-3.5 top-3" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar por nome, empresa ou WhatsApp..."
-            className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-full pl-10 pr-4 py-2 text-sm text-[#1c1b1b] placeholder-[#747878] focus:outline-none focus:border-[#000000] focus:bg-white transition-all"
+            placeholder={isEn ? 'Search by name, company, or WhatsApp...' : 'Buscar por nome, empresa ou WhatsApp...'}
+            className="w-full bg-surface-2 border border-line-subtle rounded-full pl-10 pr-4 py-2 text-sm text-fg placeholder:text-fg-muted focus:outline-none focus:border-accent focus:bg-surface-1 focus:shadow-[0_0_0_4px_var(--accent-ring)] transition-all"
           />
         </div>
 
-        {/* Service Type Filter Pills */}
-        <div className="flex items-center space-x-2 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0 text-xs">
-          {['ALL', 'Tráfego Pago', 'Desenvolvimento', 'Consultoria', 'Outro'].map((type) => (
+        {/* Service Type Filter: Quick Pills + Dropdown for all professions */}
+        <div className="flex items-center space-x-2 overflow-x-auto w-full md:w-auto pb-1 md:pb-0 text-xs flex-wrap sm:flex-nowrap gap-y-2">
+          {popularPills.map((tab) => (
             <button
-              key={type}
-              onClick={() => setTypeFilter(type)}
-              className={`px-4 py-1.5 rounded-full font-medium transition-all cursor-pointer shrink-0 ${
-                typeFilter === type
-                  ? 'bg-[#000000] text-white'
-                  : 'text-[#444747] hover:bg-[#f1edec]'
-              }`}
+              key={tab.key}
+              onClick={() => setTypeFilter(tab.key)}
+              className={`px-3.5 py-1.5 rounded-full font-medium transition-all cursor-pointer shrink-0 ${
+ typeFilter === tab.key
+ ? 'bg-primary shadow-primary-3d text-primary-fg'
+ : 'text-fg-secondary hover:bg-sunken '
+ }`}
             >
-              {type === 'ALL' ? 'Todos' : type}
+              {tab.label}
             </button>
           ))}
+
+          {/* Complete Professions / Niches Dropdown */}
+          <div className="relative shrink-0">
+            <select
+              value={popularPills.some(p => p.key === typeFilter) ? '' : typeFilter}
+              onChange={(e) => {
+                if (e.target.value) setTypeFilter(e.target.value);
+              }}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium border border-line-subtle cursor-pointer focus:outline-none transition-all ${
+ !popularPills.some(p => p.key === typeFilter) && typeFilter !== 'ALL'
+ ? 'bg-primary shadow-primary-3d text-primary-fg border-black'
+ : 'bg-surface-2 text-fg hover:bg-surface-3 '
+ }`}
+            >
+              <option value="" className="bg-glass-strong text-fg ">
+                {!popularPills.some(p => p.key === typeFilter) && typeFilter !== 'ALL'
+                  ? (isEn ? `Niche: ${typeFilter}` : `Nicho: ${typeFilter}`)
+                  : (isEn ? 'More Niches / Professions ▾' : 'Mais Nichos / Profissões ▾')}
+              </option>
+              {allClientCategories
+                .filter((cat) => !popularPills.some(p => p.key === cat) && cat !== 'Outro')
+                .map((cat) => (
+                  <option key={cat} value={cat} className="bg-glass-strong text-fg ">
+                    {cat}
+                  </option>
+                ))}
+              <option value="Outro" className="bg-glass-strong text-fg ">
+                {isEn ? 'Other' : 'Outro'}
+              </option>
+            </select>
+          </div>
         </div>
       </div>
 
       {/* Clients Cards Grid */}
       {filteredClients.length === 0 ? (
-        <div className="bg-white border border-[#c4c7c7]/40 rounded-[22px] p-12 text-center shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-          <Users className="w-12 h-12 text-[#c4c7c7] mx-auto mb-3" strokeWidth={1.5} />
-          <h3 className="text-base font-semibold text-[#1c1b1b]">Nenhum cliente encontrado</h3>
-          <p className="text-xs text-[#747878] mt-1 max-w-sm mx-auto">
+        <div className="bg-glass border border-line-subtle rounded-xl p-12 text-center shadow-glass">
+          <Users className="w-12 h-12 text-fg-disabled mx-auto mb-3" strokeWidth={1.5} />
+          <h3 className="text-base font-semibold text-fg ">
+            {isEn ? 'No clients found' : 'Nenhum cliente encontrado'}
+          </h3>
+          <p className="text-xs text-fg-muted mt-1 max-w-sm mx-auto">
             {searchTerm || typeFilter !== 'ALL'
-              ? 'Tente ajustar os filtros ou termos de pesquisa.'
-              : 'Comece adicionando os primeiros clientes à sua base.'}
+              ? (isEn ? 'Try adjusting filters or search terms.' : 'Tente ajustar os filtros ou termos de pesquisa.')
+              : (isEn ? 'Start by adding your first clients to your database.' : 'Comece adicionando os primeiros clientes à sua base.')}
           </p>
           {canCreate && (
             <button
               onClick={onOpenNewClientModal}
-              className="mt-4 inline-flex items-center space-x-2 bg-[#000000] text-white px-5 py-2.5 rounded-[29px] text-xs font-medium hover:opacity-85 transition-all cursor-pointer"
+              className="aura-btn aura-btn--primary aura-btn--sm mt-4 inline-flex"
             >
               <Plus className="w-4 h-4" />
-              <span>Criar Cliente</span>
+              <span>{isEn ? 'Create Client' : 'Criar Cliente'}</span>
             </button>
           )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredClients.map((c) => {
-            const clientCountry = COUNTRIES[c.country || 'BR'];
-            const clientCurrency = CURRENCIES[c.currency];
+            const rawCountry = (c.country || 'BR').trim().toUpperCase();
+            const countryCode: CountryCode = rawCountry === 'BRASIL' || rawCountry === 'BRAZIL' ? 'BR'
+              : rawCountry === 'ANGOLA' ? 'AO'
+              : rawCountry === 'PORTUGAL' ? 'PT'
+              : rawCountry === 'ESTADOS UNIDOS' || rawCountry === 'USA' || rawCountry === 'US' ? 'US'
+              : (rawCountry in COUNTRIES ? (rawCountry as CountryCode) : 'OTHER');
+            const clientCountry = COUNTRIES[countryCode] || COUNTRIES['BR'];
+            const clientCurrency = CURRENCIES[c.currency] || CURRENCIES['BRL'] || Object.values(CURRENCIES)[0];
 
             // Projects of this client
             const clientProjects = projects.filter(
@@ -187,93 +252,103 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
             return (
               <div
                 key={c.id}
-                className="bg-white border border-[#c4c7c7]/40 rounded-[22px] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.04)] transition-all flex flex-col justify-between group"
+                className="bg-glass border border-line-subtle rounded-xl p-5 shadow-glass hover:shadow-[0_4px_16px_rgba(0,0,0,0.04)] transition-all flex flex-col justify-between group"
               >
                 <div>
                   {/* Top Bar: Country Flag & Service Type Badge */}
                   <div className="flex items-center justify-between mb-3">
-                    <span className="flex items-center gap-1.5 text-xs font-medium text-[#747878] bg-[#f1edec] px-2.5 py-1 rounded-full">
-                      <span>{clientCountry.flag}</span>
-                      <span>{clientCountry.name}</span>
+                    <span className="flex items-center gap-1.5 text-xs font-medium text-fg-muted bg-surface-2 px-2.5 py-1 rounded-full">
+                      <Globe className="w-3.5 h-3.5 text-fg-muted " />
+                      <span>{clientCountry?.name || c.country || 'Brasil'}</span>
                     </span>
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#dbe1ff] text-[#003da9]">
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-accent-soft text-accent-soft-fg ">
                       {c.type}
                     </span>
                   </div>
 
                   {/* Client Name & Company */}
-                  <h3 className="text-base font-semibold text-[#1c1b1b] tracking-tight leading-snug group-hover:text-[#0050d7] transition-colors">
-                    {c.name}
+                  <h3 className="text-base font-semibold text-fg tracking-tight leading-snug group-hover:text-accent-soft-fg transition-colors">
+                    {c.name || (isEn ? 'Unnamed Client' : 'Cliente')}
                   </h3>
                   {c.company && (
-                    <p className="text-xs text-[#747878] flex items-center gap-1 mt-0.5 font-medium">
-                      <Building2 className="w-3.5 h-3.5 text-[#747878]" />
+                    <p className="text-xs text-fg-muted flex items-center gap-1 mt-0.5 font-medium">
+                      <Building2 className="w-3.5 h-3.5 text-fg-muted " />
                       <span>{c.company}</span>
                     </p>
                   )}
 
+                  {(c.contactName || c.city || (c.tags && c.tags.length > 0)) && (
+                    <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                      {c.contactName && <span className="text-[12px] text-fg-secondary">{c.contactName}{c.contactRole ? ` · ${c.contactRole}` : ''}</span>}
+                      {c.city && <span className="aura-badge !font-medium">{c.city}</span>}
+                      {(c.tags || []).slice(0, 3).map((tag) => <span key={tag} className="aura-badge aura-badge--accent !font-medium">{tag}</span>)}
+                    </div>
+                  )}
+
                   {/* Contact Info Pills */}
-                  <div className="mt-3.5 space-y-1.5 text-xs text-[#747878]">
+                  <div className="mt-3.5 space-y-1.5 text-xs text-fg-muted ">
                     {c.whatsapp && (
-                      <div className="flex items-center justify-between bg-[#f7f3f2] px-3 py-1.5 rounded-xl border border-[#c4c7c7]/30">
+                      <div className="flex items-center justify-between bg-surface-2 px-3 py-1.5 rounded-md border border-line-subtle ">
                         <span className="flex items-center gap-1.5">
-                          <MessageCircle className="w-3.5 h-3.5 text-[#1a6b3a]" />
-                          <span className="font-mono text-[#1c1b1b]">{c.whatsapp}</span>
+                          <MessageCircle className="w-3.5 h-3.5 text-success-fg " />
+                          <span className="font-mono text-fg ">{c.whatsapp}</span>
                         </span>
                         <button
                           onClick={() => {
-                            const text = `Olá, ${c.name}! Tudo bem?`;
+                            const text = isEn ? `Hello, ${c?.name || ''}! How are you?` : `Olá, ${c?.name || ''}! Tudo bem?`;
                             onOpenWhatsAppCharge(c.whatsapp, text);
                           }}
-                          className="text-[11px] font-semibold text-[#1a6b3a] hover:underline cursor-pointer"
+                          className="text-[11px] font-semibold text-success-fg hover:underline cursor-pointer"
                         >
-                          Conversar
+                          {isEn ? 'Chat' : 'Conversar'}
                         </button>
                       </div>
                     )}
 
                     {c.email && (
                       <div className="flex items-center space-x-1.5 px-1 text-[11px]">
-                        <Mail className="w-3 h-3 text-[#747878]" />
+                        <Mail className="w-3 h-3 text-fg-muted " />
                         <span className="truncate">{c.email}</span>
                       </div>
                     )}
                   </div>
 
                   {/* Projects and Financial Summary */}
-                  <div className="bg-[#f7f3f2] p-4 rounded-[16px] border border-[#c4c7c7]/30 my-4 space-y-2 text-xs">
+                  <div className="bg-surface-2 p-4 rounded-lg border border-line-subtle my-4 space-y-2 text-xs">
                     <div className="flex items-center justify-between">
-                      <span className="text-[#747878] flex items-center gap-1">
-                        <FolderKanban className="w-3.5 h-3.5 text-[#444747]" /> Projetos:
+                      <span className="text-fg-muted flex items-center gap-1">
+                        <FolderKanban className="w-3.5 h-3.5 text-fg-secondary " /> {isEn ? 'Projects:' : 'Projetos:'}
                       </span>
-                      <strong className="text-[#1c1b1b] font-semibold">{projectsCount} projeto(s)</strong>
+                      <strong className="text-fg font-semibold">
+                        {projectsCount} {projectsCount === 1 ? (isEn ? 'project' : 'projeto') : (isEn ? 'projects' : 'projetos')}
+                      </strong>
                     </div>
 
                     {canViewFinancials && (
                       <>
                         <div className="flex items-center justify-between">
-                          <span className="text-[#747878] flex items-center gap-1">
-                            <DollarSign className="w-3.5 h-3.5 text-[#1a6b3a]" /> Já pagou:
+                          <span className="text-fg-muted flex items-center gap-1">
+                            <DollarSign className="w-3.5 h-3.5 text-success-fg " /> {isEn ? 'Already paid:' : 'Já pagou:'}
                           </span>
-                          <strong className="text-[#1a6b3a] font-semibold">
+                          <strong className="text-success-fg font-semibold">
                             {formatCurrency(totalPaid, c.currency)}
                           </strong>
                         </div>
 
                         <div className="flex items-center justify-between">
-                          <span className="text-[#747878] flex items-center gap-1">
-                            <DollarSign className="w-3.5 h-3.5 text-[#ba1a1a]" /> Ainda deve:
+                          <span className="text-fg-muted flex items-center gap-1">
+                            <DollarSign className="w-3.5 h-3.5 text-danger-fg " /> {isEn ? 'Still owes:' : 'Ainda deve:'}
                           </span>
-                          <strong className={totalOwed > 0 ? 'text-[#ba1a1a] font-semibold' : 'text-[#747878]'}>
+                          <strong className={totalOwed > 0 ? 'text-danger-fg font-semibold' : 'text-fg-muted '}>
                             {formatCurrency(totalOwed, c.currency)}
                           </strong>
                         </div>
 
-                        <div className="flex items-center justify-between pt-1.5 border-t border-[#c4c7c7]/30">
-                          <span className="text-[#747878] flex items-center gap-1">
-                            <Calendar className="w-3.5 h-3.5 text-[#747878]" /> Último pagamento:
+                        <div className="flex items-center justify-between pt-1.5 border-t border-line-subtle ">
+                          <span className="text-fg-muted flex items-center gap-1">
+                            <Calendar className="w-3.5 h-3.5 text-fg-muted " /> {isEn ? 'Last payment:' : 'Último pagamento:'}
                           </span>
-                          <span className="text-[#1c1b1b] font-medium">
+                          <span className="text-fg font-medium">
                             {lastPaymentDate ? formatDate(lastPaymentDate) : '—'}
                           </span>
                         </div>
@@ -284,13 +359,13 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                 </div>
 
                 {/* Footer Controls */}
-                <div className="pt-3 border-t border-[#c4c7c7]/40 flex items-center justify-between">
+                <div className="pt-3 border-t border-line-subtle flex items-center justify-between">
                   <div className="flex items-center space-x-1">
                     {canEdit && (
                       <button
                         onClick={() => onEditClient(c)}
-                        className="p-1.5 text-[#747878] hover:text-[#1c1b1b] hover:bg-[#f1edec] rounded-full transition-colors cursor-pointer"
-                        title="Editar Cliente"
+                        className="p-1.5 text-fg-muted hover:text-fg hover:bg-sunken rounded-full transition-colors cursor-pointer"
+                        title={isEn ? 'Edit Client' : 'Editar Cliente'}
                       >
                         <Edit3 className="w-4 h-4" />
                       </button>
@@ -299,8 +374,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     {canDelete && (
                       <button
                         onClick={() => onDeleteClient(c.id)}
-                        className="p-1.5 text-[#747878] hover:text-[#ba1a1a] hover:bg-[#ffdad6] rounded-full transition-colors cursor-pointer"
-                        title="Excluir Cliente"
+                        className="p-1.5 text-fg-muted hover:text-danger-fg hover:bg-danger-soft rounded-full transition-colors cursor-pointer"
+                        title={isEn ? 'Delete Client' : 'Eliminar Cliente'}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -310,13 +385,13 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                   {c.whatsapp && (
                     <button
                       onClick={() => {
-                        const text = `Olá, ${c.name}! Tudo bem?`;
+                        const text = isEn ? `Hello, ${c?.name || ''}! How are you?` : `Olá, ${c?.name || ''}! Tudo bem?`;
                         onOpenWhatsAppCharge(c.whatsapp, text);
                       }}
-                      className="px-3.5 py-1.5 bg-[#d4eddf] hover:opacity-85 text-[#1a6b3a] rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+                      className="px-3.5 py-1.5 bg-success-soft hover:opacity-85 text-success-fg rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
                     >
                       <MessageCircle className="w-3.5 h-3.5" />
-                      <span>Mensagem</span>
+                      <span>{isEn ? 'Message' : 'Mensagem'}</span>
                     </button>
                   )}
                 </div>

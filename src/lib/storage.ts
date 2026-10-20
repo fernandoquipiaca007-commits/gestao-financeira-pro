@@ -1,4 +1,5 @@
 import { Client, Project, Income, Expense, AppSettings, Partner } from '../types';
+import { Task } from '../types/rbac';
 
 // ── Namespace isolado por utilizador ─────────────────────────────
 // Deve ser chamado imediatamente após o login, e limpo no logout.
@@ -25,13 +26,14 @@ const incomesKey  = () => `gfo_incomes_v1_${_currentUserId}`;
 const expensesKey = () => `gfo_expenses_v1_${_currentUserId}`;
 const settingsKey = () => `gfo_settings_v1_${_currentUserId}`;
 const partnersKey = () => `gfo_partners_v1_${_currentUserId}`;
+const tasksKey    = () => `gfo_tasks_v1_${_currentUserId}`;
 
 import { ResendEmailSettings } from '../types/email';
 
 export const DEFAULT_EMAIL_SETTINGS: ResendEmailSettings = {
-  apiKey: (import.meta as any).env?.VITE_RESEND_API_KEY || '',
-  fromEmail: 'GestãoFO <notificacoes@resend.dev>',
-  fromName: 'GestãoFO',
+  apiKey: '',
+  fromEmail: 'CodeEngine Manager <onboarding@resend.dev>',
+  fromName: 'CodeEngine Manager',
   replyTo: '',
   enabled: true,
   toggles: {
@@ -148,6 +150,18 @@ export function getStoredPartners(): Partner[] {
 
 export function savePartners(partners: Partner[]): void {
   localStorage.setItem(partnersKey(), JSON.stringify(partners));
+}
+
+export function getStoredTasks(): Task[] {
+  try {
+    const item = localStorage.getItem(tasksKey());
+    if (item) return JSON.parse(item);
+  } catch {}
+  return [];
+}
+
+export function saveTasks(tasks: Task[]): void {
+  localStorage.setItem(tasksKey(), JSON.stringify(tasks));
 }
 
 export function clearAllData(): void {

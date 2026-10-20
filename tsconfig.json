@@ -17,12 +17,12 @@
     "jsx": "react-jsx",
     "paths": {
       "@/*": [
-        "./*"
+        "./src/*"
       ]
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
   "include": ["src"],
-  "exclude": ["node_modules", "landing-page", "supabase", "dist"]
+  "exclude": ["node_modules", "landing-page", "supabase", "dist", "src/components/landing", "src/components/LandingPageView.tsx", "src/lib/dataGuard.ts"]
 }

@@ -1,36 +1,39 @@
 import { SendEmailOptions, SendEmailResult, ResendEmailSettings } from '../types/email';
 import { getStoredSettings } from './storage';
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from './supabase';
+
+
+const SEND_EMAIL_ENDPOINT = `${SUPABASE_URL}/functions/v1/send-email`;
 
 /**
- * Send email via Resend API
+ * Send email via Resend API using Supabase Edge Function to avoid browser CORS restrictions.
  */
 export async function sendResendEmail(
   options: SendEmailOptions,
-  customEmailSettings?: ResendEmailSettings
+  customEmailSettings?: ResendEmailSettings,
+  isTest: boolean = false
 ): Promise<SendEmailResult> {
   try {
     const settings = customEmailSettings || getStoredSettings().emailSettings;
-    const apiKey = settings?.apiKey || (import.meta as any).env?.VITE_RESEND_API_KEY || '';
+    const apiKey =
+      customEmailSettings?.apiKey ||
+      settings?.apiKey ||
+      (import.meta as any).env?.VITE_RESEND_API_KEY ||
+      '';
 
-    if (!apiKey) {
+    const cleanApiKey = apiKey.trim().replace(/\s+/g, '');
+
+    if (!cleanApiKey) {
       console.warn('[Resend] API Key not configured. Skipping email send to:', options.to);
       return {
         success: false,
-        error: 'Chave de API do Resend não configurada. Configure a API Key nas Configurações do Sistema.',
-      };
-    }
-
-    if (settings && !settings.enabled) {
-      console.info('[Resend] Email notifications disabled globally in settings.');
-      return {
-        success: false,
-        error: 'Envio de e-mails desativado nas Configurações.',
+        error: 'Chave de API do Resend não configurada. Por favor, insira a sua API Key nas Configurações.',
       };
     }
 
     const recipients = Array.isArray(options.to) ? options.to : [options.to];
     const validRecipients = recipients.filter(
-      (email) => email && email.includes('@') && email.trim().length > 3
+      (email) => email && typeof email === 'string' && email.includes('@') && email.trim().length > 3
     );
 
     if (validRecipients.length === 0) {
@@ -40,62 +43,58 @@ export async function sendResendEmail(
       };
     }
 
-    const fromAddress = options.fromEmail || settings?.fromEmail || 'GestãoFO <notificacoes@resend.dev>';
+    // Remetente padrão: usar onboarding@resend.dev para evitar bloqueio por domínio não verificado
+    let fromAddress = options.fromEmail || settings?.fromEmail || 'CodeEngine Manager <onboarding@resend.dev>';
+    if (fromAddress.includes('notificacoes@resend.dev')) {
+      fromAddress = fromAddress.replace('notificacoes@resend.dev', 'onboarding@resend.dev');
+    }
+
     const replyToAddress = options.replyTo || settings?.replyTo || undefined;
 
-    // Build payload according to Resend API spec
-    const payload: Record<string, any> = {
-      from: fromAddress,
-      to: validRecipients,
-      subject: options.subject,
-      html: options.html,
-    };
-
-    if (options.text) {
-      payload.text = options.text;
-    }
-
-    if (replyToAddress) {
-      payload.reply_to = replyToAddress;
-    }
-
-    if (options.attachments && options.attachments.length > 0) {
-      payload.attachments = options.attachments.map((att) => ({
-        filename: att.filename,
-        content: att.content.startsWith('data:')
-          ? att.content.split(',')[1] // Extract base64 part if data URL
-          : att.content,
-      }));
-    }
-
-    const response = await fetch('https://api.resend.com/emails', {
+    // Disparar através da Edge Function do Supabase (livre de bloqueios CORS)
+    // A função só aceita pedidos de quem tem sessão iniciada (não é um relay aberto).
+    const { data: { session } } = await supabase.auth.getSession();
+    const response = await fetch(SEND_EMAIL_ENDPOINT, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey.trim()}`,
         'Content-Type': 'application/json',
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`,
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        apiKey: cleanApiKey,
+        from: fromAddress,
+        to: validRecipients,
+        subject: options.subject,
+        html: options.html,
+        text: options.text,
+        replyTo: replyToAddress,
+        attachments: options.attachments,
+      }),
     });
 
-    const responseData = await response.json();
+    const responseData = await response.json().catch(() => null);
 
-    if (!response.ok) {
-      const errorMsg = responseData?.message || responseData?.error || `HTTP ${response.status}`;
-      console.error('[Resend] Failed to send email:', errorMsg, responseData);
+    if (!response.ok || !responseData?.success) {
+      const errorMsg =
+        responseData?.error ||
+        responseData?.message ||
+        `Falha na comunicação com servidor de e-mail (HTTP ${response.status})`;
+      console.error('[Resend] Falha ao enviar e-mail:', errorMsg, responseData);
       return {
         success: false,
-        error: `Erro ao enviar e-mail via Resend: ${errorMsg}`,
+        error: errorMsg,
       };
     }
 
-    console.info('[Resend] Email sent successfully:', responseData.id, 'to:', validRecipients);
+    console.info('[Resend] E-mail enviado com sucesso! ID:', responseData.id, 'para:', validRecipients);
     return {
       success: true,
       id: responseData.id,
     };
   } catch (err: any) {
-    const msg = err?.message || 'Falha de conexão com a API do Resend.';
-    console.error('[Resend] Exception sending email:', err);
+    const msg = err?.message || 'Falha de conexão com a API de envio de e-mails.';
+    console.error('[Resend] Exceção ao enviar e-mail:', err);
     return {
       success: false,
       error: msg,

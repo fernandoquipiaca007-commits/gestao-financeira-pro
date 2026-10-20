@@ -1,76 +1,51 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..800;1,14..32,300..800&family=Outfit:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap');
 @import "tailwindcss";
+@import "../design-system/tokens/tokens.css";
+@import "../design-system/tokens/tailwind.theme.css";
+@import "../design-system/styles/aura.css" layer(components);
 
-/* ============================================================
-   BORO UI — DESIGN TOKENS (Tailwind v4 @theme)
-   Source: stitch_buro_fintech_app/boro_ui/DESIGN.md
-   ============================================================ */
+/* Fontes base (Tailwind v4 @theme) — as cores e raios vêm dos tokens Aura */
 @theme {
-  /* --- Colors --- */
-  --color-boro-bg:                 #fcf8f8;
-  --color-boro-surface:            #fcf8f8;
-  --color-boro-surface-low:        #f7f3f2;
-  --color-boro-surface-container:  #f1edec;
-  --color-boro-surface-high:       #ebe7e7;
-  --color-boro-surface-highest:    #e5e2e1;
-  --color-boro-surface-variant:    #e5e2e1;
-  --color-boro-surface-dim:        #ddd9d8;
-  --color-boro-card:               #ffffff;
-
-  --color-boro-on-surface:         #1c1b1b;
-  --color-boro-on-surface-muted:   #444747;
-  --color-boro-outline:            #747878;
-  --color-boro-outline-variant:    #c4c7c7;
-
-  --color-boro-primary:            #000000;
-  --color-boro-on-primary:         #ffffff;
-  --color-boro-primary-container:  #1b1c1c;
-  --color-boro-inverse-primary:    #c7c6c6;
-
-  --color-boro-secondary:          #0050d7;
-  --color-boro-secondary-dark:     #003da9;
-  --color-boro-secondary-light:    #dbe1ff;
-  --color-boro-on-secondary:       #ffffff;
-  --color-boro-secondary-container:#2469ff;
-
-  --color-boro-error:              #ba1a1a;
-  --color-boro-error-bg:           #ffdad6;
-  --color-boro-on-error:           #ffffff;
-
-  --color-boro-inverse-surface:    #313030;
-  --color-boro-inverse-on-surface: #f4f0ef;
-
-  /* Functional semantic colors */
-  --color-boro-success:            #1a6b3a;
-  --color-boro-success-bg:         #d4eddf;
-  --color-boro-warning:            #7a5400;
-  --color-boro-warning-bg:         #fff3d6;
-
-  /* --- Typography --- */
-  --font-sans: 'Inter', system-ui, sans-serif;
-
-  /* --- Border Radius --- */
-  --radius-boro-sm:   0.5rem;   /* 8px */
-  --radius-boro:      0.75rem;  /* 12px — inputs */
-  --radius-boro-md:   1rem;     /* 16px — DEFAULT */
-  --radius-boro-card: 1.375rem; /* 22px — cards/panels */
-  --radius-boro-lg:   1.5rem;   /* 24px — modal panels */
-  --radius-boro-pill: 1.8125rem;/* 29px — buttons */
-  --radius-boro-xl:   2rem;     /* 32px — large panels */
-  --radius-boro-2xl:  3rem;     /* 48px */
-  --radius-boro-full: 9999px;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-serif: 'Source Serif 4', 'GT Sectra', 'Tiempos Headline', ui-serif, Georgia, serif;
 }
 
 /* ============================================================
-   BASE LAYER
+   BASE LAYER — Professional Executive Typography
    ============================================================ */
+:root {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-feature-settings: 'cv02' 1, 'cv03' 1, 'cv04' 1, 'cv11' 1, 'tnum' 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
 @layer base {
-  body {
+  html, body {
     background-color: #fcf8f8;
-    color: #1c1b1b;
-    font-family: 'Inter', system-ui, sans-serif;
+    color: #17191c;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+    font-feature-settings: 'cv02' 1, 'cv03' 1, 'cv04' 1, 'cv11' 1, 'tnum' 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    letter-spacing: -0.011em;
+    font-size: 15px;
+    line-height: 1.5;
+    overflow-x: clip; /* clip (não hidden): não cria contentor de scroll, por isso o position: sticky funciona */
+    max-width: 100vw;
+  }
+
+  button, input, select, textarea, optgroup {
+    font-family: inherit;
+  }
+
+  .dark body,
+  body.dark,
+  html.dark body {
+    background-color: #0e1117;
+    color: #e8eaf0;
   }
 
   ::selection {
@@ -84,9 +59,10 @@
    ============================================================ */
 
 /* --- Scrollbar --- */
+/* Scrollbar global fina, com a cor do texto em transparência (funciona nos dois temas) */
 ::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
@@ -94,238 +70,428 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c4c7c7;
+  background-color: color-mix(in oklab, var(--text-primary, #1c1b1b) 18%, transparent);
+  border: 3px solid transparent;
+  background-clip: padding-box;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #747878;
+  background-color: color-mix(in oklab, var(--text-primary, #1c1b1b) 34%, transparent);
 }
 
-/* --- Boro Card Panel --- */
-.boro-card {
-  background-color: #ffffff;
-  border: 1px solid rgba(196, 199, 199, 0.4);
-  border-radius: 1.375rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+/* ============================================================
+   LIGHT & DARK DESIGN SYSTEM TOKENS (BORO UI SPECIFICATION)
+   ============================================================ */
+:root {
+  /* Fundos Boro UI */
+  --bg-app: #fcf8f8;
+  --bg-card: #ffffff;
+  --bg-surface-low: #f7f3f2;
+  --bg-input: #f1edec;
+  --border-color: rgba(196, 199, 199, 0.4);
+  /* Textos Boro UI */
+  --text-main: #1c1b1b;
+  --text-muted: #444747;
+  --text-label: #747878;
+  /* Marca & Ações */
+  --primary-black: #000000;
+  --accent-blue: #0050d7;
+  --accent-blue-bg: #dbe1ff;
+  /* Status */
+  --success-text: #1a6b3a;
+  --success-bg: #d4eddf;
+  --warning-text: #7a5400;
+  --warning-bg: #fff3d6;
+  --danger-text: #ba1a1a;
+  --danger-bg: #ffdad6;
+  --stripe-purple: #635bff;
+  --stripe-bg: #f0efff;
+
+  --background: #fcf8f8;
+  --foreground: #1c1b1b;
+  --surface: #ffffff;
+  --surface-secondary: #f7f3f2;
+  --surface-hover: #e5e2e1;
+  --border: rgba(196, 199, 199, 0.4);
+  --border-subtle: rgba(196, 199, 199, 0.2);
+  --text-primary: #1c1b1b;
+  --text-secondary: #444747;
+  --text-muted: #747878;
+  --input-background: #f1edec;
+  --input-border: rgba(196, 199, 199, 0.4);
+  --card-background: #ffffff;
+  --sidebar-background: #ffffff;
+  --header-background: #ffffff;
+  --popover-background: #ffffff;
+  --chart-grid: rgba(196, 199, 199, 0.4);
+  --chart-text: #747878;
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+
+  --theme-accent: #0050d7;
+  --theme-accent-hover: #003da9;
+  --theme-accent-subtle: #dbe1ff;
+  --theme-accent-border: #bfdbfe;
+  --theme-accent-dot: #0050d7;
 }
 
-/* --- Boro Input Style (bottom-border focus) --- */
-.boro-input {
-  background-color: transparent;
-  border: none;
-  border-bottom: 1.5px solid #c4c7c7;
-  border-radius: 0;
-  padding: 0.5rem 0;
-  font-size: 0.9375rem;
-  color: #1c1b1b;
-  outline: none;
-  transition: border-color 0.15s ease, background-color 0.15s ease;
-  width: 100%;
+html.dark {
+  --background: #0e1117;
+  --foreground: #f1f5f9;
+  --surface: #141720;
+  --surface-secondary: #1c202d;
+  --surface-hover: #232838;
+  --border: #2e3346;
+  --border-subtle: #232838;
+  --text-primary: #ffffff;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --input-background: #1c202d;
+  --input-border: #2e3346;
+  --card-background: #141720;
+  --sidebar-background: #141720;
+  --header-background: #12141c;
+  --popover-background: #141720;
+  --chart-grid: #2e3346;
+  --chart-text: #8c96a9;
+  --shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+
+  /* Steep / Editorial Design Tokens for Dark Mode */
+  --color-ink: #f1f5f9;
+  --color-mist: #141720;
+  --color-paper: #1c202d;
+  --color-canvas: #0b0d11;
+
+  color-scheme: dark;
 }
 
-.boro-input:focus {
-  border-bottom-color: #000000;
-  background-color: transparent;
+html.dark body {
+  background-color: #0b0d11;
+  color: #f1f5f9;
 }
 
-.boro-input::placeholder {
-  color: #747878;
+/* Scrollbar dark */
+/* (scrollbar escura herda de --text-primary) */
+
+html:not(.dark) .text-\[\#444747\] {
+  color: #444747 !important;
 }
 
-/* --- Boro Input (boxed variant for forms) --- */
-.boro-input-box {
-  background-color: #f1edec;
-  border: 1px solid rgba(196, 199, 199, 0.35);
-  border-radius: 0.75rem;
-  padding: 0.625rem 0.875rem;
-  font-size: 0.9375rem;
-  color: #1c1b1b;
-  outline: none;
-  transition: border-color 0.15s ease, background-color 0.15s ease;
-  width: 100%;
+/* Background overrides in dark mode */
+html.dark .bg-\[\#fafafb\],
+html.dark .bg-\[\#f8f9fa\] {
+  background-color: #0b0d11 !important;
 }
 
-.boro-input-box:focus {
-  border-color: #000000;
-  background-color: #ffffff;
+html.dark .bg-\[\#f2f2f3\] {
+  background-color: #141720 !important;
 }
 
-.boro-input-box::placeholder {
-  color: #747878;
+html.dark .border-\[\#f2f2f3\],
+html.dark .border-\[\#e5e7eb\] {
+  border-color: #2e3346 !important;
 }
 
-/* --- Boro Button Primary --- */
-.boro-btn-primary {
+html.dark .bg-white {
+  background-color: #141720 !important;
+}
+
+/* Text color overrides in dark mode */
+html.dark .text-\[\#17191c\] {
+  color: #f1f5f9 !important;
+}
+
+html.dark .text-\[\#444747\] {
+  color: #cbd5e1 !important;
+}
+
+html.dark .text-\[\#777b86\] {
+  color: #94a3b8 !important;
+}
+
+html.dark .hover\:text-\[\#17191c\]:hover {
+  color: #ffffff !important;
+}
+
+/* Steep Cards in Dark Mode */
+html.dark .steep-card {
+  background-color: #141720 !important;
+  border: 1px solid #2e3346 !important;
+  color: #f1f5f9 !important;
+}
+
+html.dark .steep-card-peach {
+  background-color: #2a1b15 !important;
+  border: 1px solid #4a2b20 !important;
+  color: #fed7aa !important;
+}
+
+html.dark .hover\:opacity-85:hover {
+  filter: brightness(1.1);
+}
+
+/* Inputs and interactive controls in dark mode */
+html.dark input:not([type="checkbox"]):not([type="radio"]),
+html.dark select:not([data-badge]),
+html.dark textarea {
+  color: #f1f5f9 !important;
+}
+
+html.dark .bg-gray-100 {
+  background-color: #1e2330 !important;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #64748b !important;
+}
+
+/* ============================================================
+   STEEP EDITORIAL — Design Tokens for SaaS Landing Page
+   Inspired by Steep.app: serif analytics on warm paper
+   ============================================================ */
+
+:root {
+  --font-serif: 'Source Serif 4', 'GT Sectra', 'Tiempos Headline', ui-serif, Georgia, serif;
+  --color-ink: #17191c;
+  --color-paper: #ffffff;
+  --color-mist: #f2f2f3;
+  --color-fog: #fafafb;
+  --color-slate: #777b86;
+  --color-ash: #979799;
+  --color-smoke: #a3a6af;
+  --color-peach: #fbe1d1;
+  --color-sienna: #5d2a1a;
+  --shadow-artifact: 0 0 0 1px rgba(4,23,43,0.05), 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);
+}
+
+/* Display Headings — Serif */
+.steep-display {
+  font-family: var(--font-serif);
+  font-size: 90px;
+  font-weight: 400;
+  line-height: 1.3;
+  letter-spacing: -2.25px;
+  color: var(--color-ink);
+}
+
+.steep-heading-lg {
+  font-family: var(--font-serif);
+  font-size: 64px;
+  font-weight: 400;
+  line-height: 1.3;
+  letter-spacing: -0.96px;
+  color: var(--color-ink);
+}
+
+.steep-heading {
+  font-family: var(--font-serif);
+  font-size: 44px;
+  font-weight: 400;
+  line-height: 1.3;
+  letter-spacing: -0.66px;
+  color: var(--color-ink);
+}
+
+.steep-heading-sm {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 26px;
+  font-weight: 450;
+  line-height: 1.18;
+  letter-spacing: -0.23px;
+  color: var(--color-ink);
+}
+
+.steep-body-lg {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--color-ink);
+}
+
+.steep-body {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1.35;
+  color: var(--color-ink);
+}
+
+.steep-caption {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--color-slate);
+}
+
+/* Pill Buttons */
+.steep-pill {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.375rem;
-  background-color: #000000;
-  color: #ffffff;
-  border: none;
-  border-radius: 1.8125rem;
-  padding: 0 1.5rem;
-  height: 2.75rem;
-  font-size: 0.875rem;
-  font-weight: 600;
+  gap: 8px;
+  border-radius: 9999px;
+  padding: 12px 24px;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 400;
   cursor: pointer;
   transition: opacity 0.15s ease, transform 0.1s ease;
   white-space: nowrap;
+  border: none;
+  text-decoration: none;
 }
 
-.boro-btn-primary:hover {
+.steep-pill-filled {
+  background-color: var(--color-ink);
+  color: var(--color-paper);
+}
+
+.steep-pill-filled:hover {
   opacity: 0.88;
 }
 
-.boro-btn-primary:active {
-  transform: scale(0.98);
+.steep-pill-ghost {
+  background-color: transparent;
+  color: var(--color-ink);
+  border: 1px solid var(--color-ink);
 }
 
-.boro-btn-primary:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
+.steep-pill-ghost:hover {
+  background-color: var(--color-mist);
 }
 
-/* --- Boro Button Secondary --- */
-.boro-btn-secondary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.375rem;
-  background-color: #f1edec;
-  color: #1c1b1b;
-  border: 1px solid rgba(196, 199, 199, 0.45);
-  border-radius: 1.8125rem;
-  padding: 0 1.25rem;
-  height: 2.75rem;
-  font-size: 0.875rem;
-  font-weight: 500;
+/* Cards */
+.steep-card {
+  background-color: var(--color-mist);
+  border-radius: 24px;
+  border: none;
+  box-shadow: none;
+  padding: 32px 24px;
+}
+
+.steep-card-peach {
+  background-color: var(--color-peach);
+  border-radius: 24px;
+  border: none;
+  box-shadow: none;
+  color: var(--color-sienna);
+}
+
+.steep-artifact {
+  background-color: var(--color-paper);
+  border-radius: 20px;
+  box-shadow: var(--shadow-artifact);
+  border: none;
+}
+
+/* Text Link with Arrow */
+.steep-link {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--color-ink);
+  text-decoration: none;
   cursor: pointer;
-  transition: background-color 0.15s ease, transform 0.1s ease;
-  white-space: nowrap;
+  transition: text-decoration 0.15s ease;
 }
 
-.boro-btn-secondary:hover {
-  background-color: #e5e2e1;
+.steep-link:hover {
+  text-decoration: underline;
 }
 
-.boro-btn-secondary:active {
-  transform: scale(0.98);
+/* Category Label — ghost-like tag */
+.steep-tag {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--color-ash);
 }
 
-/* --- Boro Badge --- */
-.boro-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.125rem 0.625rem;
-  border-radius: 9999px;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+/* Section gap utility */
+.steep-section-gap {
+  padding-top: 80px;
+  padding-bottom: 80px;
 }
 
-.boro-badge-primary {
-  background-color: #1c1b1b;
-  color: #f4f0ef;
+/* Responsive headings */
+@media (max-width: 768px) {
+  .steep-display {
+    font-size: 48px;
+    letter-spacing: -1.2px;
+  }
+  .steep-heading-lg {
+    font-size: 36px;
+    letter-spacing: -0.6px;
+  }
+  .steep-heading {
+    font-size: 28px;
+    letter-spacing: -0.4px;
+  }
+  .steep-heading-sm {
+    font-size: 22px;
+  }
+  .steep-section-gap {
+    padding-top: 48px;
+    padding-bottom: 48px;
+  }
 }
 
-.boro-badge-secondary {
-  background-color: #dbe1ff;
-  color: #003da9;
+/* ============================================================
+   AURA — utilitários de vidro para a área interna
+   bg-glass (cards) recebe o desfoque que faz o fundo translúcido
+   passar por trás; bg-glass-strong fica mais opaco e sem blur
+   (inputs, menus) para não acumular filtros.
+   ============================================================ */
+.bg-glass {
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border-color: var(--glass-border);
+}
+.aura-app h1, .aura-app h2, .aura-app h3 {
+  font-family: var(--font-display);
+  letter-spacing: var(--tracking-heading);
 }
 
-.boro-badge-muted {
-  background-color: #e5e2e1;
-  color: #444747;
+/* Landing — flutuação das peças do hero */
+@keyframes landing-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  [class*="animate-[landing-float"] { animation: none !important; }
 }
 
-.boro-badge-success {
-  background-color: #d4eddf;
-  color: #1a6b3a;
+/* Landing — feixes de dados entre o sistema e os agentes */
+@keyframes agents-flow { to { stroke-dashoffset: -24; } }
+@media (prefers-reduced-motion: reduce) {
+  [class*="animate-[agents-flow"] { animation: none !important; }
 }
 
-.boro-badge-error {
-  background-color: #ffdad6;
-  color: #93000a;
-}
-
-.boro-badge-warning {
-  background-color: #fff3d6;
-  color: #7a5400;
-}
-
-/* --- Nav Item Active State --- */
-.boro-nav-active {
-  background-color: #000000;
-  color: #ffffff;
-  border-radius: 9999px;
-}
-
-.boro-nav-idle {
-  color: #444747;
-  border-radius: 9999px;
-}
-
-.boro-nav-idle:hover {
-  background-color: #f1edec;
-  color: #1c1b1b;
-}
-
-/* --- Section Label --- */
-.boro-section-label {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: #747878;
-}
-
-/* --- Numeric Data Display --- */
-.boro-numeric {
-  font-size: 1.5rem;
-  font-weight: 500;
-  line-height: 1;
-  letter-spacing: -0.055em;
-  color: #000000;
-  font-variant-numeric: tabular-nums;
-}
-
-/* --- Modal Backdrop --- */
-.boro-backdrop {
-  background-color: rgba(0, 0, 0, 0.38);
-  backdrop-filter: blur(4px);
-}
-
-/* --- Table styles --- */
-.boro-table-header {
-  background-color: #f7f3f2;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: #747878;
-}
-
-.boro-table-row {
-  border-bottom: 1px solid rgba(196, 199, 199, 0.3);
-  transition: background-color 0.1s ease;
-}
-
-.boro-table-row:hover {
-  background-color: #f7f3f2;
-}
-
-/* --- Page Header --- */
-.boro-page-title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
-  color: #1c1b1b;
-}
-
-/* --- Divider --- */
-.boro-divider {
-  border-color: rgba(196, 199, 199, 0.4);
-}
+/* ── Quiz: tema claro (padrão). Camada sobre as cores escuras dos componentes do quiz ── */
+.quiz-light { background: #f6f5fb !important; color: #16131f; }
+.quiz-light .text-white { color: #16131f; }
+.quiz-light .text-white\/90, .quiz-light .text-white\/85, .quiz-light .text-white\/80, .quiz-light .text-white\/75 { color: rgba(22,19,31,.82); }
+.quiz-light .text-white\/70, .quiz-light .text-white\/65, .quiz-light .text-white\/60 { color: rgba(22,19,31,.68); }
+.quiz-light .text-white\/55, .quiz-light .text-white\/50, .quiz-light .text-white\/45, .quiz-light .text-white\/40 { color: rgba(22,19,31,.55); }
+.quiz-light .bg-white\/\[0\.03\], .quiz-light .bg-white\/\[0\.04\], .quiz-light .bg-white\/\[0\.06\], .quiz-light .bg-white\/\[0\.07\] { background-color: #fff; }
+.quiz-light .bg-white\/10 { background-color: rgba(22,19,31,.08); }
+.quiz-light .bg-white\/5 { background-color: rgba(22,19,31,.04); }
+.quiz-light .border-white\/10 { border-color: rgba(22,19,31,.1); }
+.quiz-light .border-white\/15 { border-color: rgba(22,19,31,.14); }
+.quiz-light .bg-black\/30 { background-color: rgba(128,82,255,.07); }
+.quiz-light .bg-black\/70 { background-color: rgba(255,255,255,.92); }
+.quiz-light .bg-\[\#0d0c12\]\/95 { background-color: rgba(255,255,255,.96); }
+.quiz-light .shadow-2xl, .quiz-light button.rounded-2xl { box-shadow: 0 1px 2px rgba(22,19,31,.06); }
+/* elementos roxos sólidos continuam com texto branco */
+.quiz-light .bg-\[\#8052ff\], .quiz-light .bg-\[\#8052ff\] .text-white, .quiz-light .bg-\[\#22c55e\] { color: #fff; }
+/* acentos claros ficam mais escuros para terem contraste no fundo claro */
+.quiz-light .text-\[\#fdba74\] { color: #c2410c; }
+.quiz-light .text-\[\#ffb829\] { color: #b45309; }
+.quiz-light .text-\[\#c4b5fd\] { color: #6d28d9; }
+.quiz-light .text-\[\#4ade80\] { color: #15803d; }
+.quiz-light .text-\[\#fb923c\] { color: #ea580c; }
+.quiz-light input::placeholder { color: rgba(22,19,31,.45); }
+.quiz-light .bg-white.text-black { background-color: #16131f; color: #fff; }

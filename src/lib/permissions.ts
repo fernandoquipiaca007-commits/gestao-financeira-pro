@@ -97,7 +97,87 @@ export const RESOURCE_LABELS: Record<string, string> = {
   reports:    'Relatórios',
   settings:   'Configurações',
   audit:      'Auditoria',
+  docs:       'Documentação',
 };
+
+export const RESOURCE_LABELS_EN: Record<string, string> = {
+  dashboard:  'Dashboard',
+  users:      'Users',
+  clients:    'Clients',
+  projects:   'Projects',
+  tasks:      'Tasks',
+  billing:    'Billing Requests',
+  financial:  'Financial',
+  partners:   'Partners',
+  calendar:   'Calendar',
+  categories: 'Categories',
+  reports:    'Reports',
+  settings:   'Settings',
+  audit:      'Audit',
+  docs:       'Documentation',
+};
+
+export function getResourceLabel(resource: string, lang: 'pt' | 'en' = 'pt'): string {
+  if (lang === 'en') {
+    return RESOURCE_LABELS_EN[resource] || resource;
+  }
+  return RESOURCE_LABELS[resource] || resource;
+}
+
+export const PERMISSION_LABELS_EN: Record<string, string> = {
+  'dashboard.view': 'View dashboard',
+  'dashboard.financial': 'View financial data',
+  'users.view': 'View users',
+  'users.create': 'Create users',
+  'users.edit': 'Edit users',
+  'users.delete': 'Delete users',
+  'users.permissions': 'Manage permissions',
+  'users.suspend': 'Suspend users',
+  'clients.view': 'View clients',
+  'clients.create': 'Create clients',
+  'clients.edit': 'Edit clients',
+  'clients.delete': 'Delete clients',
+  'projects.view': 'View projects',
+  'projects.create': 'Create projects',
+  'projects.edit': 'Edit projects',
+  'projects.delete': 'Delete projects',
+  'projects.assign': 'Assign projects',
+  'projects.assume': 'Take on available projects',
+  'tasks.view': 'View tasks',
+  'tasks.create': 'Create tasks',
+  'tasks.edit': 'Edit tasks',
+  'tasks.delete': 'Delete tasks',
+  'tasks.assign': 'Assign tasks',
+  'tasks.complete': 'Complete tasks',
+  'billing.view': 'View billing requests',
+  'billing.request': 'Create billing requests',
+  'billing.approve': 'Approve / Reject billing',
+  'financial.view': 'View income and expenses',
+  'financial.create': 'Create entries',
+  'financial.edit': 'Edit entries',
+  'financial.delete': 'Delete entries',
+  'partners.view': 'View partners',
+  'partners.create': 'Create partners',
+  'partners.edit': 'Edit partners',
+  'partners.delete': 'Delete partners',
+  'calendar.view': 'View calendar',
+  'calendar.create': 'Create events',
+  'calendar.edit': 'Edit events',
+  'categories.view': 'View categories',
+  'categories.create': 'Create categories',
+  'categories.edit': 'Edit categories',
+  'reports.view': 'View reports',
+  'settings.view': 'View settings',
+  'settings.edit': 'Edit settings',
+  'audit.view': 'View audit logs',
+};
+
+export function getPermissionLabel(perm: PermissionDefinition, lang: 'pt' | 'en' = 'pt'): string {
+  if (lang === 'en') {
+    return PERMISSION_LABELS_EN[perm.id] || perm.label;
+  }
+  return perm.label;
+}
 
 // ------------------------------------------------------------------
 // Permissões padrão por cargo (frontend mirror do DB)
@@ -220,7 +300,7 @@ export function buildPermissionMap(
  */
 export function getVisibleTabs(role: UserRole, permMap: PermissionMap): string[] {
   if (role === 'owner') {
-    return ['dashboard', 'calendar', 'projects', 'tasks', 'billing', 'clients', 'financial', 'partners', 'categories', 'reports', 'users', 'audit', 'settings'];
+    return ['dashboard', 'calendar', 'projects', 'tasks', 'billing', 'clients', 'financial', 'partners', 'categories', 'reports', 'plans', 'users', 'audit', 'docs', 'settings'];
   }
 
   const tabs: string[] = [];
@@ -235,7 +315,9 @@ export function getVisibleTabs(role: UserRole, permMap: PermissionMap): string[]
   if (hasPermission(role, permMap, 'partners.view'))  tabs.push('partners');
   if (hasPermission(role, permMap, 'categories.view'))tabs.push('categories');
   if (hasPermission(role, permMap, 'reports.view'))   tabs.push('reports');
+  if (role === 'admin')                               tabs.push('plans');
   if (hasPermission(role, permMap, 'users.view'))     tabs.push('users');
+  tabs.push('docs'); // sempre visível para todos os cargos
   tabs.push('settings'); // sempre visível (perfil pessoal)
 
   return tabs;

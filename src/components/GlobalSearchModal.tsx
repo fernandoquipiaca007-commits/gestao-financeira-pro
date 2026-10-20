@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, X, Users, FolderKanban, Phone, Building2, ChevronRight } from 'lucide-react';
 import { Client, Project, Income } from '../types';
 import { formatCurrency } from '../lib/formatters';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface GlobalSearchModalProps {
   isOpen: boolean;
@@ -22,6 +23,7 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
   onSelectClient,
   onSelectProject,
 }) => {
+  const { lang } = useLanguage();
   const [query, setQuery] = useState('');
 
   useEffect(() => {
@@ -29,6 +31,10 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         if (isOpen) onClose();
+      } else if (e.key === 'Escape' && isOpen) {
+        // Esc fecha a pesquisa, como em qualquer paleta ⌘K
+        e.preventDefault();
+        onClose();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -64,23 +70,23 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
     : [];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 sm:pt-24 bg-black/40 backdrop-blur-sm p-4 animate-fade-in font-sans">
-      <div className="w-full max-w-2xl bg-white border border-[#c4c7c7]/30 rounded-[24px] shadow-[0_8px_40px_rgba(0,0,0,0.06)] overflow-hidden flex flex-col max-h-[80vh]">
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 sm:pt-24 bg-[rgba(18,17,14,0.34)] backdrop-blur-sm p-4 animate-fade-in font-sans">
+      <div className="w-full max-w-2xl bg-glass-strong border border-line-subtle rounded-xl shadow-xl overflow-hidden flex flex-col max-h-[80vh] backdrop-blur-[56px]">
         
         {/* Search Input */}
-        <div className="bg-[#f7f3f2] p-4 border-b border-[#c4c7c7]/40 flex items-center space-x-3">
-          <Search className="w-5 h-5 text-[#747878] stroke-[2.2]" />
+        <div className="bg-surface-2 p-4 border-b border-line-subtle flex items-center space-x-3">
+          <Search className="w-5 h-5 text-fg-muted stroke-[2.2]" />
           <input
             type="text"
             autoFocus
-            placeholder="Pesquisar por cliente, projeto, telefone ou serviço..."
+            placeholder={lang === 'en' ? "Search by client, project, phone or service..." : "Pesquisar por cliente, projeto, telefone ou serviço..."}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full bg-transparent text-[#1c1b1b] font-normal text-sm focus:outline-none placeholder-[#c4c7c7]"
+            className="w-full bg-transparent text-fg font-normal text-sm focus:outline-none placeholder:text-fg-muted "
           />
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full text-[#747878] hover:bg-[#f1edec] hover:text-[#1c1b1b] cursor-pointer"
+            className="p-1.5 rounded-full text-fg-muted hover:bg-sunken hover:text-fg cursor-pointer transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -89,21 +95,28 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
         {/* Results List */}
         <div className="flex-1 overflow-y-auto p-4 space-y-6">
           {!q ? (
-            <div className="text-center py-12 text-[#747878] text-xs space-y-1">
-              <p className="text-[#1c1b1b] font-semibold text-base">Pesquisa Unificada do Sistema</p>
-              <p className="text-sm text-[#747878]">Digite o nome do cliente, projeto, número de WhatsApp ou tipo de serviço para pesquisar instantaneamente.</p>
+            <div className="text-center py-12 text-fg-muted text-xs space-y-1">
+              <p className="text-fg font-semibold text-base">
+                {lang === 'en' ? "Unified System Search" : "Pesquisa Unificada do Sistema"}
+              </p>
+              <p className="text-sm text-fg-muted ">
+                {lang === 'en'
+                  ? "Type client name, project, WhatsApp number or service type to search instantly."
+                  : "Digite o nome do cliente, projeto, número de WhatsApp ou tipo de serviço para pesquisar instantaneamente."}
+              </p>
             </div>
           ) : matchedClients.length === 0 && matchedProjects.length === 0 ? (
-            <div className="text-center py-12 text-[#747878] font-normal text-sm">
-              Nenhum resultado encontrado para &ldquo;{query}&rdquo;.
+            <div className="text-center py-12 text-fg-muted font-normal text-sm">
+              {lang === 'en' ? `No results found for "${query}".` : `Nenhum resultado encontrado para "${query}".`}
             </div>
           ) : (
             <>
               {/* Clients Results */}
               {matchedClients.length > 0 && (
                 <div className="space-y-2">
-                  <div className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest flex items-center gap-1.5">
-                    <Users className="w-4 h-4 text-[#0050d7] stroke-[2.2]" /> Clientes ({matchedClients.length})
+                  <div className="text-[13px] font-medium text-fg-secondary flex items-center gap-1.5">
+                    <Users className="w-4 h-4 text-accent-soft-fg stroke-[2.2]" />
+                    {lang === 'en' ? `Clients (${matchedClients.length})` : `Clientes (${matchedClients.length})`}
                   </div>
                   <div className="space-y-1.5">
                     {matchedClients.map((c) => (
@@ -113,19 +126,19 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
                           onSelectClient(c);
                           onClose();
                         }}
-                        className="p-3.5 bg-[#f7f3f2] hover:bg-[#f1edec] border border-[#c4c7c7]/30 rounded-[16px] cursor-pointer flex items-center justify-between transition-colors group"
+                        className="p-3.5 bg-surface-2 hover:bg-sunken border border-line-subtle rounded-lg cursor-pointer flex items-center justify-between transition-colors group"
                       >
                         <div>
-                          <div className="font-semibold text-[#1c1b1b] text-sm group-hover:text-[#0050d7] transition-colors">
+                          <div className="font-semibold text-fg text-sm group-hover:text-accent-soft-fg transition-colors">
                             {c.name}
                           </div>
-                          <div className="text-sm text-[#747878] flex items-center gap-2 mt-0.5">
+                          <div className="text-sm text-fg-muted flex items-center gap-2 mt-0.5">
                             {c.company && <span>{c.company}</span>}
                             <span>• {c.type}</span>
                             <span>• {c.whatsapp}</span>
                           </div>
                         </div>
-                        <ChevronRight className="w-4 h-4 text-[#c4c7c7] group-hover:text-[#0050d7] transition-colors" />
+                        <ChevronRight className="w-4 h-4 text-fg-disabled group-hover:text-accent-soft-fg transition-colors" />
                       </div>
                     ))}
                   </div>
@@ -135,8 +148,9 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
               {/* Projects Results */}
               {matchedProjects.length > 0 && (
                 <div className="space-y-2">
-                  <div className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest flex items-center gap-1.5">
-                    <FolderKanban className="w-4 h-4 text-[#444747] stroke-[2.2]" /> Projetos ({matchedProjects.length})
+                  <div className="text-[13px] font-medium text-fg-secondary flex items-center gap-1.5">
+                    <FolderKanban className="w-4 h-4 text-fg-secondary stroke-[2.2]" />
+                    {lang === 'en' ? `Projects (${matchedProjects.length})` : `Projetos (${matchedProjects.length})`}
                   </div>
                   <div className="space-y-1.5">
                     {matchedProjects.map((p) => {
@@ -148,19 +162,19 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
                             onSelectProject(p);
                             onClose();
                           }}
-                          className="p-3.5 bg-[#f7f3f2] hover:bg-[#f1edec] border border-[#c4c7c7]/30 rounded-[16px] cursor-pointer flex items-center justify-between transition-colors group"
+                          className="p-3.5 bg-surface-2 hover:bg-sunken border border-line-subtle rounded-lg cursor-pointer flex items-center justify-between transition-colors group"
                         >
                           <div>
-                            <div className="font-semibold text-[#1c1b1b] text-sm group-hover:text-[#0050d7] transition-colors">
+                            <div className="font-semibold text-fg text-sm group-hover:text-accent-soft-fg transition-colors">
                               {p.name}
                             </div>
-                            <div className="text-sm text-[#747878] flex items-center gap-2 mt-0.5">
-                              <span>Cliente: {client?.name || '-'}</span>
+                            <div className="text-sm text-fg-muted flex items-center gap-2 mt-0.5">
+                              <span>{lang === 'en' ? 'Client' : 'Cliente'}: {client?.name || '-'}</span>
                               <span>• {p.category}</span>
-                              <span className="text-[#0050d7]">• {formatCurrency(p.totalAmount, p.currency)}</span>
+                              <span className="text-accent-soft-fg ">• {formatCurrency(p.totalAmount, p.currency)}</span>
                             </div>
                           </div>
-                          <ChevronRight className="w-4 h-4 text-[#c4c7c7] group-hover:text-[#0050d7] transition-colors" />
+                          <ChevronRight className="w-4 h-4 text-fg-disabled group-hover:text-accent-soft-fg transition-colors" />
                         </div>
                       );
                     })}

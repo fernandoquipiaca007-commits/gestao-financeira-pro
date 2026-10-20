@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { EditorPage } from '../shell/EditorPage';
 import { X, DollarSign, Save } from 'lucide-react';
-import { Income, Client, Project, CurrencyCode, IncomeStatus, PaymentMethod, CURRENCIES } from '../../types';
+import { Income, Client, Project, CurrencyCode, IncomeStatus, PaymentMethod, CURRENCIES, getIncomeStatusLabel, getPaymentMethodLabel } from '../../types';
 import { getTodayIso } from '../../lib/storage';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface IncomeModalProps {
   isOpen: boolean;
@@ -22,6 +24,8 @@ export const IncomeModal: React.FC<IncomeModalProps> = ({
   projects,
   defaultCurrency,
 }) => {
+  const { lang } = useLanguage();
+  const isEn = lang === 'en';
   const [clientId, setClientId] = useState('');
   const [projectId, setProjectId] = useState<string>('');
   const [description, setDescription] = useState('');
@@ -55,7 +59,7 @@ export const IncomeModal: React.FC<IncomeModalProps> = ({
         setCurrency(defaultCurrency);
       }
       setProjectId('');
-      setDescription('Parcela do Projeto');
+      setDescription(isEn ? 'Project Installment' : 'Parcela do Projeto');
       setAmount(600);
       setDueDate(getTodayIso());
       setReceivedDate('');
@@ -63,7 +67,7 @@ export const IncomeModal: React.FC<IncomeModalProps> = ({
       setStatus('Pendente');
       setNotes('');
     }
-  }, [incomeToEdit, isOpen, clients, defaultCurrency]);
+  }, [incomeToEdit, isOpen, clients, defaultCurrency, isEn]);
 
   const handleClientChange = (cId: string) => {
     setClientId(cId);
@@ -99,41 +103,43 @@ export const IncomeModal: React.FC<IncomeModalProps> = ({
   const clientProjects = projects.filter((p) => p.clientId === clientId);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in font-sans">
-      <div className="w-full max-w-lg bg-white border border-[#c4c7c7]/30 rounded-[24px] shadow-[0_8px_40px_rgba(0,0,0,0.06)] overflow-hidden flex flex-col max-h-[90vh]">
-
-        {/* Header */}
-        <div className="bg-[#f7f3f2] p-5 border-b border-[#c4c7c7]/40 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <div className="w-9 h-9 rounded-full bg-[#f1edec] text-[#444747] flex items-center justify-center">
-              <DollarSign className="w-5 h-5 stroke-[2.2]" />
-            </div>
-            <h3 className="font-semibold text-[#1c1b1b] text-base">
-              {incomeToEdit ? 'Editar Receita' : 'Cadastrar Nova Receita'}
-            </h3>
-          </div>
-
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-full text-[#747878] hover:bg-[#f1edec] hover:text-[#1c1b1b] cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1">
+    <EditorPage
+      title={<>{incomeToEdit
+                ? (isEn ? 'Edit Revenue' : 'Editar Receita')
+                : (isEn ? 'New income' : 'Nova receita')}</>}
+      trail={[isEn ? 'Finance' : 'Financeiro']}
+      
+      icon={<DollarSign className="w-5 h-5" />}
+      onClose={onClose}
+      actions={<>
+            <button
+              type="button"
+              onClick={onClose}
+              className="aura-btn aura-btn--ghost"
+            >
+              {isEn ? 'Cancel' : 'Cancelar'}
+            </button>
+            <button
+              type="submit"
+              className="aura-btn aura-btn--primary"
+             form="income-form">
+              <Save className="w-4 h-4 stroke-[2.5]" />
+              <span>{isEn ? 'Save Revenue' : 'Guardar Receita'}</span>
+            </button>
+          </>}
+    >
+      <form id="income-form" className="space-y-6 text-fg" onSubmit={handleSubmit}>
 
           {/* Cliente */}
           <div>
-            <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
-              Cliente *
+            <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
+              {isEn ? 'Client *' : 'Cliente *'}
             </label>
             <select
               required
               value={clientId}
               onChange={(e) => handleClientChange(e.target.value)}
-              className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-sm text-[#1c1b1b] placeholder-[#747878] focus:outline-none focus:border-[#000000] focus:bg-white transition-all"
+              className="w-full bg-surface-2 border border-line-subtle rounded-md px-4 py-3 text-sm text-fg focus:outline-none focus:border-accent focus:bg-surface-1 focus:shadow-[0_0_0_4px_var(--accent-ring)] transition-all cursor-pointer"
             >
               {clients.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -145,15 +151,15 @@ export const IncomeModal: React.FC<IncomeModalProps> = ({
 
           {/* Projeto (Opcional) */}
           <div>
-            <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
-              Projeto Vinculado (Opcional)
+            <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
+              {isEn ? 'Linked Project (Optional)' : 'Projeto Vinculado (Opcional)'}
             </label>
             <select
               value={projectId}
               onChange={(e) => setProjectId(e.target.value)}
-              className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-sm text-[#1c1b1b] placeholder-[#747878] focus:outline-none focus:border-[#000000] focus:bg-white transition-all"
+              className="w-full bg-surface-2 border border-line-subtle rounded-md px-4 py-3 text-sm text-fg focus:outline-none focus:border-accent focus:bg-surface-1 focus:shadow-[0_0_0_4px_var(--accent-ring)] transition-all cursor-pointer"
             >
-              <option value="">Sem projeto específico</option>
+              <option value="">{isEn ? 'No specific project' : 'Sem projeto específico'}</option>
               {clientProjects.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name} ({p.category})
@@ -164,24 +170,24 @@ export const IncomeModal: React.FC<IncomeModalProps> = ({
 
           {/* Descrição */}
           <div>
-            <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
-              Descrição da Cobrança *
+            <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
+              {isEn ? 'Invoice / Charge Description *' : 'Descrição da Cobrança *'}
             </label>
             <input
               type="text"
               required
-              placeholder="Ex: 2ª Parcela - Landing Page Mirtes"
+              placeholder={isEn ? 'Ex: 2nd Installment - Landing Page' : 'Ex: 2ª Parcela - Landing Page Mirtes'}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-sm text-[#1c1b1b] placeholder-[#747878] focus:outline-none focus:border-[#000000] focus:bg-white transition-all"
+              className="w-full bg-surface-2 border border-line-subtle rounded-md px-4 py-3 text-sm text-fg placeholder:text-fg-muted focus:outline-none focus:border-accent focus:bg-surface-1 focus:shadow-[0_0_0_4px_var(--accent-ring)] transition-all"
             />
           </div>
 
           {/* Valor & Moeda */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
-                Valor ({CURRENCIES[currency]?.symbol})
+              <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
+                {isEn ? 'Amount' : 'Valor'} ({CURRENCIES[currency]?.symbol})
               </label>
               <input
                 type="number"
@@ -189,18 +195,18 @@ export const IncomeModal: React.FC<IncomeModalProps> = ({
                 required
                 value={amount}
                 onChange={(e) => setAmount(Number(e.target.value))}
-                className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-sm text-[#000000] font-medium placeholder-[#747878] focus:outline-none focus:border-[#000000] focus:bg-white transition-all"
+                className="w-full bg-surface-2 border border-line-subtle rounded-md px-4 py-3 text-sm text-fg font-medium focus:outline-none focus:border-accent focus:bg-surface-1 focus:shadow-[0_0_0_4px_var(--accent-ring)] transition-all"
               />
             </div>
 
             <div>
-              <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
-                Moeda
+              <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
+                {isEn ? 'Currency' : 'Moeda'}
               </label>
               <select
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
-                className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-sm text-[#1c1b1b] placeholder-[#747878] focus:outline-none focus:border-[#000000] focus:bg-white transition-all"
+                className="w-full bg-surface-2 border border-line-subtle rounded-md px-4 py-3 text-sm text-fg focus:outline-none focus:border-accent focus:bg-surface-1 focus:shadow-[0_0_0_4px_var(--accent-ring)] transition-all cursor-pointer"
               >
                 <option value="AOA">AOA (Kz)</option>
                 <option value="BRL">BRL (R$)</option>
@@ -213,73 +219,56 @@ export const IncomeModal: React.FC<IncomeModalProps> = ({
           {/* Data Prevista, Forma Pgt, Status */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
-                Data Prevista
+              <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
+                {isEn ? 'Due Date' : 'Data Prevista'}
               </label>
               <input
                 type="date"
                 required
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-sm text-[#1c1b1b] placeholder-[#747878] focus:outline-none focus:border-[#000000] focus:bg-white transition-all"
+                className="w-full bg-surface-2 border border-line-subtle rounded-md px-4 py-3 text-sm text-fg focus:outline-none focus:border-accent focus:bg-surface-1 focus:shadow-[0_0_0_4px_var(--accent-ring)] transition-all cursor-pointer"
               />
             </div>
 
             <div>
-              <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
-                Forma Pgt
+              <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
+                {isEn ? 'Payment Method' : 'Forma Pgt'}
               </label>
               <select
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-sm text-[#1c1b1b] placeholder-[#747878] focus:outline-none focus:border-[#000000] focus:bg-white transition-all"
+                className="w-full bg-surface-2 border border-line-subtle rounded-md px-4 py-3 text-sm text-fg focus:outline-none focus:border-accent focus:bg-surface-1 focus:shadow-[0_0_0_4px_var(--accent-ring)] transition-all cursor-pointer"
               >
                 <option value="PIX">PIX</option>
-                <option value="Transferência">Transferência</option>
-                <option value="Cartão">Cartão</option>
-                <option value="Boleto">Boleto</option>
-                <option value="Dinheiro">Dinheiro</option>
-                <option value="Outro">Outro</option>
+                <option value="Transferência">{isEn ? 'Transfer' : 'Transferência'}</option>
+                <option value="Cartão">{isEn ? 'Card' : 'Cartão'}</option>
+                <option value="Boleto">{isEn ? 'Bank Slip / Invoice' : 'Boleto'}</option>
+                <option value="Dinheiro">{isEn ? 'Cash' : 'Dinheiro'}</option>
+                <option value="Outro">{isEn ? 'Other' : 'Outro'}</option>
               </select>
             </div>
 
             <div>
-              <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
-                Status
+              <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
+                {isEn ? 'Status' : 'Estado'}
               </label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as IncomeStatus)}
-                className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-sm text-[#1c1b1b] placeholder-[#747878] focus:outline-none focus:border-[#000000] focus:bg-white transition-all"
+                className="w-full bg-surface-2 border border-line-subtle rounded-md px-4 py-3 text-sm text-fg focus:outline-none focus:border-accent focus:bg-surface-1 focus:shadow-[0_0_0_4px_var(--accent-ring)] transition-all cursor-pointer"
               >
-                <option value="Pendente">Pendente</option>
-                <option value="Recebido">Recebido</option>
-                <option value="Atrasado">Atrasado</option>
+                <option value="Pendente">{getIncomeStatusLabel('Pendente', lang)}</option>
+                <option value="Recebido">{getIncomeStatusLabel('Recebido', lang)}</option>
+                <option value="Atrasado">{getIncomeStatusLabel('Atrasado', lang)}</option>
               </select>
             </div>
           </div>
 
           {/* Footer controls */}
-          <div className="pt-3 border-t border-[#c4c7c7]/40 flex items-center justify-end space-x-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-[29px] bg-[#f1edec] hover:bg-[#e5e2e1] text-[#1c1b1b] text-sm font-medium cursor-pointer"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2 bg-[#000000] hover:opacity-85 text-white font-medium text-sm rounded-[29px] flex items-center space-x-2 transition-all cursor-pointer active:scale-95"
-            >
-              <Save className="w-4 h-4 stroke-[2.5]" />
-              <span>Salvar Receita</span>
-            </button>
-          </div>
+          
 
         </form>
-
-      </div>
-    </div>
+    </EditorPage>
   );
 };

@@ -1,0 +1,1906 @@
+/* =====================================================================
+   AURA DESIGN SYSTEM — CAMADA DE COMPONENTES (CSS puro, framework-agnóstico)
+   Requer: tokens/tokens.css carregado antes.
+   Convenção: .aura-<componente>  ·  modificadores: .aura-<componente>--<variante>
+   Os componentes React (components/ (ficheiros .tsx)) usam estas mesmas classes.
+   ===================================================================== */
+
+/* ---------------------------------------------------------------------
+   0. BASE
+   --------------------------------------------------------------------- */
+.aura-root,
+.aura-root * {
+  box-sizing: border-box;
+}
+
+.aura-root {
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+  letter-spacing: var(--tracking-body);
+  color: var(--text-primary);
+  background: var(--bg-base);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'cv11' 1, 'ss01' 1;
+  text-rendering: optimizeLegibility;
+}
+
+.aura-root ::selection {
+  background: var(--aura-ember-200);
+  color: var(--aura-ink-900);
+}
+
+.aura-root :focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.aura-num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------------
+   1. FUNDO — CANVAS TRANSLÚCIDO + AURORA (assinatura visual do sistema)
+   Estrutura:
+     <div class="aura-canvas">
+       <div class="aura-canvas__aurora" aria-hidden="true">
+         <span></span><span></span><span></span>
+       </div>
+       <div class="aura-canvas__noise" aria-hidden="true"></div>
+       ...conteúdo...
+     </div>
+   --------------------------------------------------------------------- */
+.aura-canvas {
+  position: relative;
+  isolation: isolate;
+  min-height: 100dvh;
+  background: var(--bg-canvas), var(--bg-base);
+  background-attachment: fixed;
+  overflow-x: clip;
+}
+
+.aura-canvas__aurora {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.aura-canvas__aurora > span {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  will-change: transform;
+  animation: aura-drift var(--duration-ambient) ease-in-out infinite alternate;
+}
+
+.aura-canvas__aurora > span:nth-child(1) {
+  width: 58vw; height: 58vw;
+  right: -10vw; bottom: -14vw;
+  background: var(--bg-aurora-1);
+}
+
+.aura-canvas__aurora > span:nth-child(2) {
+  width: 30vw; height: 30vw;
+  right: 18vw; top: -8vw;
+  background: var(--bg-aurora-2);
+  animation-duration: calc(var(--duration-ambient) * 1.3);
+  animation-direction: alternate-reverse;
+}
+
+.aura-canvas__aurora > span:nth-child(4) {
+  width: 34vw; height: 34vw;
+  left: 8vw; top: 38vh;
+  background: var(--bg-aurora-4);
+  animation-duration: calc(var(--duration-ambient) * 1.6);
+  animation-direction: alternate-reverse;
+}
+
+/* Malha de pontos + vinheta: textura e profundidade por trás do vidro */
+.aura-canvas__grid {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: radial-gradient(var(--bg-grid-color) 1px, transparent 1.2px);
+  background-size: 22px 22px;
+  -webkit-mask-image: radial-gradient(120% 90% at 50% 30%, #000 30%, transparent 85%);
+  mask-image: radial-gradient(120% 90% at 50% 30%, #000 30%, transparent 85%);
+}
+.aura-canvas__vignette {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--bg-vignette);
+}
+
+.aura-canvas__aurora > span:nth-child(3) {
+  width: 40vw; height: 40vw;
+  left: -12vw; top: -10vw;
+  background: var(--bg-aurora-3);
+  animation-duration: calc(var(--duration-ambient) * 0.9);
+}
+
+/* Grão subtil — tira o aspeto "digital chapado" do gradiente */
+.aura-canvas__noise {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: var(--bg-noise-opacity);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  mix-blend-mode: overlay;
+}
+
+/* Reflexo diagonal (feixe de luz) — opcional, usar 1x por ecrã */
+.aura-canvas__sheen {
+  position: fixed;
+  inset: -20%;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 38%, rgba(255, 255, 255, 0.35) 48%, transparent 58%);
+  opacity: 0.55;
+}
+html.dark .aura-canvas__sheen,
+[data-theme="dark"] .aura-canvas__sheen {
+  opacity: 0.08;
+}
+
+/* ---------------------------------------------------------------------
+   2. VIDRO — SUPERFÍCIES
+   .aura-glass          → painel principal (cards de dashboard)
+   .aura-glass--strong  → mais opaco (modais, popovers, tabelas densas)
+   .aura-glass--subtle  → quase transparente (pílulas de navegação, chips)
+   --------------------------------------------------------------------- */
+.aura-glass {
+  position: relative;
+  background:
+    linear-gradient(180deg, var(--glass-tint-top), var(--glass-tint-bottom) 42%),
+    var(--glass-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-glass);
+}
+
+.aura-glass--strong { background-color: var(--glass-bg-strong); }
+.aura-glass--subtle { background-color: var(--glass-bg-subtle); box-shadow: 0 0 0 1px var(--glass-outline); }
+.aura-glass--interactive {
+  transition: transform var(--duration-base) var(--ease-emphasized),
+              box-shadow var(--duration-base) var(--ease-standard),
+              background-color var(--duration-fast) var(--ease-standard);
+}
+.aura-glass--interactive:hover {
+  transform: translateY(-2px);
+  background-color: var(--glass-bg-hover);
+  box-shadow: var(--shadow-glass), var(--shadow-lg);
+}
+
+/* Fallback sem backdrop-filter (browsers antigos / modo de poupança) */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .aura-glass { background-color: var(--glass-bg-strong); }
+}
+
+/* Superfície aninhada dentro de um card de vidro (ex.: zona do gráfico) */
+.aura-well {
+  background: var(--surface-sunken);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+}
+.aura-well--solid {
+  background: var(--surface-2);
+}
+
+/* Card sólido (quando o conteúdo precisa de máxima legibilidade: tabelas longas) */
+.aura-card {
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Card invertido (escuro no claro / claro no escuro) — foco de atenção */
+.aura-card--inverse {
+  background: var(--surface-inverse);
+  color: var(--text-inverse);
+  border-color: transparent;
+  box-shadow: var(--shadow-lg);
+}
+
+/* Card de acento (KPI herói) — gradiente ember com brilho interno */
+.aura-card--accent {
+  background:
+    radial-gradient(120% 80% at 20% 0%, rgba(255, 255, 255, 0.28), transparent 55%),
+    var(--accent-gradient);
+  color: var(--text-on-accent);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: var(--shadow-accent-3d);
+}
+
+/* Card citrine (progresso / conquistas) */
+.aura-card--highlight {
+  background:
+    radial-gradient(120% 80% at 20% 0%, rgba(255, 255, 255, 0.45), transparent 55%),
+    linear-gradient(160deg, var(--aura-citrine-300), var(--aura-citrine-500));
+  color: var(--highlight-fg);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+/* Pilha 3D (cartas por trás do card — efeito de profundidade) */
+.aura-stack {
+  position: relative;
+  /* sem isolation: as cartas (z-index -1) ficam por trás do card */
+}
+.aura-stack::before,
+.aura-stack::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  translate: -50% 0;
+  z-index: -1;
+  border-radius: var(--radius-xl);
+  transition: transform var(--duration-slow) var(--ease-emphasized);
+}
+.aura-stack::before {
+  top: -10px;
+  width: 88%;
+  height: 40px;
+  background: var(--aura-ink-400);
+  opacity: 0.9;
+}
+.aura-stack::after {
+  top: -20px;
+  width: 76%;
+  height: 40px;
+  background: var(--aura-ink-300);
+  opacity: 0.7;
+}
+.aura-stack:hover::before { transform: translateY(-4px); }
+.aura-stack:hover::after { transform: translateY(-8px); }
+
+/* ---------------------------------------------------------------------
+   3. BOTÕES
+   Variantes: primary (Ink 3D) · accent (Ember 3D) · secondary (vidro/neutro)
+              ghost · outline · danger · link
+   Tamanhos:  --xs 28 · --sm 36 · (md) 44 · --lg 52 · --xl 60
+   Formas:    pill (padrão) · --square (raio md) · --icon (circular)
+   Estados:   :hover · :active (afunda 1px + escala .98) · :focus-visible
+              [disabled]/[aria-disabled] · [data-loading="true"]
+   --------------------------------------------------------------------- */
+.aura-btn {
+  --btn-h: var(--control-md);
+  --btn-px: 22px;
+  --btn-gap: 8px;
+  --btn-fs: var(--text-body);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--btn-gap);
+  height: var(--btn-h);
+  min-width: var(--btn-h);
+  padding-inline: var(--btn-px);
+  border: 1px solid transparent;
+  border-radius: var(--radius-full);
+  font-family: var(--font-sans);
+  font-size: var(--btn-fs);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  overflow: hidden;
+  isolation: isolate;
+  transition:
+    transform var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard),
+    background var(--duration-base) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard),
+    opacity var(--duration-fast) var(--ease-standard);
+}
+.aura-btn svg { width: 18px; height: 18px; flex: none; stroke-width: 1.75; }
+.aura-btn:active:not(:disabled) { transform: translateY(1px) scale(0.98); }
+.aura-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.aura-btn:disabled,
+.aura-btn[aria-disabled="true"] { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+/* Brilho que atravessa o botão no hover (shine sweep) — só primary/accent */
+.aura-btn--primary::after,
+.aura-btn--accent::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.22) 50%, transparent 70%);
+  transform: translateX(-120%);
+  transition: transform var(--duration-slower) var(--ease-emphasized);
+}
+.aura-btn--primary:hover::after,
+.aura-btn--accent:hover::after { transform: translateX(120%); }
+
+.aura-btn--primary {
+  background: var(--primary-bg);
+  color: var(--primary-fg);
+  box-shadow: var(--shadow-primary-3d);
+}
+.aura-btn--primary:hover:not(:disabled) { background: var(--primary-bg-hover); }
+
+.aura-btn--accent {
+  background: var(--accent-gradient);
+  color: var(--text-on-accent);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: var(--shadow-accent-3d);
+}
+.aura-btn--accent:hover:not(:disabled) { filter: brightness(1.05) saturate(1.05); }
+
+.aura-btn--secondary {
+  background: var(--glass-bg-strong);
+  color: var(--text-primary);
+  border-color: var(--border-subtle);
+  box-shadow: var(--shadow-xs), 0 1px 0 rgba(255, 255, 255, 0.7) inset;
+  -webkit-backdrop-filter: blur(var(--blur-sm));
+  backdrop-filter: blur(var(--blur-sm));
+}
+.aura-btn--secondary:hover:not(:disabled) { background: var(--surface-1); box-shadow: var(--shadow-sm); }
+
+.aura-btn--ghost {
+  background: transparent;
+  color: var(--text-secondary);
+}
+.aura-btn--ghost:hover:not(:disabled) { background: var(--surface-sunken); color: var(--text-primary); }
+
+.aura-btn--outline {
+  background: transparent;
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+.aura-btn--outline:hover:not(:disabled) { background: var(--glass-bg-subtle); border-color: var(--text-primary); }
+
+.aura-btn--danger {
+  background: var(--danger);
+  color: #fff;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.25) inset, 0 8px 20px -8px var(--danger);
+}
+.aura-btn--danger:hover:not(:disabled) { filter: brightness(1.06); }
+
+.aura-btn--link {
+  height: auto;
+  min-width: 0;
+  padding: 0;
+  background: none;
+  color: var(--text-link);
+  border-radius: var(--radius-xs);
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+}
+.aura-btn--link:hover { text-decoration-color: currentColor; }
+
+/* Tamanhos */
+.aura-btn--xs { --btn-h: var(--control-xs); --btn-px: 10px; --btn-gap: 4px; --btn-fs: var(--text-caption); }
+.aura-btn--xs svg { width: 14px; height: 14px; }
+.aura-btn--sm { --btn-h: var(--control-sm); --btn-px: 14px; --btn-gap: 6px; --btn-fs: var(--text-body-sm); }
+.aura-btn--sm svg { width: 16px; height: 16px; }
+.aura-btn--lg { --btn-h: var(--control-lg); --btn-px: 28px; --btn-fs: var(--text-body-lg); }
+.aura-btn--xl { --btn-h: var(--control-xl); --btn-px: 34px; --btn-fs: var(--text-body-lg); font-weight: 600; }
+.aura-btn--xl svg, .aura-btn--lg svg { width: 20px; height: 20px; }
+
+/* Formas */
+.aura-btn--square { border-radius: var(--radius-md); }
+.aura-btn--icon { padding: 0; width: var(--btn-h); border-radius: var(--radius-full); }
+.aura-btn--block { width: 100%; }
+
+/* Loading: spinner substitui o ícone, texto mantém largura */
+.aura-btn[data-loading="true"] { cursor: progress; }
+.aura-btn[data-loading="true"] > :not(.aura-spinner) { opacity: 0; }
+.aura-btn[data-loading="true"] > .aura-spinner { position: absolute; }
+
+/* Grupo de botões / segmented actions */
+.aura-btn-group {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--radius-full);
+  background: var(--glass-bg-subtle);
+  box-shadow: 0 0 0 1px var(--glass-outline);
+}
+
+/* Botão-ícone de cabeçalho (círculo de vidro com badge opcional) */
+.aura-icon-btn {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: var(--control-md);
+  height: var(--control-md);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg-strong);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-xs);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-standard), transform var(--duration-fast) var(--ease-standard);
+}
+.aura-icon-btn:hover { background: var(--surface-1); }
+.aura-icon-btn:active { transform: scale(0.94); }
+.aura-icon-btn svg { width: 20px; height: 20px; stroke-width: 1.6; }
+.aura-icon-btn--dark { background: var(--surface-inverse); color: var(--text-inverse); border-color: transparent; }
+.aura-icon-btn--sm { width: var(--control-sm); height: var(--control-sm); }
+.aura-icon-btn--sm svg { width: 16px; height: 16px; }
+.aura-icon-btn__dot {
+  position: absolute;
+  top: 9px; right: 10px;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--surface-1);
+}
+.aura-icon-btn__dot--pulse::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: inherit;
+  animation: aura-pulse-dot 2s var(--ease-standard) infinite;
+}
+
+/* ---------------------------------------------------------------------
+   4. FORMULÁRIOS
+   Anatomia do campo:
+     <div class="aura-field">
+       <label class="aura-label" for="x">Nome <span class="aura-label__req">*</span></label>
+       <div class="aura-input-wrap"> [ícone] <input class="aura-input" id="x"> [sufixo] </div>
+       <p class="aura-hint">Texto de ajuda</p>   |  <p class="aura-error">Mensagem</p>
+     </div>
+   Estados: :hover · :focus-within · [aria-invalid="true"] · :disabled · [readonly]
+   --------------------------------------------------------------------- */
+.aura-field { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; min-width: 0; }
+
+.aura-label {
+  font-size: var(--text-body-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.aura-label__req { color: var(--accent); }
+
+.aura-hint { margin: 0; font-size: var(--text-caption); color: var(--text-muted); }
+.aura-error {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-caption);
+  color: var(--danger-fg);
+}
+
+.aura-input-wrap {
+  --input-h: var(--control-md);
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: var(--input-h);
+  padding-inline: 16px;
+  border-radius: var(--radius-md);
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--border-default);
+  box-shadow: var(--shadow-inset);
+  color: var(--text-muted);
+  transition: border-color var(--duration-fast) var(--ease-standard),
+              box-shadow var(--duration-fast) var(--ease-standard),
+              background var(--duration-fast) var(--ease-standard);
+}
+.aura-input-wrap:hover { border-color: var(--border-strong); }
+.aura-input-wrap:focus-within {
+  background: var(--surface-1);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-ring);
+  color: var(--text-secondary);
+}
+.aura-input-wrap[aria-invalid="true"],
+.aura-input-wrap:has(.aura-input[aria-invalid="true"]) {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 4px var(--danger-soft);
+}
+.aura-input-wrap:has(.aura-input:disabled) { opacity: 0.55; cursor: not-allowed; }
+.aura-input-wrap svg { width: 18px; height: 18px; flex: none; stroke-width: 1.7; }
+.aura-input-wrap--sm { --input-h: var(--control-sm); padding-inline: 12px; border-radius: var(--radius-sm); }
+.aura-input-wrap--lg { --input-h: var(--control-lg); padding-inline: 18px; }
+.aura-input-wrap--pill { border-radius: var(--radius-full); padding-inline: 18px; }
+
+.aura-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font: inherit;
+  font-size: var(--text-body);
+  color: var(--text-primary);
+}
+.aura-input::placeholder { color: var(--text-muted); }
+.aura-input:disabled { cursor: not-allowed; }
+
+.aura-input-affix {
+  font-size: var(--text-body-sm);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* Textarea */
+.aura-textarea {
+  width: 100%;
+  min-height: 112px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--border-default);
+  box-shadow: var(--shadow-inset);
+  font: inherit;
+  color: var(--text-primary);
+  resize: vertical;
+  transition: border-color var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard);
+}
+.aura-textarea:focus { outline: 0; border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-ring); background: var(--surface-1); }
+
+/* Select nativo estilizado (preferir o Select React para listas ricas) */
+.aura-select {
+  appearance: none;
+  width: 100%;
+  height: var(--control-md);
+  padding: 0 40px 0 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  background:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2377726a' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><path d='m4 6 4 4 4-4'/></svg>") no-repeat right 14px center,
+    var(--glass-bg-strong);
+  font: inherit;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.aura-select:focus { outline: 0; border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-ring); }
+
+/* Checkbox */
+.aura-check {
+  appearance: none;
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  border-radius: var(--radius-xs);
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface-1);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard), transform var(--duration-fast) var(--ease-spring);
+}
+.aura-check::after {
+  content: '';
+  width: 10px;
+  height: 6px;
+  border: 2px solid var(--primary-fg);
+  border-top: 0;
+  border-right: 0;
+  transform: rotate(-45deg) translate(1px, -1px) scale(0);
+  transition: transform var(--duration-base) var(--ease-spring);
+}
+.aura-check:checked { background: var(--primary-solid); border-color: var(--primary-solid); }
+.aura-check:checked::after { transform: rotate(-45deg) translate(1px, -1px) scale(1); }
+.aura-check:indeterminate { background: var(--primary-solid); border-color: var(--primary-solid); }
+.aura-check:indeterminate::after { width: 10px; height: 0; border-left: 0; border-bottom-width: 2px; transform: none; }
+.aura-check:active { transform: scale(0.9); }
+.aura-check:focus-visible { outline: 0; box-shadow: var(--focus-ring); }
+.aura-check:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Radio */
+.aura-radio {
+  appearance: none;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface-1);
+  cursor: pointer;
+  transition: border-width var(--duration-base) var(--ease-spring), border-color var(--duration-fast) var(--ease-standard);
+}
+.aura-radio:checked { border: 6px solid var(--primary-solid); }
+.aura-radio:focus-visible { outline: 0; box-shadow: var(--focus-ring); }
+
+/* Linha de opção (checkbox/radio + texto) */
+.aura-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: var(--text-body);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.aura-option__desc { display: block; font-size: var(--text-body-sm); color: var(--text-muted); }
+
+/* Switch */
+.aura-switch {
+  appearance: none;
+  position: relative;
+  flex: none;
+  width: 46px;
+  height: 28px;
+  margin: 0;
+  border-radius: var(--radius-full);
+  background: var(--surface-3);
+  box-shadow: var(--shadow-inset), 0 0 0 1px var(--border-subtle);
+  cursor: pointer;
+  transition: background var(--duration-base) var(--ease-standard);
+}
+.aura-switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(29, 27, 23, 0.25), 0 0 0 0.5px rgba(29, 27, 23, 0.1);
+  transition: transform var(--duration-base) var(--ease-spring), width var(--duration-fast) var(--ease-standard);
+}
+.aura-switch:active::after { width: 26px; }
+.aura-switch:checked { background: var(--primary-solid); }
+.aura-switch:checked::after { transform: translateX(18px); }
+.aura-switch:checked:active::after { transform: translateX(14px); }
+.aura-switch--accent:checked { background: var(--accent); }
+.aura-switch:focus-visible { outline: 0; box-shadow: var(--focus-ring); }
+.aura-switch:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ---------------------------------------------------------------------
+   5. BADGES · DELTA · STATUS · CHIPS · AVATAR
+   --------------------------------------------------------------------- */
+.aura-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding-inline: 8px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-caption);
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  background: var(--surface-3);
+  color: var(--text-secondary);
+}
+.aura-badge svg { width: 12px; height: 12px; stroke-width: 2.2; }
+.aura-badge--success { background: var(--success-soft); color: var(--success-fg); }
+.aura-badge--warning { background: var(--warning-soft); color: var(--warning-fg); }
+.aura-badge--danger  { background: var(--danger-soft);  color: var(--danger-fg); }
+.aura-badge--info    { background: var(--info-soft);    color: var(--info-fg); }
+.aura-badge--accent  { background: var(--accent-soft);  color: var(--accent-soft-fg); }
+.aura-badge--highlight { background: var(--highlight); color: var(--highlight-fg); }
+.aura-badge--inverse { background: var(--surface-inverse); color: var(--text-inverse); }
+.aura-badge--on-color { background: rgba(255, 255, 255, 0.2); color: inherit; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.aura-badge--outline { background: transparent; box-shadow: inset 0 0 0 1px var(--border-strong); }
+.aura-badge--lg { height: 28px; padding-inline: 12px; font-size: var(--text-body-sm); }
+
+/* Contador numérico (sidebar, ícones) */
+.aura-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding-inline: 6px;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.aura-count--muted { background: var(--surface-3); color: var(--text-secondary); }
+
+/* Status com ponto (tabelas, listas) */
+.aura-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-body-sm);
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+.aura-status::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--status-color, var(--text-muted));
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--status-color, var(--text-muted)) 18%, transparent);
+}
+.aura-status--success { --status-color: var(--success); }
+.aura-status--warning { --status-color: var(--warning); }
+.aura-status--danger  { --status-color: var(--danger); }
+.aura-status--info    { --status-color: var(--info); }
+.aura-status--neutral { --status-color: var(--text-muted); }
+
+/* Chip (filtros, tags removíveis, seleção) */
+.aura-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding-inline: 14px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-default);
+  background: var(--glass-bg-strong);
+  color: var(--text-secondary);
+  font-size: var(--text-body-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-standard), background var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard);
+}
+.aura-chip:hover { color: var(--text-primary); border-color: var(--border-strong); }
+.aura-chip[aria-pressed="true"],
+.aura-chip[aria-selected="true"] {
+  background: var(--primary-solid);
+  border-color: var(--primary-solid);
+  color: var(--primary-fg);
+}
+.aura-chip svg { width: 15px; height: 15px; }
+.aura-chip__remove { display: inline-grid; place-items: center; width: 18px; height: 18px; margin-right: -6px; border-radius: 50%; }
+.aura-chip__remove:hover { background: var(--surface-sunken); }
+
+/* Pílula de valor (barras-pílula com %) */
+.aura-pill-stat {
+  display: flex;
+  align-items: center;
+  height: 48px;
+  padding-inline: 18px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-body-sm);
+  font-weight: 500;
+  background: var(--surface-inverse);
+  color: var(--text-inverse);
+}
+.aura-pill-stat--highlight { background: var(--highlight); color: var(--highlight-fg); }
+.aura-pill-stat--hatch { background: var(--hatch-bg); color: var(--text-secondary); }
+.aura-pill-stat--outline { background: transparent; color: var(--text-secondary); box-shadow: inset 0 0 0 1px var(--border-strong); }
+
+/* Avatar */
+.aura-avatar {
+  --av: 40px;
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: var(--av);
+  height: var(--av);
+  border-radius: 50%;
+  background: linear-gradient(140deg, var(--aura-citrine-200), var(--aura-ember-300));
+  color: var(--aura-ink-900);
+  font-size: calc(var(--av) * 0.38);
+  font-weight: 600;
+  overflow: hidden;
+  box-shadow: 0 0 0 2px var(--surface-1);
+}
+.aura-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.aura-avatar--xs { --av: 24px; }
+.aura-avatar--sm { --av: 32px; }
+.aura-avatar--lg { --av: 48px; }
+.aura-avatar--xl { --av: 64px; }
+.aura-avatar__presence {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 28%;
+  height: 28%;
+  border-radius: 50%;
+  background: var(--success);
+  box-shadow: 0 0 0 2px var(--surface-1);
+}
+.aura-avatar-group { display: inline-flex; }
+.aura-avatar-group > .aura-avatar + .aura-avatar { margin-left: calc(var(--av) * -0.3); }
+
+/* Kbd */
+.aura-kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding-inline: 6px;
+  border-radius: var(--radius-xs);
+  background: var(--surface-1);
+  box-shadow: 0 0 0 1px var(--border-default), 0 1px 0 var(--border-strong);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* ---------------------------------------------------------------------
+   6. PROGRESSO · SEGMENTOS · ANEL · SKELETON · SPINNER
+   --------------------------------------------------------------------- */
+:root {
+  /* listras diagonais 135° — trilho "por preencher" (assinatura Aura) */
+  --hatch-bg: repeating-linear-gradient(135deg, var(--hatch-color) 0 6px, transparent 6px 12px), var(--surface-sunken);
+}
+
+.aura-progress {
+  --value: 40%;
+  position: relative;
+  height: 12px;
+  border-radius: var(--radius-full);
+  background: var(--hatch-bg);
+  overflow: hidden;
+}
+.aura-progress__bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--value);
+  border-radius: inherit;
+  background: var(--accent-gradient);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.35) inset;
+  transition: width var(--duration-slower) var(--ease-emphasized);
+}
+.aura-progress--ink .aura-progress__bar { background: var(--primary-solid); }
+.aura-progress--highlight .aura-progress__bar { background: var(--highlight); }
+.aura-progress--success .aura-progress__bar { background: var(--success); }
+.aura-progress--sm { height: 6px; }
+.aura-progress--lg { height: 16px; }
+
+/* Barra segmentada (onboarding / distribuição) */
+.aura-segments { display: flex; gap: 4px; height: 44px; }
+.aura-segments > span {
+  flex: var(--w, 1);
+  min-width: 36px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  padding-inline: 12px;
+  font-size: var(--text-body-sm);
+  font-weight: 500;
+}
+
+/* Anel de progresso (SVG) — usar o componente ProgressRing */
+.aura-ring__track { stroke: var(--surface-3); }
+.aura-ring__ticks { stroke: var(--text-muted); stroke-dasharray: 1 6; opacity: 0.6; }
+.aura-ring__value {
+  stroke: var(--highlight);
+  stroke-linecap: round;
+  transition: stroke-dashoffset var(--duration-slower) var(--ease-emphasized);
+}
+
+/* Skeleton (shimmer) */
+.aura-skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--surface-3);
+}
+.aura-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  animation: aura-shimmer 1.6s linear infinite;
+}
+html.dark .aura-skeleton::after,
+[data-theme="dark"] .aura-skeleton::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
+}
+
+/* Spinner */
+.aura-spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: aura-spin 0.7s linear infinite;
+}
+
+/* ---------------------------------------------------------------------
+   7. NAVEGAÇÃO
+   --------------------------------------------------------------------- */
+
+/* 7.1 Pill-nav (navegação principal no topo — desktop ≥1024) */
+.aura-pillnav {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 5px;
+  border-radius: var(--radius-full);
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-xs);
+  -webkit-backdrop-filter: blur(var(--blur-md));
+  backdrop-filter: blur(var(--blur-md));
+}
+.aura-pillnav__item {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding-inline: 18px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--text-body);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-standard);
+}
+.aura-pillnav__item:hover { color: var(--text-primary); }
+.aura-pillnav__item[aria-current="page"],
+.aura-pillnav__item[aria-selected="true"] { color: var(--primary-fg); }
+/* Indicador que desliza (em React: motion layoutId="pillnav-indicator") */
+.aura-pillnav__indicator {
+  position: absolute;
+  z-index: 0;
+  inset: 5px auto 5px 5px;
+  border-radius: var(--radius-full);
+  background: var(--primary-bg);
+  box-shadow: var(--shadow-primary-3d);
+}
+
+/* 7.2 Rail lateral (ícones flutuantes em cápsulas de vidro) */
+.aura-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: var(--layout-rail);
+  padding-block: 16px;
+}
+.aura-rail__group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  border-radius: var(--radius-full);
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-xs);
+}
+.aura-rail__item {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard), transform var(--duration-fast) var(--ease-standard);
+}
+.aura-rail__item svg { width: 20px; height: 20px; stroke-width: 1.6; }
+.aura-rail__item:hover { background: var(--surface-sunken); color: var(--text-primary); }
+.aura-rail__item:active { transform: scale(0.94); }
+.aura-rail__item[aria-current="page"] {
+  background: var(--primary-bg);
+  color: var(--primary-fg);
+  box-shadow: var(--shadow-primary-3d);
+}
+.aura-rail__item .aura-count { position: absolute; top: -2px; right: -4px; min-width: 18px; height: 18px; font-size: 10px; box-shadow: 0 0 0 2px var(--surface-1); }
+
+/* 7.3 Sidebar expandida (rótulos + secções) */
+.aura-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: var(--layout-sidebar);
+  padding: 16px 12px;
+}
+.aura-sidebar__section {
+  padding: 16px 12px 6px;
+  font-size: var(--text-overline);
+  font-weight: 600;
+  letter-spacing: var(--tracking-overline);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.aura-sidebar__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 42px;
+  padding-inline: 12px;
+  border-radius: var(--radius-full);
+  color: var(--text-secondary);
+  font-size: var(--text-body);
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
+}
+.aura-sidebar__item svg { width: 19px; height: 19px; flex: none; stroke-width: 1.6; }
+.aura-sidebar__item:hover { background: var(--surface-sunken); color: var(--text-primary); }
+.aura-sidebar__item[aria-current="page"] {
+  background: var(--primary-bg);
+  color: var(--primary-fg);
+  box-shadow: var(--shadow-primary-3d);
+}
+.aura-sidebar__item .aura-count { margin-left: auto; }
+
+/* 7.4 Tabs (sublinhado que desliza) */
+.aura-tabs {
+  display: flex;
+  gap: 24px;
+  border-bottom: 1px solid var(--divider);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.aura-tabs::-webkit-scrollbar { display: none; }
+.aura-tab {
+  position: relative;
+  padding: 12px 0;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.aura-tab:hover { color: var(--text-primary); }
+.aura-tab[aria-selected="true"] { color: var(--text-primary); }
+.aura-tab[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+/* 7.5 Segmented control (períodos: 7D · 30D · 90D · 12M) */
+.aura-segmented {
+  position: relative;
+  display: inline-flex;
+  padding: 4px;
+  border-radius: var(--radius-full);
+  background: var(--surface-sunken);
+  box-shadow: var(--shadow-inset);
+}
+.aura-segmented__item {
+  position: relative;
+  z-index: 1;
+  height: 32px;
+  padding-inline: 14px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--text-body-sm);
+  font-weight: 500;
+  cursor: pointer;
+}
+.aura-segmented__item[aria-checked="true"],
+.aura-segmented__item[aria-selected="true"] {
+  background: var(--surface-1);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+/* 7.6 Bottom nav (mobile <768) — barra flutuante de vidro */
+.aura-bottomnav {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  z-index: var(--z-nav);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  height: var(--layout-bottom-nav);
+  padding-inline: 8px;
+  border-radius: var(--radius-2xl);
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-lg);
+  -webkit-backdrop-filter: blur(var(--blur-lg)) saturate(1.6);
+  backdrop-filter: blur(var(--blur-lg)) saturate(1.6);
+}
+.aura-bottomnav__item {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  min-width: 56px;
+  padding-block: 8px;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  font-size: 10.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.aura-bottomnav__item svg { width: 22px; height: 22px; stroke-width: 1.7; }
+.aura-bottomnav__item[aria-current="page"] { color: var(--text-primary); }
+/* Botão central de ação (FAB embutido) */
+.aura-bottomnav__fab {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin-top: -26px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent-gradient);
+  color: #fff;
+  box-shadow: var(--shadow-accent-3d), 0 0 0 6px var(--bg-base);
+  cursor: pointer;
+}
+
+/* 7.7 Breadcrumb e paginação */
+.aura-breadcrumb { display: flex; align-items: center; gap: 8px; font-size: var(--text-body-sm); color: var(--text-muted); }
+.aura-breadcrumb a { color: inherit; text-decoration: none; }
+.aura-breadcrumb a:hover { color: var(--text-primary); }
+.aura-breadcrumb [aria-current="page"] { color: var(--text-primary); font-weight: 500; }
+
+.aura-pagination { display: flex; align-items: center; gap: 4px; }
+.aura-pagination__item {
+  display: grid;
+  place-items: center;
+  min-width: 36px;
+  height: 36px;
+  padding-inline: 8px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--text-body-sm);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.aura-pagination__item:hover { background: var(--surface-sunken); }
+.aura-pagination__item[aria-current="page"] { background: var(--primary-solid); color: var(--primary-fg); }
+
+/* ---------------------------------------------------------------------
+   8. DADOS — TABELA · LISTA · KPI · CARTÃO 3D
+   --------------------------------------------------------------------- */
+
+/* 8.1 Tabela (desktop). No mobile (<768) vira lista de cards: ver patterns/tables.md */
+.aura-table-wrap { overflow-x: auto; border-radius: var(--radius-lg); }
+.aura-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--text-body-sm);
+}
+.aura-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  height: 44px;
+  padding: 0 16px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-weight: 500;
+  text-align: left;
+  white-space: nowrap;
+}
+.aura-table thead th:first-child { border-radius: var(--radius-md) 0 0 var(--radius-md); }
+.aura-table thead th:last-child { border-radius: 0 var(--radius-md) var(--radius-md) 0; }
+.aura-table tbody td {
+  height: 56px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--divider);
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+.aura-table tbody tr { transition: background var(--duration-fast) var(--ease-standard); }
+.aura-table tbody tr:hover { background: var(--surface-sunken); }
+.aura-table tbody tr[aria-selected="true"] { background: var(--accent-soft); }
+.aura-table tbody tr:last-child td { border-bottom: 0; }
+.aura-table .is-num { text-align: right; font-variant-numeric: tabular-nums; }
+.aura-table .is-mono { font-family: var(--font-mono); font-size: 12.5px; color: var(--text-secondary); }
+.aura-table th[aria-sort] { cursor: pointer; user-select: none; }
+.aura-table th[aria-sort]:hover { color: var(--text-primary); }
+
+/* 8.2 Item de lista (transações, tarefas, notificações) */
+.aura-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; margin: 0; padding: 0; list-style: none; }
+.aura-list-item {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 14px;
+  min-height: 64px;
+  padding: 10px 12px;
+  border-radius: var(--radius-lg);
+  transition: background var(--duration-fast) var(--ease-standard);
+}
+.aura-list-item:hover { background: var(--surface-sunken); }
+.aura-list-item__icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--surface-1);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-xs);
+}
+.aura-list-item__icon svg { width: 20px; height: 20px; stroke-width: 1.6; }
+.aura-list-item__body { flex: 1; min-width: 0; }
+.aura-list-item__title { font-weight: 500; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aura-list-item__meta { font-size: var(--text-caption); color: var(--text-muted); }
+.aura-list-item__value { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.aura-list-item--done .aura-list-item__title { text-decoration: line-through; color: var(--text-muted); }
+
+/* Lista dentro de card invertido (escuro) */
+.aura-card--inverse .aura-list-item:hover { background: color-mix(in oklab, var(--text-inverse) 6%, transparent); }
+.aura-card--inverse .aura-list-item__icon { background: var(--surface-1); color: var(--text-primary); }
+.aura-card--inverse .aura-list-item__title { color: var(--text-inverse); }
+.aura-card--inverse .aura-list-item__meta { color: var(--text-inverse-muted); }
+.aura-card--inverse .aura-list-item--done .aura-list-item__icon { background: color-mix(in oklab, var(--text-inverse) 14%, transparent); color: var(--text-inverse); box-shadow: none; }
+
+/* 8.3 KPI / Stat card */
+.aura-stat { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 20px; }
+.aura-stat__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.aura-stat__label { font-size: var(--text-body); color: var(--text-secondary); }
+.aura-stat__icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--surface-sunken);
+  color: var(--text-primary);
+}
+.aura-stat__icon svg { width: 18px; height: 18px; stroke-width: 1.7; }
+.aura-stat__value {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 1.4rem + 1.6vw, 2.5rem);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: var(--tracking-display);
+  color: var(--text-primary);
+}
+.aura-stat__value small { font-size: 0.5em; color: var(--text-muted); letter-spacing: 0; margin-left: 2px; }
+.aura-stat__foot { display: flex; align-items: center; gap: 8px; font-size: var(--text-body-sm); color: var(--text-muted); }
+.aura-card--accent .aura-stat__label,
+.aura-card--accent .aura-stat__value,
+.aura-card--accent .aura-stat__foot { color: inherit; }
+.aura-card--accent .aura-stat__foot { opacity: 0.85; }
+.aura-card--accent .aura-stat__icon { background: rgba(255, 255, 255, 0.2); color: #fff; }
+
+/* Número herói (1 por ecrã) */
+.aura-hero-number {
+  font-family: var(--font-display);
+  font-size: var(--text-display-xl);
+  font-weight: 300;
+  line-height: var(--leading-display-xl);
+  letter-spacing: var(--tracking-display);
+}
+
+/* 8.4 Cartão de pagamento 3D (tilt com o rato — ver components/surfaces.tsx) */
+.aura-paycard {
+  --rx: 0deg;
+  --ry: 0deg;
+  --mx: 50%;
+  --my: 50%;
+  position: relative;
+  aspect-ratio: 1.586;
+  width: 100%;
+  max-width: 340px;
+  padding: 18px 20px;
+  border-radius: 20px;
+  color: #fff;
+  overflow: hidden;
+  transform: perspective(900px) rotateX(var(--rx)) rotateY(var(--ry));
+  transform-style: preserve-3d;
+  transition: transform var(--duration-slow) var(--ease-emphasized);
+  background:
+    radial-gradient(140% 90% at 0% 0%, rgba(255, 255, 255, 0.16), transparent 50%),
+    linear-gradient(150deg, #34322c 0%, #1d1b17 55%, #12110e 100%);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.14) inset, var(--shadow-xl);
+}
+.aura-paycard--ember {
+  background:
+    radial-gradient(140% 90% at 0% 0%, rgba(255, 255, 255, 0.3), transparent 50%),
+    var(--accent-gradient);
+}
+.aura-paycard--citrine {
+  color: var(--aura-ink-900);
+  background:
+    radial-gradient(140% 90% at 0% 0%, rgba(255, 255, 255, 0.5), transparent 50%),
+    linear-gradient(150deg, var(--aura-citrine-300), var(--aura-citrine-500));
+}
+/* Reflexo que segue o rato */
+.aura-paycard::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(420px circle at var(--mx) var(--my), rgba(255, 255, 255, 0.22), transparent 40%);
+  pointer-events: none;
+  mix-blend-mode: soft-light;
+}
+/* Padrão de "pixels" do cartão */
+.aura-paycard::after {
+  content: "";
+  position: absolute;
+  right: 12%;
+  top: 18%;
+  width: 36%;
+  height: 48%;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.07) 0 0) 0 0 / 33% 33% no-repeat,
+    linear-gradient(rgba(255, 255, 255, 0.05) 0 0) 66% 33% / 34% 34% no-repeat,
+    linear-gradient(rgba(255, 255, 255, 0.06) 0 0) 33% 66% / 33% 34% no-repeat;
+  pointer-events: none;
+}
+.aura-paycard__number { font-family: var(--font-mono); font-size: 15px; letter-spacing: 0.08em; }
+.aura-paycard__label { font-size: 11px; opacity: 0.7; }
+
+/* ---------------------------------------------------------------------
+   9. OVERLAYS — MODAL · DRAWER · SHEET · DROPDOWN · TOOLTIP
+   --------------------------------------------------------------------- */
+.aura-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+  background: rgba(18, 17, 14, 0.32);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.aura-modal {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  z-index: var(--z-modal);
+  width: min(560px, calc(100vw - 32px));
+  max-height: min(86dvh, 820px);
+  display: flex;
+  flex-direction: column;
+  translate: -50% -50%;
+  border-radius: var(--radius-xl);
+  background: var(--surface-1);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-glass), var(--shadow-xl);
+  -webkit-backdrop-filter: blur(var(--blur-xl)) saturate(1.6);
+  backdrop-filter: blur(var(--blur-xl)) saturate(1.6);
+}
+.aura-modal--lg { width: min(820px, calc(100vw - 32px)); }
+.aura-modal__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 24px 24px 8px; }
+.aura-modal__title { margin: 0; font-family: var(--font-display); font-size: var(--text-h3); font-weight: 500; letter-spacing: var(--tracking-heading); }
+.aura-modal__desc { margin: 4px 0 0; color: var(--text-secondary); font-size: var(--text-body-sm); }
+.aura-modal__body { padding: 16px 24px; overflow-y: auto; }
+.aura-modal__foot { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 24px 24px; }
+
+/* Drawer lateral (detalhe de registo) */
+.aura-drawer {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: var(--z-modal);
+  width: min(460px, calc(100vw - 24px));
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-xl);
+  background: var(--surface-1);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-xl);
+  -webkit-backdrop-filter: blur(var(--blur-xl));
+  backdrop-filter: blur(var(--blur-xl));
+}
+
+/* Bottom sheet (mobile substitui modal e drawer) */
+.aura-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--z-modal);
+  max-height: 92dvh;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+  background: var(--surface-1);
+  border-top: 1px solid var(--glass-border);
+  box-shadow: 0 -20px 60px -20px rgba(18, 17, 14, 0.35);
+  -webkit-backdrop-filter: blur(var(--blur-xl));
+  backdrop-filter: blur(var(--blur-xl));
+}
+.aura-sheet__grabber {
+  width: 40px;
+  height: 5px;
+  margin: 10px auto 4px;
+  border-radius: var(--radius-full);
+  background: var(--border-strong);
+}
+
+/* Dropdown / menu / popover */
+.aura-menu {
+  z-index: var(--z-dropdown);
+  min-width: 220px;
+  padding: 6px;
+  border-radius: var(--radius-lg);
+  /* Opaco: o vidro a 66–74% deixava os cartões de trás atravessar o texto */
+  background: var(--surface-1);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-glass), var(--shadow-lg);
+  -webkit-backdrop-filter: blur(var(--blur-lg)) saturate(1.6);
+  backdrop-filter: blur(var(--blur-lg)) saturate(1.6);
+  color: var(--text-primary);
+  transform-origin: var(--origin, top right);
+}
+.aura-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 40px;
+  padding-inline: 12px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--text-body-sm);
+  text-align: left;
+  cursor: pointer;
+}
+.aura-menu__item svg { width: 17px; height: 17px; color: var(--text-muted); stroke-width: 1.7; }
+.aura-menu__item:hover,
+.aura-menu__item[data-highlighted] { background: var(--surface-sunken); }
+.aura-menu__item--danger { color: var(--danger-fg); }
+.aura-menu__item--danger svg { color: currentColor; }
+.aura-menu__sep { height: 1px; margin: 6px 4px; background: var(--divider); }
+.aura-menu__label { padding: 8px 12px 4px; font-size: var(--text-overline); font-weight: 600; letter-spacing: var(--tracking-overline); text-transform: uppercase; color: var(--text-muted); }
+
+/* Tooltip (escuro, sempre legível em ambos os temas) */
+.aura-tooltip {
+  z-index: var(--z-tooltip);
+  max-width: 260px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--chart-tooltip-bg);
+  color: var(--chart-tooltip-fg);
+  font-size: var(--text-caption);
+  line-height: 1.4;
+  box-shadow: var(--shadow-lg);
+  pointer-events: none;
+}
+.aura-tooltip__value { font-family: var(--font-display); font-size: 15px; font-weight: 500; }
+
+/* ---------------------------------------------------------------------
+   10. FEEDBACK — TOAST · ALERT · EMPTY STATE
+   --------------------------------------------------------------------- */
+.aura-toaster {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: var(--z-toast);
+  display: grid;
+  gap: 10px;
+  width: min(380px, calc(100vw - 32px));
+}
+@media (max-width: 767px) {
+  .aura-toaster { left: 16px; right: 16px; top: calc(12px + env(safe-area-inset-top, 0px)); bottom: auto; width: auto; }
+}
+.aura-toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 14px 14px 16px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-inverse);
+  color: var(--text-inverse);
+  box-shadow: var(--shadow-xl);
+}
+.aura-toast__icon { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: rgba(255, 255, 255, 0.12); }
+.aura-toast__icon--success { background: var(--success); color: #fff; }
+.aura-toast__icon--danger { background: var(--danger); color: #fff; }
+.aura-toast__icon--warning { background: var(--highlight); color: var(--aura-ink-900); }
+.aura-toast__title { font-weight: 600; font-size: var(--text-body-sm); }
+.aura-toast__desc { font-size: var(--text-caption); color: var(--text-inverse-muted); }
+.aura-toast__close { margin-left: auto; color: var(--text-inverse-muted); background: none; border: 0; cursor: pointer; }
+
+.aura-alert {
+  display: flex;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius-lg);
+  background: var(--info-soft);
+  color: var(--info-fg);
+  font-size: var(--text-body-sm);
+}
+.aura-alert svg { flex: none; width: 18px; height: 18px; margin-top: 1px; }
+.aura-alert__title { font-weight: 600; color: var(--text-primary); }
+.aura-alert--success { background: var(--success-soft); color: var(--success-fg); }
+.aura-alert--warning { background: var(--warning-soft); color: var(--warning-fg); }
+.aura-alert--danger { background: var(--danger-soft); color: var(--danger-fg); }
+.aura-alert--accent { background: var(--accent-soft); color: var(--accent-soft-fg); }
+
+.aura-empty {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 48px 24px;
+  text-align: center;
+}
+.aura-empty__art {
+  display: grid;
+  place-items: center;
+  width: 88px;
+  height: 88px;
+  border-radius: 28px;
+  background: linear-gradient(160deg, var(--glass-bg-strong), var(--glass-bg-subtle));
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-glass), var(--shadow-md);
+  color: var(--accent);
+  transform: rotate(-6deg);
+}
+.aura-empty__art svg { width: 36px; height: 36px; stroke-width: 1.5; }
+.aura-empty__title { margin: 8px 0 0; font-family: var(--font-display); font-size: var(--text-h4); font-weight: 500; }
+.aura-empty__desc { margin: 0; max-width: 42ch; color: var(--text-secondary); font-size: var(--text-body-sm); }
+
+/* ---------------------------------------------------------------------
+   11. LAYOUT — APP SHELL · GRID · TIPOGRAFIA UTILITÁRIA
+   Desktop ≥1024: rail (76) | conteúdo   · topbar com pill-nav
+   Tablet 768–1023: rail colapsada + topbar compacta
+   Mobile <768: topbar simples + bottom-nav flutuante
+   --------------------------------------------------------------------- */
+.aura-shell {
+  display: grid;
+  grid-template-columns: var(--layout-rail) minmax(0, 1fr);
+  grid-template-rows: var(--layout-topbar) minmax(0, 1fr);
+  grid-template-areas:
+    "brand  topbar"
+    "rail   main";
+  height: 100dvh;
+  padding: 12px 12px 0;
+  column-gap: 12px;
+}
+.aura-shell__brand { grid-area: brand; display: grid; place-items: center; }
+.aura-shell__topbar { grid-area: topbar; display: flex; align-items: center; gap: 12px; min-width: 0; }
+.aura-shell__rail { grid-area: rail; display: flex; flex-direction: column; justify-content: space-between; overflow-y: auto; padding-bottom: 12px; }
+.aura-shell__main { grid-area: main; min-width: 0; overflow-y: auto; padding: 8px 8px 32px; scroll-padding-top: 16px; }
+.aura-shell__content { max-width: var(--layout-content-max); margin-inline: auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--layout-grid-gap); }
+
+@media (max-width: 767px) {
+  .aura-shell {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 64px minmax(0, 1fr);
+    grid-template-areas: "topbar" "main";
+    padding: 0;
+  }
+  .aura-shell__brand,
+  .aura-shell__rail { display: none; }
+  .aura-shell__topbar { padding-inline: var(--layout-gutter-mobile); padding-top: env(safe-area-inset-top, 0px); }
+  .aura-shell__main { padding: 4px var(--layout-gutter-mobile) calc(var(--layout-bottom-nav) + 40px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* Grelha de dashboard — 12 col desktop / 8 tablet / 4 mobile */
+.aura-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--layout-grid-gap);
+}
+.aura-col-3 { grid-column: span 3; }
+.aura-col-4 { grid-column: span 4; }
+.aura-col-5 { grid-column: span 5; }
+.aura-col-6 { grid-column: span 6; }
+.aura-col-7 { grid-column: span 7; }
+.aura-col-8 { grid-column: span 8; }
+.aura-col-12 { grid-column: 1 / -1; }
+@media (max-width: 1279px) {
+  .aura-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+  .aura-col-3 { grid-column: span 4; }
+  .aura-col-4, .aura-col-5 { grid-column: span 4; }
+  .aura-col-6, .aura-col-7, .aura-col-8 { grid-column: 1 / -1; }
+}
+@media (max-width: 767px) {
+  .aura-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .aura-col-3 { grid-column: span 2; }
+  .aura-col-4, .aura-col-5, .aura-col-6, .aura-col-7, .aura-col-8 { grid-column: 1 / -1; }
+}
+
+/* Cabeçalho de página (saudação) */
+.aura-page-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px 24px; padding-block: 8px 4px; }
+.aura-page-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-display-lg);
+  font-weight: 400;
+  line-height: var(--leading-display-lg);
+  letter-spacing: var(--tracking-display);
+  text-wrap: balance;
+}
+.aura-page-sub { margin: 6px 0 0; color: var(--text-secondary); font-size: var(--text-body-lg); }
+
+/* Cabeçalho de card */
+.aura-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 20px 20px 0; }
+.aura-card-title { margin: 0; font-family: var(--font-display); font-size: var(--text-h4); font-weight: 500; letter-spacing: -0.015em; }
+.aura-card-sub { margin: 2px 0 0; font-size: var(--text-body-sm); color: var(--text-muted); }
+.aura-card-body { padding: 16px 20px 20px; }
+
+/* Tipografia utilitária */
+.aura-display { font-family: var(--font-display); font-weight: 300; letter-spacing: var(--tracking-display); line-height: 1; }
+.aura-h1 { font-family: var(--font-display); font-size: var(--text-h1); line-height: var(--leading-h1); font-weight: 500; letter-spacing: var(--tracking-heading); }
+.aura-h2 { font-family: var(--font-display); font-size: var(--text-h2); line-height: var(--leading-h2); font-weight: 500; letter-spacing: var(--tracking-heading); }
+.aura-h3 { font-family: var(--font-display); font-size: var(--text-h3); line-height: var(--leading-h3); font-weight: 500; letter-spacing: var(--tracking-heading); }
+.aura-h4 { font-family: var(--font-sans); font-size: var(--text-h4); line-height: var(--leading-h4); font-weight: 600; letter-spacing: -0.012em; }
+.aura-overline { font-size: var(--text-overline); font-weight: 600; letter-spacing: var(--tracking-overline); text-transform: uppercase; color: var(--text-muted); }
+.aura-muted { color: var(--text-muted); }
+.aura-secondary { color: var(--text-secondary); }
+.aura-mono { font-family: var(--font-mono); }
+
+/* Divisor pontilhado (estilo acordeão) */
+.aura-dotted { border: 0; border-top: 1.5px dotted var(--border-dashed); margin: 0; }
+
+/* ---------------------------------------------------------------------
+   12. MOTION — KEYFRAMES + ENTRADA ESCALONADA (CSS puro)
+   Em React preferir motion/motion.ts (mesmas curvas e durações).
+   --------------------------------------------------------------------- */
+@keyframes aura-fade-up {
+  from { opacity: 0; transform: translateY(14px) scale(0.985); filter: blur(4px); }
+  to   { opacity: 1; transform: none; filter: none; }
+}
+@keyframes aura-scale-in {
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes aura-shimmer { to { transform: translateX(100%); } }
+@keyframes aura-spin { to { transform: rotate(360deg); } }
+@keyframes aura-drift {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(-4vw, 3vw, 0) scale(1.08); }
+  100% { transform: translate3d(3vw, -2vw, 0) scale(0.96); }
+}
+@keyframes aura-pulse-dot {
+  0%   { transform: scale(1); opacity: 0.6; }
+  70%  { transform: scale(2.6); opacity: 0; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+@keyframes aura-bar-grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes aura-draw { from { stroke-dashoffset: var(--len, 1000); } to { stroke-dashoffset: 0; } }
+
+/* Entrada escalonada: <div class="aura-stagger"> filhos com style="--i:0..n" */
+.aura-stagger > * {
+  animation: aura-fade-up var(--duration-slower) var(--ease-emphasized) both;
+  animation-delay: calc(var(--i, 0) * 60ms + 80ms);
+}
+
+/* Elementos com animação contínua param com reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .aura-canvas__aurora > span,
+  .aura-skeleton::after,
+  .aura-icon-btn__dot--pulse::after,
+  .aura-stagger > * { animation: none !important; }
+  .aura-paycard { transform: none !important; }
+}
+
+/* ---------------------------------------------------------------------
+   13. MODELOS DE PÁGINA — FORMULÁRIO (rules/02-page-templates.md, modelo C)
+   --------------------------------------------------------------------- */
+.aura-formpage { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
+
+/* Barra de ações sticky: topo no desktop, fundo no mobile */
+.aura-actionbar {
+  position: sticky;
+  top: 8px;
+  z-index: var(--z-sticky);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 64px;
+  padding: 10px 12px 10px 16px;
+  border-radius: var(--radius-xl);
+}
+.aura-actionbar__crumbs { display: flex; align-items: center; gap: 12px; min-width: 0; overflow: hidden; }
+.aura-actionbar__crumbs .aura-breadcrumb { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.aura-actionbar__actions { display: flex; align-items: center; gap: 8px; flex: none; }
+
+.aura-formpage__body {
+  display: grid;
+  grid-template-columns: 208px minmax(0, 760px);
+  gap: 48px;
+  align-items: start;
+}
+
+/* Nav de secções (sticky, âncoras) */
+.aura-sectionnav {
+  position: sticky;
+  top: 96px;
+  display: grid;
+  gap: 2px;
+  padding-top: 4px;
+}
+.aura-sectionnav__item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 38px;
+  padding-inline: 14px;
+  border-radius: var(--radius-full);
+  color: var(--text-secondary);
+  font-size: var(--text-body-sm);
+  font-weight: 500;
+  text-decoration: none;
+  transition: background var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
+}
+.aura-sectionnav__item:hover { background: var(--surface-sunken); color: var(--text-primary); }
+.aura-sectionnav__item[aria-current="location"] { background: var(--glass-bg-strong); color: var(--text-primary); box-shadow: var(--shadow-xs); }
+.aura-sectionnav__item--danger { margin-top: 12px; color: var(--danger-fg); }
+.aura-sectionnav__item--danger::before {
+  content: "";
+  position: absolute;
+  top: -7px;
+  left: 14px;
+  right: 14px;
+  height: 1px;
+  background: var(--divider);
+}
+.aura-sectionnav__dot { width: 7px; height: 7px; border-radius: 50%; background: var(--danger); }
+
+/* Coluna do formulário e secções */
+.aura-formpage__form { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; min-width: 0; }
+.aura-formsection {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+  padding-block: 32px 40px;
+  border-top: 1px solid var(--divider);
+  scroll-margin-top: 96px;
+}
+.aura-formsection:first-child { border-top: 0; padding-top: 8px; }
+.aura-formsection__fields { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
+.aura-formsection--danger {
+  margin-top: 16px;
+  padding: 24px;
+  border: 1px solid color-mix(in oklab, var(--danger) 30%, transparent);
+  border-radius: var(--radius-xl);
+  background: var(--danger-soft);
+}
+
+.aura-fieldrow { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 20px; }
+
+/* Cartões de opção (radio cards) — ex.: Responsável: Empresa / Funcionário / Disponível */
+.aura-optioncards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.aura-optioncard {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-default);
+  background: var(--glass-bg-strong);
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard);
+}
+.aura-optioncard:hover { border-color: var(--border-strong); }
+.aura-optioncard:has(input:checked) { border-color: var(--text-primary); box-shadow: 0 0 0 1px var(--text-primary); background: var(--surface-1); }
+.aura-optioncard:has(input:focus-visible) { box-shadow: var(--focus-ring); }
+.aura-optioncard input { position: absolute; opacity: 0; pointer-events: none; }
+.aura-optioncard__title { font-weight: 600; font-size: var(--text-body); }
+.aura-optioncard__desc { font-size: var(--text-body-sm); color: var(--text-muted); }
+
+/* Tablet: sem nav lateral, formulário a toda a largura (máx. 760) */
+@media (max-width: 1023px) {
+  .aura-formpage__body { grid-template-columns: minmax(0, 760px); gap: 0; }
+  .aura-sectionnav { display: none; }
+}
+
+/* Mobile: barra de ações no fundo, campos sempre empilhados */
+@media (max-width: 767px) {
+  .aura-actionbar {
+    position: fixed;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+  .aura-actionbar__crumbs { display: none; }
+  .aura-actionbar__actions { width: 100%; }
+  .aura-actionbar__actions > .aura-btn--primary { flex: 1; }
+  .aura-formpage { padding-bottom: 96px; }
+  .aura-fieldrow { grid-template-columns: minmax(0, 1fr); }
+  .aura-formsection { padding-block: 24px 32px; }
+}
+
+/* ---------------------------------------------------------------------
+   14. UTILITÁRIOS GLOBAIS
+   --------------------------------------------------------------------- */
+/* Um elemento com [hidden] nunca aparece, mesmo que a sua classe defina display */
+[hidden] { display: none !important; }
+
+/* ---------------------------------------------------------------------
+   15. AURA 2.0 — BARRA DE VIDRO, FLUTUAÇÃO, SCROLL
+   --------------------------------------------------------------------- */
+
+/* Vidro das barras (topo e sidebar): mais transparente, o fundo passa */
+.aura-glass--bar {
+  background:
+    linear-gradient(180deg, var(--glass-tint-top), var(--glass-tint-bottom) 55%),
+    var(--glass-bg-bar);
+}
+
+/* Flutuação subtil (card herói, card de tarefas). Desliga com reduced motion. */
+@keyframes aura-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+.aura-float { animation: aura-float 7s var(--ease-standard) infinite; will-change: transform; }
+.aura-float--slow { animation-duration: 9s; }
+.aura-float--delay { animation-delay: -3.5s; }
+
+/* Scroll do conteúdo: barra fina, sem trilho, só visível no hover */
+.aura-scroll {
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color var(--duration-base) var(--ease-standard);
+}
+.aura-scroll:hover { scrollbar-color: color-mix(in oklab, var(--text-primary) 22%, transparent) transparent; }
+.aura-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
+.aura-scroll::-webkit-scrollbar-track { background: transparent; }
+.aura-scroll::-webkit-scrollbar-thumb {
+  background: transparent;
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+.aura-scroll:hover::-webkit-scrollbar-thumb { background-color: color-mix(in oklab, var(--text-primary) 22%, transparent); }
+.aura-scroll::-webkit-scrollbar-thumb:hover { background-color: color-mix(in oklab, var(--text-primary) 38%, transparent); }
+
+/* Fade suave no topo e no fundo da área que faz scroll */
+.aura-scroll-fade {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 18px, #000 calc(100% - 28px), transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 18px, #000 calc(100% - 28px), transparent 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aura-float { animation: none !important; }
+}
+
+
+/* ---------------------------------------------------------------------
+   16. MARKDOWN RENDERIZADO (descrições ricas)
+   --------------------------------------------------------------------- */
+.aura-md { font-size: 15px; line-height: 1.65; color: var(--text-primary); overflow-wrap: anywhere; }
+.aura-md > :first-child { margin-top: 0; }
+.aura-md > :last-child { margin-bottom: 0; }
+.aura-md h1, .aura-md h2, .aura-md h3 { font-family: var(--font-display); font-weight: 500; letter-spacing: -0.015em; margin: 1.4em 0 0.5em; line-height: 1.25; }
+.aura-md h1 { font-size: 1.45em; }
+.aura-md h2 { font-size: 1.2em; padding-bottom: 0.35em; border-bottom: 1px solid var(--divider); }
+.aura-md h3 { font-size: 1.05em; }
+.aura-md p { margin: 0.6em 0; }
+.aura-md ul, .aura-md ol { margin: 0.5em 0; padding-left: 1.4em; }
+.aura-md li { margin: 0.25em 0; }
+.aura-md li:has(> input[type='checkbox']) { list-style: none; margin-left: -1.4em; }
+.aura-md li:has(> input:checked) { color: var(--text-muted); text-decoration: line-through; }
+.aura-md a { color: var(--text-link); text-underline-offset: 3px; }
+.aura-md strong { font-weight: 600; }
+.aura-md blockquote { margin: 0.8em 0; padding: 0.4em 1em; border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; color: var(--text-secondary); }
+.aura-md hr { border: 0; border-top: 1px dashed var(--border-dashed); margin: 1.2em 0; }
+.aura-md code { font-family: var(--font-mono); font-size: 0.88em; padding: 0.1em 0.35em; border-radius: var(--radius-xs); background: var(--surface-2); }
+.aura-md table { width: 100%; border-collapse: collapse; font-size: 0.94em; margin: 0.8em 0; }
+.aura-md th, .aura-md td { padding: 0.45em 0.7em; border-bottom: 1px solid var(--divider); text-align: left; }

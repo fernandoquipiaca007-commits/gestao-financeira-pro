@@ -16,10 +16,15 @@ import {
   UserRole,
   ROLE_LABELS,
   ROLE_COLORS,
+  ROLE_BADGE_CLASSES,
   STATUS_LABELS,
   STATUS_COLORS,
+  STATUS_BADGE_CLASSES,
+  getRoleLabel,
+  getStatusLabel,
 } from '../types/rbac';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface UsersViewProps {
   users: UserProfile[];
@@ -39,6 +44,7 @@ export function UsersView({
   onDeleteUser,
 }: UsersViewProps) {
   const { isOwner, hasPermission, userProfile } = useAuth();
+  const { t, lang } = useLanguage();
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<'ALL' | UserRole>('ALL');
 
@@ -50,8 +56,8 @@ export function UsersView({
 
   const filteredUsers = users.filter(u => {
     const matchesSearch =
-      u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchTerm.toLowerCase());
+      (u.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (u.email || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = roleFilter === 'ALL' || u.role === roleFilter;
     return matchesSearch && matchesRole;
   });
@@ -66,82 +72,82 @@ export function UsersView({
       {/* Header section */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-[#1c1b1b] tracking-tight">Gestão de Utilizadores</h1>
-          <p className="text-sm text-[#747878] mt-1">
-            Controle de acessos, cargos e permissões da equipa
+          <h1 className="font-display font-normal text-[32px] sm:text-[38px] leading-tight tracking-[-0.03em] text-fg m-0">{t('users.title', 'Gestão de Utilizadores')}</h1>
+          <p className="text-[15px] text-fg-secondary mt-1.5 mb-0">
+            {t('users.subtitle', 'Acessos, cargos e permissões da equipa')}
           </p>
         </div>
 
         {canCreate && (
           <button
             onClick={onOpenNewUserModal}
-            className="inline-flex items-center space-x-2 bg-[#000000] hover:opacity-85 text-white px-5 py-2.5 rounded-[29px] text-sm font-medium transition-all cursor-pointer shadow-[0_2px_8px_rgba(0,0,0,0.08)] active:scale-95 shrink-0"
+            className="aura-btn aura-btn--primary inline-flex shrink-0"
           >
             <UserPlus className="w-4 h-4" />
-            <span>Novo Utilizador</span>
+            <span>{t('users.newUser', 'Novo Utilizador')}</span>
           </button>
         )}
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-white border border-[#c4c7c7]/40 rounded-[22px] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-          <span className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1">
-            Total Membros
+        <div className="bg-glass border border-line-subtle rounded-xl p-5 shadow-glass">
+          <span className="text-[13px] font-medium text-fg-secondary block mb-1">
+            {t('users.totalMembers', 'Total Membros')}
           </span>
-          <div className="text-2xl font-medium tracking-[-0.04em] text-[#000000]">{totalUsers}</div>
+          <div className="text-2xl font-medium tracking-[-0.04em] text-fg ">{totalUsers}</div>
         </div>
 
-        <div className="bg-white border border-[#c4c7c7]/40 rounded-[22px] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-          <span className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1">
-            Administradores
+        <div className="bg-glass border border-line-subtle rounded-xl p-5 shadow-glass">
+          <span className="text-[13px] font-medium text-fg-secondary block mb-1">
+            {t('users.admins', 'Administradores')}
           </span>
-          <div className="text-2xl font-medium tracking-[-0.04em] text-[#003da9]">{adminCount}</div>
+          <div className="text-2xl font-medium tracking-[-0.04em] text-accent-soft-fg ">{adminCount}</div>
         </div>
 
-        <div className="bg-white border border-[#c4c7c7]/40 rounded-[22px] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-          <span className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1">
-            Funcionários
+        <div className="bg-glass border border-line-subtle rounded-xl p-5 shadow-glass">
+          <span className="text-[13px] font-medium text-fg-secondary block mb-1">
+            {t('users.employees', 'Funcionários')}
           </span>
-          <div className="text-2xl font-medium tracking-[-0.04em] text-[#444747]">{employeeCount}</div>
+          <div className="text-2xl font-medium tracking-[-0.04em] text-fg-secondary ">{employeeCount}</div>
         </div>
 
-        <div className="bg-white border border-[#c4c7c7]/40 rounded-[22px] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-          <span className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1">
-            Contas Ativas
+        <div className="bg-glass border border-line-subtle rounded-xl p-5 shadow-glass">
+          <span className="text-[13px] font-medium text-fg-secondary block mb-1">
+            {t('users.activeAccounts', 'Contas Ativas')}
           </span>
-          <div className="text-2xl font-medium tracking-[-0.04em] text-[#1a6b3a]">{activeCount}</div>
+          <div className="text-2xl font-medium tracking-[-0.04em] text-success-fg ">{activeCount}</div>
         </div>
       </div>
 
       {/* Filters and Search */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white border border-[#c4c7c7]/40 rounded-[22px] p-3 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-glass border border-line-subtle rounded-xl p-3 shadow-glass">
         {/* Search */}
         <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-[#747878] absolute left-3.5 top-3" />
+          <Search className="w-4 h-4 text-fg-muted absolute left-3.5 top-3" />
           <input
             type="text"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            placeholder="Pesquisar por nome ou email..."
-            className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-full pl-10 pr-4 py-2 text-sm text-[#1c1b1b] placeholder-[#747878] focus:outline-none focus:border-[#000000] focus:bg-white transition-all"
+            placeholder={t('users.searchPlaceholder', 'Pesquisar por nome ou email...')}
+            className="w-full bg-surface-2 border border-line-subtle rounded-full pl-10 pr-4 py-2 text-sm text-fg placeholder:text-fg-muted focus:outline-none focus:border-accent focus:bg-surface-1 focus:shadow-[0_0_0_4px_var(--accent-ring)] transition-all"
           />
         </div>
 
         {/* Role filter pills */}
         <div className="flex items-center space-x-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
           {(['ALL', 'owner', 'admin', 'employee'] as const).map(role => {
-            const label = role === 'ALL' ? 'Todos' : ROLE_LABELS[role];
+            const label = role === 'ALL' ? t('users.filterAll', 'Todos') : getRoleLabel(role, lang);
             const isActive = roleFilter === role;
             return (
               <button
                 key={role}
                 onClick={() => setRoleFilter(role)}
                 className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer shrink-0 ${
-                  isActive
-                    ? 'bg-[#000000] text-white'
-                    : 'text-[#444747] hover:bg-[#f1edec]'
-                }`}
+ isActive
+ ? 'bg-primary shadow-primary-3d text-primary-fg'
+ : 'text-fg-secondary hover:bg-sunken '
+ }`}
               >
                 {label}
               </button>
@@ -151,52 +157,55 @@ export function UsersView({
       </div>
 
       {/* Users table */}
-      <div className="bg-white border border-[#c4c7c7]/40 rounded-[22px] shadow-[0_2px_8px_rgba(0,0,0,0.02)] overflow-hidden">
+      <div className="bg-glass border border-line-subtle rounded-xl shadow-glass overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-[#f7f3f2] border-b border-[#c4c7c7]/30 text-[11px] font-semibold tracking-widest uppercase text-[#747878]">
-                <th className="py-3.5 px-5">Utilizador</th>
-                <th className="py-3.5 px-4">Cargo</th>
-                <th className="py-3.5 px-4">Estado</th>
-                <th className="py-3.5 px-4">Último Acesso</th>
-                <th className="py-3.5 px-5 text-right">Ações</th>
+              <tr className="bg-surface-2 border-b border-line-subtle text-[13px] font-medium text-fg-secondary ">
+                <th className="py-3.5 px-5">{t('common.name', 'Utilizador')}</th>
+                <th className="py-3.5 px-4">{t('common.role', 'Cargo')}</th>
+                <th className="py-3.5 px-4">{t('common.language', 'Idioma')}</th>
+                <th className="py-3.5 px-4">{t('common.status', 'Estado')}</th>
+                <th className="py-3.5 px-4">{t('users.lastLogin', 'Último Acesso')}</th>
+                <th className="py-3.5 px-5 text-right">{t('common.actions', 'Ações')}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#c4c7c7]/20 text-sm">
+            <tbody className="divide-y divide-line-subtle text-sm">
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-12 text-center text-[#747878]">
-                    <Users className="w-10 h-10 mx-auto mb-3 text-[#c4c7c7]" strokeWidth={1.5} />
-                    <p className="font-medium text-[#1c1b1b]">Nenhum utilizador encontrado</p>
-                    <p className="text-xs text-[#747878] mt-1">Ajuste os filtros de pesquisa</p>
+                  <td colSpan={6} className="py-12 text-center text-fg-muted ">
+                    <Users className="w-10 h-10 mx-auto mb-3 text-fg-disabled " strokeWidth={1.5} />
+                    <p className="font-medium text-fg ">
+                      {lang === 'en' ? 'No users found' : 'Nenhum utilizador encontrado'}
+                    </p>
+                    <p className="text-xs text-fg-muted mt-1">
+                      {lang === 'en' ? 'Adjust your search filters' : 'Ajuste os filtros de pesquisa'}
+                    </p>
                   </td>
                 </tr>
               ) : (
                 filteredUsers.map(user => {
-                  const roleStyle = ROLE_COLORS[user.role];
-                  const statusStyle = STATUS_COLORS[user.status];
                   const isSelf = user.id === userProfile?.id;
                   const isTargetOwner = user.role === 'owner';
 
                   return (
-                    <tr key={user.id} className="hover:bg-[#f7f3f2]/60 transition-colors">
+                    <tr key={user.id} className="hover:bg-surface-2/60 transition-colors">
                       {/* Name & Email */}
                       <td className="py-4 px-5">
                         <div className="flex items-center space-x-3">
-                          <div className="w-9 h-9 rounded-full bg-[#f1edec] text-[#1c1b1b] font-medium flex items-center justify-center shrink-0 border border-[#c4c7c7]/30">
-                            {user.name.charAt(0).toUpperCase()}
+                          <div className="w-9 h-9 rounded-full bg-surface-2 text-fg font-medium flex items-center justify-center shrink-0 border border-line-subtle ">
+                            {(user?.name || 'U').charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <div className="font-medium text-[#1c1b1b] flex items-center gap-1.5">
-                              {user.name}
+                            <div className="font-medium text-fg flex items-center gap-1.5">
+                              {user?.name || (lang === 'en' ? 'User' : 'Utilizador')}
                               {isSelf && (
-                                <span className="text-[10px] bg-[#e5e2e1] text-[#444747] px-1.5 py-0.5 rounded-full font-normal">
-                                  Tu
+                                <span className="text-[10px] bg-surface-3 text-fg-secondary px-1.5 py-0.5 rounded-full font-normal">
+                                  {lang === 'en' ? 'You' : 'Tu'}
                                 </span>
                               )}
                             </div>
-                            <div className="text-xs text-[#747878]">{user.email}</div>
+                            <div className="text-xs text-fg-muted ">{user.email}</div>
                           </div>
                         </div>
                       </td>
@@ -204,33 +213,38 @@ export function UsersView({
                       {/* Role Badge */}
                       <td className="py-4 px-4">
                         <span
-                          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold"
-                          style={{ backgroundColor: roleStyle.bg, color: roleStyle.text }}
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${ROLE_BADGE_CLASSES[user.role] || 'bg-surface-2 text-gray-800 '}`}
                         >
-                          {ROLE_LABELS[user.role]}
+                          {getRoleLabel(user.role, lang)}
+                        </span>
+                      </td>
+
+                      {/* Language Badge */}
+                      <td className="py-4 px-4">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-mono font-bold bg-surface-2 border border-line-subtle text-fg-secondary ">
+                          {user.language === 'en' ? 'EN' : 'PT'}
                         </span>
                       </td>
 
                       {/* Status Badge */}
                       <td className="py-4 px-4">
                         <span
-                          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold"
-                          style={{ backgroundColor: statusStyle.bg, color: statusStyle.text }}
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${STATUS_BADGE_CLASSES[user.status] || 'bg-surface-2 text-gray-800 '}`}
                         >
-                          {STATUS_LABELS[user.status]}
+                          {getStatusLabel(user.status, lang)}
                         </span>
                       </td>
 
                       {/* Last login */}
-                      <td className="py-4 px-4 text-xs text-[#747878]">
+                      <td className="py-4 px-4 text-xs text-fg-muted ">
                         {user.lastLoginAt
-                          ? new Date(user.lastLoginAt).toLocaleDateString('pt-PT', {
+                          ? new Date(user.lastLoginAt).toLocaleDateString(lang === 'en' ? 'en-US' : 'pt-PT', {
                               day: '2-digit',
                               month: 'short',
                               hour: '2-digit',
                               minute: '2-digit',
                             })
-                          : 'Nunca acedeu'}
+                          : t('users.neverLoggedIn', 'Nunca acedeu')}
                       </td>
 
                       {/* Actions */}
@@ -240,8 +254,8 @@ export function UsersView({
                           {canManagePerms && !isTargetOwner && (
                             <button
                               onClick={() => onOpenPermissionsModal(user)}
-                              className="p-1.5 rounded-full text-[#0050d7] hover:bg-[#dbe1ff] cursor-pointer transition-colors"
-                              title="Gerir Permissões"
+                              className="p-1.5 rounded-full text-accent-soft-fg hover:bg-accent-soft cursor-pointer transition-colors"
+                              title={t('users.permissions', 'Gerir Permissões')}
                             >
                               <KeyRound className="w-4 h-4" />
                             </button>
@@ -251,8 +265,8 @@ export function UsersView({
                           {canEdit && (!isTargetOwner || isOwner) && (
                             <button
                               onClick={() => onEditUser(user)}
-                              className="p-1.5 rounded-full text-[#747878] hover:bg-[#f1edec] hover:text-[#1c1b1b] cursor-pointer transition-colors"
-                              title="Editar Utilizador"
+                              className="p-1.5 rounded-full text-fg-muted hover:bg-sunken hover:text-fg cursor-pointer transition-colors"
+                              title={t('users.editUser', 'Editar Utilizador')}
                             >
                               <Edit2 className="w-4 h-4" />
                             </button>
@@ -263,11 +277,11 @@ export function UsersView({
                             <button
                               onClick={() => onToggleUserStatus(user.id, user.status)}
                               className={`p-1.5 rounded-full cursor-pointer transition-colors ${
-                                user.status === 'active'
-                                  ? 'text-[#ba1a1a] hover:bg-[#ffdad6]'
-                                  : 'text-[#1a6b3a] hover:bg-[#d4eddf]'
-                              }`}
-                              title={user.status === 'active' ? 'Suspender Conta' : 'Ativar Conta'}
+ user.status === 'active'
+ ? 'text-danger-fg hover:bg-danger-soft '
+ : 'text-success-fg hover:bg-success-soft '
+ }`}
+                              title={user.status === 'active' ? t('users.suspend', 'Suspender') : t('users.activate', 'Ativar')}
                             >
                               {user.status === 'active' ? (
                                 <UserX className="w-4 h-4" />
@@ -281,15 +295,15 @@ export function UsersView({
                           {canDelete && isOwner && !isTargetOwner && !isSelf && onDeleteUser && (
                             <button
                               onClick={() => onDeleteUser(user.id)}
-                              className="p-1.5 rounded-full text-[#ba1a1a] hover:bg-[#ffdad6] cursor-pointer transition-colors"
-                              title="Eliminar Utilizador"
+                              className="p-1.5 rounded-full text-danger-fg hover:bg-danger-soft cursor-pointer transition-colors"
+                              title={t('users.delete', 'Eliminar Utilizador')}
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
                           )}
 
                           {isTargetOwner && !isOwner && (
-                            <span className="p-1.5 text-[#c4c7c7]" title="Protegido">
+                            <span className="p-1.5 text-fg-disabled " title={lang === 'en' ? "Protected" : "Protegido"}>
                               <Lock className="w-4 h-4" />
                             </span>
                           )}

@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { X, UserPlus, Eye, EyeOff, Loader2, Shield, Users } from 'lucide-react';
+import { EditorPage } from '../shell/EditorPage';
+import { X, UserPlus, Eye, EyeOff, Loader2, Shield, Users, Globe, Info } from 'lucide-react';
 import { UserProfile, UserRole, ROLE_LABELS } from '../../types/rbac';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface UserModalProps {
   isOpen: boolean;
   onClose: () => void;
+  currentUserCount?: number;
   onSave: (data: {
     id?: string;
     name: string;
@@ -12,11 +15,13 @@ interface UserModalProps {
     password?: string;
     role: UserRole;
     status: 'active' | 'suspended';
+    language?: 'pt' | 'en';
   }) => Promise<void>;
   userToEdit?: UserProfile | null;
 }
 
-export function UserModal({ isOpen, onClose, onSave, userToEdit }: UserModalProps) {
+export function UserModal({ isOpen, onClose, onSave, userToEdit, currentUserCount }: UserModalProps) {
+  const { t, lang: currentAppLang, setLang } = useLanguage();
   const isEditing = !!userToEdit;
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -24,6 +29,7 @@ export function UserModal({ isOpen, onClose, onSave, userToEdit }: UserModalProp
   const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState<UserRole>('employee');
   const [status, setStatus] = useState<'active' | 'suspended'>('active');
+  const [language, setLanguage] = useState<'pt' | 'en'>('pt');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -34,22 +40,30 @@ export function UserModal({ isOpen, onClose, onSave, userToEdit }: UserModalProp
         setEmail(userToEdit.email);
         setRole(userToEdit.role === 'owner' ? 'admin' : userToEdit.role);
         setStatus(userToEdit.status === 'suspended' ? 'suspended' : 'active');
+        setLanguage(userToEdit.language || currentAppLang || 'pt');
         setPassword('');
       } else {
         setName(''); setEmail(''); setPassword('');
         setRole('employee'); setStatus('active');
+        setLanguage(currentAppLang || 'pt');
       }
       setError('');
     }
-  }, [isOpen, userToEdit]);
+  }, [isOpen, userToEdit, currentAppLang]);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (!name.trim() || !email.trim()) { setError('Nome e email são obrigatórios'); return; }
-    if (!isEditing && password.length < 6) { setError('Senha temporária deve ter no mínimo 6 caracteres'); return; }
+    if (!name.trim() || !email.trim()) {
+      setError(currentAppLang === 'en' ? 'Name and email are required' : 'Nome e email são obrigatórios');
+      return;
+    }
+    if (!isEditing && password.length < 6) {
+      setError(currentAppLang === 'en' ? 'Temporary password must be at least 6 characters' : 'Palavra-passe temporária deve ter no mínimo 6 caracteres');
+      return;
+    }
     setLoading(true);
     try {
       await onSave({
@@ -59,10 +73,11 @@ export function UserModal({ isOpen, onClose, onSave, userToEdit }: UserModalProp
         password: password || undefined,
         role,
         status,
+        language,
       });
       onClose();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Erro ao guardar utilizador');
+      setError(err instanceof Error ? err.message : t('common.error'));
     } finally {
       setLoading(false);
     }
@@ -72,110 +87,149 @@ export function UserModal({ isOpen, onClose, onSave, userToEdit }: UserModalProp
     {
       value: 'admin',
       label: 'Admin',
-      desc: 'Acesso administrativo amplo conforme permissões',
+      desc: t('users.roleDescAdmin', 'Acesso administrativo amplo conforme permissões'),
       icon: <Shield className="w-4 h-4" />,
     },
     {
       value: 'employee',
-      label: 'Funcionário',
-      desc: 'Acesso operacional limitado ao seu escopo',
+      label: currentAppLang === 'en' ? 'Employee' : 'Funcionário',
+      desc: t('users.roleDescEmployee', 'Acesso operacional limitado ao seu escopo'),
       icon: <Users className="w-4 h-4" />,
     },
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-[24px] border border-[#c4c7c7]/30 shadow-[0_8px_40px_rgba(0,0,0,0.06)] w-full max-w-md">
-        {/* Header */}
-        <div className="bg-[#f7f3f2] p-5 border-b border-[#c4c7c7]/40 rounded-t-[24px] flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-9 h-9 rounded-full bg-[#000000] text-white flex items-center justify-center">
-              <UserPlus className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-[#1c1b1b] text-base">
-                {isEditing ? 'Editar Utilizador' : 'Novo Utilizador'}
-              </h3>
-              <p className="text-xs text-[#747878]">
-                {isEditing ? 'Alterar dados e cargo' : 'Criar conta com senha temporária'}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-full text-[#747878] hover:bg-[#f1edec] hover:text-[#1c1b1b] cursor-pointer transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+    <EditorPage
+      title={<>{isEditing ? t('users.editUser', 'Editar Utilizador') : t('users.newUser', 'Novo Utilizador')}</>}
+      trail={[t('nav.users', 'Utilizadores')]}
+      subtitle={<>{isEditing ? t('users.editSubtitle', 'Alterar dados e cargo') : t('users.newSubtitle', 'Criar conta com palavra-passe temporária')}</>}
+      icon={<UserPlus className="w-5 h-5" />}
+      onClose={onClose}
+      actions={<>
+            <button
+              type="button"
+              onClick={onClose}
+              className="aura-btn aura-btn--ghost"
+            >
+              {t('common.cancel', 'Cancelar')}
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="aura-btn aura-btn--primary"
+             form="user-form">
+              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+              <span>{loading ? t('common.saving', 'A guardar...') : isEditing ? t('common.save', 'Guardar') : t('users.btnCreate', 'Criar Utilizador')}</span>
+            </button>
+          </>}
+    >
+      <form id="user-form" className="space-y-6 text-fg" onSubmit={handleSubmit}>
           {error && (
-            <div className="p-3 bg-[#ffdad6] border border-[#ba1a1a]/20 rounded-xl text-[#93000a] text-sm">
+            <div className="p-3 bg-danger-soft border border-danger/20 rounded-md text-danger-fg text-sm">
               {error}
             </div>
           )}
 
           <div>
-            <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
-              Nome Completo
+            <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
+              {t('users.fullName', 'Nome Completo')}
             </label>
             <input
               type="text"
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder="Nome do utilizador"
+              placeholder={t('users.fullNamePlaceholder', 'Nome do utilizador')}
               required
-              className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-sm text-[#1c1b1b] placeholder-[#747878] focus:outline-none focus:border-[#000000] focus:bg-white transition-all"
+              className="w-full bg-surface-2 border border-line-subtle rounded-md px-4 py-3 text-sm text-fg placeholder:text-fg-muted focus:outline-none focus:border-accent focus:bg-surface-1 focus:shadow-[0_0_0_4px_var(--accent-ring)] transition-all"
             />
           </div>
 
           <div>
-            <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
-              Email
+            <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
+              {t('common.email', 'Email')}
             </label>
             <input
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              placeholder="email@empresa.com"
+              placeholder={t('users.emailPlaceholder', 'email@empresa.com')}
               required
               disabled={isEditing}
-              className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-sm text-[#1c1b1b] placeholder-[#747878] focus:outline-none focus:border-[#000000] focus:bg-white transition-all disabled:opacity-60"
+              className="w-full bg-surface-2 border border-line-subtle rounded-md px-4 py-3 text-sm text-fg placeholder:text-fg-muted focus:outline-none focus:border-accent focus:bg-surface-1 focus:shadow-[0_0_0_4px_var(--accent-ring)] transition-all disabled:opacity-60"
             />
           </div>
 
           {!isEditing && (
             <div>
-              <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
-                Senha Temporária
+              <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
+                {t('users.tempPassword', 'Palavra-passe temporária')}
               </label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  placeholder="Mínimo 6 caracteres"
+                  placeholder={t('users.minChars', 'Mínimo 6 caracteres')}
                   minLength={6}
-                  className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 pr-10 text-sm text-[#1c1b1b] placeholder-[#747878] focus:outline-none focus:border-[#000000] focus:bg-white transition-all"
+                  className="w-full bg-surface-2 border border-line-subtle rounded-md px-4 py-3 pr-10 text-sm text-fg placeholder:text-fg-muted focus:outline-none focus:border-accent focus:bg-surface-1 focus:shadow-[0_0_0_4px_var(--accent-ring)] transition-all"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-2.5 text-[#747878] hover:text-[#1c1b1b] cursor-pointer"
+                  className="absolute right-3 top-2.5 text-fg-muted hover:text-fg cursor-pointer"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              <p className="text-[11px] text-[#747878] mt-1">O utilizador poderá alterar a senha no primeiro acesso.</p>
+              <p className="text-[11px] text-fg-muted mt-1">{t('users.tempPasswordHint', 'O utilizador poderá alterar a palavra-passe no primeiro acesso.')}</p>
             </div>
           )}
 
+          {/* System Language Selection (Solicitado na Edição de Utilizadores) */}
+          <div className="p-3 bg-surface-2 rounded-lg border border-line-subtle space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-[13px] font-medium text-fg flex items-center gap-1.5">
+                <Globe className="w-3.5 h-3.5 text-accent-soft-fg " />
+                {t('users.systemLanguage', 'Idioma do Sistema')}
+              </label>
+              <span className="text-[11px] font-semibold text-accent-soft-fg font-mono">
+                {language === 'en' ? 'English (EN)' : 'Português (PT)'}
+              </span>
+            </div>
+            <p className="text-[11px] text-fg-muted ">
+              {t('users.systemLanguageDesc', 'Idioma preferido para a interface e notificações deste utilizador')}
+            </p>
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setLanguage('pt')}
+                className={`py-2 px-3 rounded-md border flex items-center justify-center space-x-2 text-xs font-medium transition-all cursor-pointer ${
+ language === 'pt'
+ ? 'border-fg bg-primary shadow-primary-3d text-primary-fg shadow-xs'
+ : 'border-line-subtle hover:border-line-strong bg-glass-strong text-fg-secondary '
+ }`}
+              >
+                <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold ${language === 'pt' ? 'bg-white/20 text-white' : 'bg-primary/5 shadow-primary-3d text-fg-secondary '}`}>PT</span>
+                <span>Português (PT)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setLanguage('en')}
+                className={`py-2 px-3 rounded-md border flex items-center justify-center space-x-2 text-xs font-medium transition-all cursor-pointer ${
+ language === 'en'
+ ? 'border-fg bg-primary shadow-primary-3d text-primary-fg shadow-xs'
+ : 'border-line-subtle hover:border-line-strong bg-glass-strong text-fg-secondary '
+ }`}
+              >
+                <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold ${language === 'en' ? 'bg-white/20 text-white' : 'bg-primary/5 shadow-primary-3d text-fg-secondary '}`}>EN</span>
+                <span>English (EN)</span>
+              </button>
+            </div>
+          </div>
+
           <div>
-            <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-2">
-              Cargo
+            <label className="text-[13px] font-medium text-fg-secondary block mb-2">
+              {t('users.roleLabel', 'Cargo')}
             </label>
             <div className="space-y-2">
               {roleOptions.map(opt => (
@@ -183,22 +237,24 @@ export function UserModal({ isOpen, onClose, onSave, userToEdit }: UserModalProp
                   key={opt.value}
                   type="button"
                   onClick={() => setRole(opt.value)}
-                  className={`w-full p-3 rounded-xl border text-left flex items-center space-x-3 transition-all cursor-pointer ${
-                    role === opt.value
-                      ? 'border-[#000000] bg-[#f1edec]'
-                      : 'border-[#c4c7c7]/40 bg-[#f7f3f2] hover:border-[#c4c7c7]'
-                  }`}
+                  className={`w-full p-3 rounded-md border text-left flex items-center space-x-3 transition-all cursor-pointer ${
+ role === opt.value
+ ? 'border-fg bg-surface-2 '
+ : 'border-line-subtle bg-surface-2 hover:border-line-strong '
+ }`}
                 >
                   <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
-                    role === opt.value ? 'bg-[#000000] text-white' : 'bg-[#e5e2e1] text-[#747878]'
-                  }`}>{opt.icon}</div>
+ role === opt.value
+ ? 'bg-primary shadow-primary-3d text-primary-fg'
+ : 'bg-surface-3 text-fg-muted '
+ }`}>{opt.icon}</div>
                   <div className="flex-1">
-                    <div className="text-sm font-medium text-[#1c1b1b]">{opt.label}</div>
-                    <div className="text-[11px] text-[#747878]">{opt.desc}</div>
+                    <div className="text-sm font-medium text-fg ">{opt.label}</div>
+                    <div className="text-[11px] text-fg-muted ">{opt.desc}</div>
                   </div>
                   <div className={`w-4 h-4 rounded-full border-2 shrink-0 ${
-                    role === opt.value ? 'border-[#000000] bg-[#000000]' : 'border-[#c4c7c7]'
-                  }`} />
+ role === opt.value ? 'border-fg bg-primary shadow-primary-3d ' : 'border-line '
+ }`} />
                 </button>
               ))}
             </div>
@@ -206,8 +262,8 @@ export function UserModal({ isOpen, onClose, onSave, userToEdit }: UserModalProp
 
           {isEditing && (
             <div>
-              <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
-                Estado
+              <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
+                {t('common.status', 'Estado')}
               </label>
               <div className="flex space-x-2">
                 {(['active', 'suspended'] as const).map(s => (
@@ -215,38 +271,21 @@ export function UserModal({ isOpen, onClose, onSave, userToEdit }: UserModalProp
                     key={s}
                     type="button"
                     onClick={() => setStatus(s)}
-                    className={`flex-1 py-2 rounded-[29px] text-xs font-medium border transition-all cursor-pointer ${
-                      status === s
-                        ? 'bg-[#000000] text-white border-[#000000]'
-                        : 'bg-[#f1edec] text-[#444747] border-[#c4c7c7]/40 hover:border-[#c4c7c7]'
-                    }`}
+                    className={`flex-1 py-2 rounded-full text-xs font-medium border transition-all cursor-pointer ${
+ status === s
+ ? 'bg-primary shadow-primary-3d text-primary-fg border-fg '
+ : 'bg-surface-2 text-fg-secondary border-line-subtle hover:border-line-strong '
+ }`}
                   >
-                    {s === 'active' ? 'Ativo' : 'Suspenso'}
+                    {s === 'active' ? t('common.active', 'Ativo') : t('common.suspended', 'Suspenso')}
                   </button>
                 ))}
               </div>
             </div>
           )}
 
-          <div className="flex space-x-3 pt-2 border-t border-[#c4c7c7]/40">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-2 rounded-[29px] bg-[#f1edec] hover:bg-[#e5e2e1] text-[#1c1b1b] text-sm font-medium cursor-pointer transition-all"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 px-5 py-2 bg-[#000000] hover:opacity-85 disabled:opacity-40 text-white font-medium text-sm rounded-[29px] flex items-center justify-center space-x-2 transition-all cursor-pointer active:scale-95"
-            >
-              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-              <span>{loading ? 'A guardar...' : isEditing ? 'Guardar' : 'Criar Utilizador'}</span>
-            </button>
-          </div>
+          
         </form>
-      </div>
-    </div>
+    </EditorPage>
   );
 }

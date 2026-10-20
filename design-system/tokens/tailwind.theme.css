@@ -1,0 +1,168 @@
+/* =====================================================================
+   AURA → TAILWIND v4
+   Como usar (src/index.css):
+     @import "tailwindcss";
+     @import "../design-system/tokens/tokens.css";
+     @import "../design-system/tokens/tailwind.theme.css";
+     @import "../design-system/styles/aura.css" layer(components);
+   (layer(components): as utilities Tailwind, como hidden e md:flex, vencem o Aura)
+   "@theme inline" faz as utilities apontarem para var(--token), por isso
+   mudam sozinhas com o tema escuro (html.dark). NÃO usar hex em classes.
+   ===================================================================== */
+
+@custom-variant dark (&:where(.dark, .dark *, [data-theme="dark"], [data-theme="dark"] *));
+
+@theme inline {
+  /* ---------- Cores semânticas (bg-*, text-*, border-*) ---------- */
+  --color-canvas: var(--bg-base); /* não chamar "base": colidiria com text-base (tamanho de letra) */
+  --color-glass: var(--glass-bg);
+  --color-glass-strong: var(--glass-bg-strong);
+  --color-glass-subtle: var(--glass-bg-subtle);
+
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-surface-inverse: var(--surface-inverse);
+  --color-surface-inverse-2: var(--surface-inverse-2);
+  --color-sunken: var(--surface-sunken);
+
+  --color-fg: var(--text-primary);
+  --color-fg-secondary: var(--text-secondary);
+  --color-fg-muted: var(--text-muted);
+  --color-fg-disabled: var(--text-disabled);
+  --color-fg-inverse: var(--text-inverse);
+  --color-fg-inverse-muted: var(--text-inverse-muted);
+
+  --color-line: var(--border-default);
+  --color-line-subtle: var(--border-subtle);
+  --color-line-strong: var(--border-strong);
+
+  --color-primary: var(--primary-solid);
+  --color-primary-fg: var(--primary-fg);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-soft-fg: var(--accent-soft-fg);
+
+  --color-highlight: var(--highlight);
+  --color-highlight-soft: var(--highlight-soft);
+  --color-highlight-fg: var(--highlight-fg);
+
+  --color-success: var(--success);
+  --color-success-fg: var(--success-fg);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-fg: var(--warning-fg);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-fg: var(--danger-fg);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-fg: var(--info-fg);
+  --color-info-soft: var(--info-soft);
+
+  --color-viz-1: var(--viz-1);
+  --color-viz-2: var(--viz-2);
+  --color-viz-3: var(--viz-3);
+  --color-viz-4: var(--viz-4);
+  --color-viz-5: var(--viz-5);
+  --color-viz-6: var(--viz-6);
+
+  /* Primitivos de marca expostos (uso pontual: ilustrações, gradientes) */
+  --color-ember-50: var(--aura-ember-50);
+  --color-ember-100: var(--aura-ember-100);
+  --color-ember-300: var(--aura-ember-300);
+  --color-ember-400: var(--aura-ember-400);
+  --color-ember-500: var(--aura-ember-500);
+  --color-ember-600: var(--aura-ember-600);
+  --color-ember-700: var(--aura-ember-700);
+  --color-citrine-100: var(--aura-citrine-100);
+  --color-citrine-300: var(--aura-citrine-300);
+  --color-citrine-400: var(--aura-citrine-400);
+  --color-citrine-500: var(--aura-citrine-500);
+  --color-ink-50: var(--aura-ink-50);
+  --color-ink-100: var(--aura-ink-100);
+  --color-ink-200: var(--aura-ink-200);
+  --color-ink-300: var(--aura-ink-300);
+  --color-ink-400: var(--aura-ink-400);
+  --color-ink-500: var(--aura-ink-500);
+  --color-ink-600: var(--aura-ink-600);
+  --color-ink-700: var(--aura-ink-700);
+  --color-ink-800: var(--aura-ink-800);
+  --color-ink-900: var(--aura-ink-900);
+
+  /* ---------- Tipografia ---------- */
+  --font-display: var(--font-display);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  --text-display-2xl: var(--text-display-2xl);
+  --text-display-2xl--line-height: var(--leading-display-2xl);
+  --text-display-xl: var(--text-display-xl);
+  --text-display-xl--line-height: var(--leading-display-xl);
+  --text-display-lg: var(--text-display-lg);
+  --text-display-lg--line-height: var(--leading-display-lg);
+  --text-h1: var(--text-h1);
+  --text-h1--line-height: var(--leading-h1);
+  --text-h2: var(--text-h2);
+  --text-h2--line-height: var(--leading-h2);
+  --text-h3: var(--text-h3);
+  --text-h3--line-height: var(--leading-h3);
+  --text-h4: var(--text-h4);
+  --text-h4--line-height: var(--leading-h4);
+  --text-body-lg: var(--text-body-lg);
+  --text-body-lg--line-height: var(--leading-body-lg);
+  --text-body: var(--text-body);
+  --text-body--line-height: var(--leading-body);
+  --text-body-sm: var(--text-body-sm);
+  --text-body-sm--line-height: var(--leading-body-sm);
+  --text-caption: var(--text-caption);
+  --text-caption--line-height: var(--leading-caption);
+  --text-overline: var(--text-overline);
+  --text-overline--line-height: var(--leading-overline);
+
+  /* ---------- Raios ---------- */
+  --radius-xs: var(--radius-xs);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-2xl: var(--radius-2xl);
+
+  /* ---------- Sombras ---------- */
+  --shadow-xs: var(--shadow-xs);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-xl);
+  --shadow-glass: var(--shadow-glass);
+  --shadow-primary-3d: var(--shadow-primary-3d);
+  --shadow-accent-3d: var(--shadow-accent-3d);
+
+  /* ---------- Blur ---------- */
+  --blur-glass-sm: var(--blur-sm);
+  --blur-glass-md: var(--blur-md);
+  --blur-glass-lg: var(--blur-lg);
+  --blur-glass-xl: var(--blur-xl);
+
+  /* ---------- Motion ---------- */
+  --ease-standard: var(--ease-standard);
+  --ease-emphasized: var(--ease-emphasized);
+  --ease-exit: var(--ease-exit);
+  --ease-spring: var(--ease-spring);
+
+  --animate-fade-up: aura-fade-up var(--duration-slow) var(--ease-emphasized) both;
+  --animate-scale-in: aura-scale-in var(--duration-base) var(--ease-emphasized) both;
+  --animate-shimmer: aura-shimmer 1.6s linear infinite;
+  --animate-aurora: aura-drift var(--duration-ambient) ease-in-out infinite alternate;
+  --animate-pulse-dot: aura-pulse-dot 2s var(--ease-standard) infinite;
+
+  /* ---------- Breakpoints ---------- */
+  --breakpoint-xs: 30rem;   /* 480 */
+  --breakpoint-sm: 40rem;   /* 640 */
+  --breakpoint-md: 48rem;   /* 768 */
+  --breakpoint-lg: 64rem;   /* 1024 */
+  --breakpoint-xl: 80rem;   /* 1280 */
+  --breakpoint-2xl: 96rem;  /* 1536 */
+}

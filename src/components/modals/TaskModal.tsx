@@ -1,15 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { X, CheckSquare, Loader2 } from 'lucide-react';
-import { Task, TaskStatus, TaskPriority, TASK_PRIORITY_LABELS, UserProfile } from '../../types/rbac';
-import { Project } from '../../types';
+import { EditorPage } from '../shell/EditorPage';
+import { X, CheckSquare, Loader2, Tag } from 'lucide-react';
+import { Task, TaskStatus, TaskPriority, UserProfile, getTaskPriorityLabel, getTaskStatusLabel } from '../../types/rbac';
+import { Project, CategoryItem } from '../../types';
+import { useLanguage } from '../../contexts/LanguageContext';
+import { RichTextField } from '../editor/RichTextField';
 
 interface TaskModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (task: Partial<Task> & { title: string; companyId: string; createdBy: string }) => Promise<void>;
+  onSave: (task: Partial<Task> & { title: string; companyId: string; createdBy: string; category?: string }) => Promise<void>;
   taskToEdit?: Task | null;
   projects: Project[];
   employees: UserProfile[];
+  categories?: CategoryItem[];
   companyId: string;
   currentUserId: string;
   canAssign?: boolean;
@@ -22,13 +26,17 @@ export function TaskModal({
   taskToEdit,
   projects,
   employees,
+  categories = [],
   companyId,
   currentUserId,
   canAssign = true,
 }: TaskModalProps) {
+  const { lang } = useLanguage();
+  const isEn = lang === 'en';
   const isEditing = !!taskToEdit;
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [category, setCategory] = useState('');
   const [projectId, setProjectId] = useState('');
   const [status, setStatus] = useState<TaskStatus>('Disponível');
   const [priority, setPriority] = useState<TaskPriority>('normal');
@@ -43,6 +51,7 @@ export function TaskModal({
       if (taskToEdit) {
         setTitle(taskToEdit.title);
         setDescription(taskToEdit.description || '');
+        setCategory(taskToEdit.category || '');
         setProjectId(taskToEdit.projectId || '');
         setStatus(taskToEdit.status);
         setPriority(taskToEdit.priority);
@@ -52,6 +61,7 @@ export function TaskModal({
       } else {
         setTitle('');
         setDescription('');
+        setCategory('');
         setProjectId('');
         setStatus('Disponível');
         setPriority('normal');
@@ -68,7 +78,7 @@ export function TaskModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
-      setError('O título é obrigatório');
+      setError(isEn ? 'Title is required' : 'O título é obrigatório');
       return;
     }
     setLoading(true);
@@ -78,6 +88,7 @@ export function TaskModal({
         id: taskToEdit?.id,
         title: title.trim(),
         description: description.trim() || undefined,
+        category: category || undefined,
         projectId: projectId || undefined,
         status,
         priority,
@@ -85,12 +96,12 @@ export function TaskModal({
         assignedBy: assignedTo ? currentUserId : undefined,
         dueDate: dueDate || undefined,
         notes: notes.trim() || undefined,
-        companyId,
-        createdBy: taskToEdit?.createdBy || currentUserId,
+        companyId: companyId || 'default_company',
+        createdBy: taskToEdit?.createdBy || currentUserId || 'anonymous',
       });
       onClose();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Erro ao guardar tarefa');
+      setError(err instanceof Error ? err.message : isEn ? 'Error saving task' : 'Erro ao guardar tarefa');
     } finally {
       setLoading(false);
     }
@@ -99,74 +110,122 @@ export function TaskModal({
   const statusOptions: TaskStatus[] = ['Disponível', 'Aguardando', 'Em andamento', 'Em revisão', 'Concluída', 'Cancelada'];
   const priorityOptions: TaskPriority[] = ['low', 'normal', 'high', 'urgent'];
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-[24px] border border-[#c4c7c7]/30 shadow-[0_8px_40px_rgba(0,0,0,0.06)] w-full max-w-md max-h-[90vh] flex flex-col">
-        {/* Header */}
-        <div className="bg-[#f7f3f2] p-5 border-b border-[#c4c7c7]/40 rounded-t-[24px] flex items-center justify-between shrink-0">
-          <div className="flex items-center space-x-3">
-            <div className="w-9 h-9 rounded-full bg-[#f1edec] text-[#444747] flex items-center justify-center">
-              <CheckSquare className="w-4 h-4" />
-            </div>
-            <h3 className="font-semibold text-[#1c1b1b] text-base">{isEditing ? 'Editar Tarefa' : 'Nova Tarefa'}</h3>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-full text-[#747878] hover:bg-[#f1edec] hover:text-[#1c1b1b] cursor-pointer transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+  const handleProjectSelect = (pId: string) => {
+    setProjectId(pId);
+    if (pId && !category) {
+      const selectedProj = projects.find(p => p.id === pId);
+      if (selectedProj?.category) {
+        setCategory(selectedProj.category);
+      }
+    }
+  };
 
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 space-y-4">
+  return (
+    <EditorPage
+      title={<>{isEditing ? (isEn ? 'Edit task' : 'Editar tarefa') : (isEn ? 'New task' : 'Nova tarefa')}</>}
+      trail={[isEn ? 'Tasks' : 'Tarefas']}
+      
+      icon={<CheckSquare className="w-5 h-5" />}
+      onClose={onClose}
+      actions={<>
+          <button
+            type="button"
+            onClick={onClose}
+            className="aura-btn aura-btn--ghost"
+          >
+            {isEn ? 'Cancel' : 'Cancelar'}
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={loading}
+            className="aura-btn aura-btn--primary"
+          >
+            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+            <span>{loading ? (isEn ? 'Saving...' : 'A guardar...') : isEditing ? (isEn ? 'Save' : 'Guardar') : (isEn ? 'Create Task' : 'Criar Tarefa')}</span>
+          </button>
+        </>}
+    >
+      <form id="task-form" className="space-y-6 text-fg" onSubmit={handleSubmit}>
           {error && (
-            <div className="p-3 bg-[#ffdad6] border border-[#ba1a1a]/20 rounded-xl text-[#93000a] text-sm">{error}</div>
+            <div className="p-3 bg-danger-soft border border-danger/20 rounded-md text-danger-fg text-sm">{error}</div>
           )}
 
           <div>
-            <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
-              Título *
+            <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
+              {isEn ? 'Title *' : 'Título *'}
             </label>
             <input
               type="text"
               value={title}
               onChange={e => setTitle(e.target.value)}
-              placeholder="Descrição da tarefa"
+              placeholder={isEn ? 'Task title' : 'Descrição da tarefa'}
               required
-              className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-sm text-[#1c1b1b] placeholder-[#747878] focus:outline-none focus:border-[#000000] focus:bg-white transition-all"
+              className="w-full bg-surface-2 border border-line-subtle rounded-md px-4 py-3 text-sm text-fg placeholder:text-fg-muted focus:outline-none focus:border-accent focus:bg-surface-1 focus:shadow-[0_0_0_4px_var(--accent-ring)] transition-all"
             />
+          </div>
+
+          {/* Categoria do Sistema */}
+          <div>
+            <label className="text-[13px] font-medium text-fg-secondary block mb-1.5 flex items-center gap-1.5">
+              <Tag className="w-3.5 h-3.5 text-accent-soft-fg " />
+              {isEn ? 'Category' : 'Categoria'}
+            </label>
+            <select
+              value={category}
+              onChange={e => setCategory(e.target.value)}
+              className="w-full bg-surface-2 border border-line-subtle rounded-md px-4 py-3 text-sm text-fg font-medium focus:outline-none focus:border-accent focus:bg-surface-1 focus:shadow-[0_0_0_4px_var(--accent-ring)] transition-all cursor-pointer"
+            >
+              <option value="" className="bg-glass-strong text-fg ">
+                {isEn ? 'No category set' : 'Sem categoria definida'}
+              </option>
+              {categories.map(c => (
+                <option key={c.id} value={c.name} className="bg-glass-strong text-fg ">
+                  ● {c.name} ({c.type === 'income' ? (isEn ? 'Income' : 'Receita') : c.type === 'expense' ? (isEn ? 'Expense' : 'Despesa') : (isEn ? 'Project' : 'Projeto')})
+                </option>
+              ))}
+              {/* Presets if no custom category created yet */}
+              {categories.length === 0 && (
+                <>
+                  <option value="Tráfego Pago" className="bg-glass-strong text-fg ">● {isEn ? 'Paid Traffic' : 'Tráfego Pago'}</option>
+                  <option value="Desenvolvimento Web" className="bg-glass-strong text-fg ">● {isEn ? 'Web Development' : 'Desenvolvimento Web'}</option>
+                  <option value="Consultoria" className="bg-glass-strong text-fg ">● {isEn ? 'Consulting' : 'Consultoria'}</option>
+                  <option value="Hospedagem" className="bg-glass-strong text-fg ">● {isEn ? 'Hosting' : 'Hospedagem'}</option>
+                  <option value="Domínio" className="bg-glass-strong text-fg ">● {isEn ? 'Domain' : 'Domínio'}</option>
+                  <option value="Design" className="bg-glass-strong text-fg ">● Design</option>
+                </>
+              )}
+            </select>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
-                Estado
+              <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
+                {isEn ? 'Status' : 'Estado'}
               </label>
               <select
                 value={status}
                 onChange={e => setStatus(e.target.value as TaskStatus)}
-                className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-sm text-[#1c1b1b] focus:outline-none focus:border-[#000000] focus:bg-white transition-all cursor-pointer"
+                className="w-full bg-surface-2 border border-line-subtle rounded-md px-4 py-3 text-sm text-fg focus:outline-none focus:border-accent focus:bg-surface-1 focus:shadow-[0_0_0_4px_var(--accent-ring)] transition-all cursor-pointer"
               >
                 {statusOptions.map(s => (
-                  <option key={s} value={s}>
-                    {s}
+                  <option key={s} value={s} className="bg-glass-strong text-fg ">
+                    {getTaskStatusLabel(s, lang)}
                   </option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
-                Prioridade
+              <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
+                {isEn ? 'Priority' : 'Prioridade'}
               </label>
               <select
                 value={priority}
                 onChange={e => setPriority(e.target.value as TaskPriority)}
-                className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-sm text-[#1c1b1b] focus:outline-none focus:border-[#000000] focus:bg-white transition-all cursor-pointer"
+                className="w-full bg-surface-2 border border-line-subtle rounded-md px-4 py-3 text-sm text-fg focus:outline-none focus:border-accent focus:bg-surface-1 focus:shadow-[0_0_0_4px_var(--accent-ring)] transition-all cursor-pointer"
               >
                 {priorityOptions.map(p => (
-                  <option key={p} value={p}>
-                    {TASK_PRIORITY_LABELS[p]}
+                  <option key={p} value={p} className="bg-glass-strong text-fg ">
+                    {getTaskPriorityLabel(p, lang)}
                   </option>
                 ))}
               </select>
@@ -175,17 +234,19 @@ export function TaskModal({
 
           {projects.length > 0 && (
             <div>
-              <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
-                Projeto (Opcional)
+              <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
+                {isEn ? 'Project (Optional)' : 'Projeto (Opcional)'}
               </label>
               <select
                 value={projectId}
-                onChange={e => setProjectId(e.target.value)}
-                className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-sm text-[#1c1b1b] focus:outline-none focus:border-[#000000] focus:bg-white transition-all cursor-pointer"
+                onChange={e => handleProjectSelect(e.target.value)}
+                className="w-full bg-surface-2 border border-line-subtle rounded-md px-4 py-3 text-sm text-fg focus:outline-none focus:border-accent focus:bg-surface-1 focus:shadow-[0_0_0_4px_var(--accent-ring)] transition-all cursor-pointer"
               >
-                <option value="">Sem projeto específico</option>
+                <option value="" className="bg-glass-strong text-fg ">
+                  {isEn ? 'No specific project' : 'Sem projeto específico'}
+                </option>
                 {projects.map(p => (
-                  <option key={p.id} value={p.id}>
+                  <option key={p.id} value={p.id} className="bg-glass-strong text-fg ">
                     {p.name}
                   </option>
                 ))}
@@ -195,18 +256,20 @@ export function TaskModal({
 
           {canAssign && employees.length > 0 && (
             <div>
-              <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
-                Atribuir a (Opcional)
+              <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
+                {isEn ? 'Assign to (Optional)' : 'Atribuir a (Opcional)'}
               </label>
               <select
                 value={assignedTo}
                 onChange={e => setAssignedTo(e.target.value)}
-                className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-sm text-[#1c1b1b] focus:outline-none focus:border-[#000000] focus:bg-white transition-all cursor-pointer"
+                className="w-full bg-surface-2 border border-line-subtle rounded-md px-4 py-3 text-sm text-fg focus:outline-none focus:border-accent focus:bg-surface-1 focus:shadow-[0_0_0_4px_var(--accent-ring)] transition-all cursor-pointer"
               >
-                <option value="">Disponível para qualquer funcionário</option>
+                <option value="" className="bg-glass-strong text-fg ">
+                  {isEn ? 'Available to any employee' : 'Disponível para qualquer funcionário'}
+                </option>
                 {employees.map(e => (
-                  <option key={e.id} value={e.id}>
-                    {e.name} ({e.role === 'admin' ? 'Admin' : 'Funcionário'})
+                  <option key={e.id} value={e.id} className="bg-glass-strong text-fg ">
+                    {e.name} ({e.role === 'admin' ? (isEn ? 'Admin' : 'Admin') : (isEn ? 'Employee' : 'Funcionário')})
                   </option>
                 ))}
               </select>
@@ -214,49 +277,26 @@ export function TaskModal({
           )}
 
           <div>
-            <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
-              Prazo
+            <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
+              {isEn ? 'Due Date' : 'Prazo'}
             </label>
             <input
               type="date"
               value={dueDate}
               onChange={e => setDueDate(e.target.value)}
-              className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-sm text-[#1c1b1b] focus:outline-none focus:border-[#000000] focus:bg-white transition-all"
+              className="w-full bg-surface-2 border border-line-subtle rounded-md px-4 py-3 text-sm text-fg focus:outline-none focus:border-accent focus:bg-surface-1 focus:shadow-[0_0_0_4px_var(--accent-ring)] transition-all"
             />
           </div>
 
-          <div>
-            <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
-              Descrição / Observações
-            </label>
-            <textarea
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              rows={3}
-              placeholder="Detalhes da tarefa..."
-              className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-sm text-[#1c1b1b] placeholder-[#747878] focus:outline-none focus:border-[#000000] focus:bg-white transition-all resize-none"
-            />
-          </div>
+          <RichTextField
+            id="task-description"
+            label={isEn ? 'Description' : 'Descrição'}
+            value={description}
+            onChange={setDescription}
+            lang={isEn ? 'en' : 'pt'}
+            template="task"
+          />
         </form>
-
-        <div className="p-5 border-t border-[#c4c7c7]/40 flex space-x-3 shrink-0">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 px-4 py-2 rounded-[29px] bg-[#f1edec] hover:bg-[#e5e2e1] text-[#1c1b1b] text-sm font-medium cursor-pointer"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="flex-1 px-5 py-2 bg-[#000000] hover:opacity-85 disabled:opacity-40 text-white font-medium text-sm rounded-[29px] flex items-center justify-center space-x-2 cursor-pointer active:scale-95"
-          >
-            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-            <span>{loading ? 'A guardar...' : isEditing ? 'Guardar' : 'Criar Tarefa'}</span>
-          </button>
-        </div>
-      </div>
-    </div>
+    </EditorPage>
   );
 }

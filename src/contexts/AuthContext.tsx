@@ -60,15 +60,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // ------------------------------------------------------------------
   const fetchProfileAndPermissions = useCallback(async (userId: string): Promise<UserProfile | null> => {
     try {
-      // Fetch user_profile
-      const { data: profileData, error: profileError } = await supabase
+      // Fetch user_profile using maybeSingle (avoids HTTP 406 when not found)
+      const { data: profileData } = await supabase
         .from('user_profiles')
         .select('*')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
-      if (profileError || !profileData) {
-        console.warn('[Auth] user_profile not found for:', userId);
+      // Sistema interno: um utilizador sem perfil não ganha uma empresa nova; o owner é quem cria as contas.
+      if (!profileData) {
+        console.warn('[Auth] user_profile not found or provisioned for:', userId);
         return null;
       }
 
@@ -81,6 +82,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         status: profileData.status,
         avatarUrl: profileData.avatar_url || undefined,
         mustChangePassword: profileData.must_change_password || false,
+        language: (profileData.language as 'pt' | 'en') || undefined,
         lastLoginAt: profileData.last_login_at || undefined,
         createdAt: profileData.created_at,
         updatedAt: profileData.updated_at,

@@ -67,6 +67,15 @@ export function saveCategories(categories: CategoryItem[]): void {
   localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories));
 }
 
+// Uma referência inválida (cliente/projeto/parceiro apagado) nunca é "resolvida" gravando o
+// registo sem o vínculo: isso deixava receitas órfãs e relatórios por cliente/projeto errados.
+function describeDbError(error: { code?: string; message?: string }): string {
+  if (error.code === '23503') {
+    return 'Este registo está ligado a outro (cliente, projeto ou receita) e a alteração deixaria o histórico incompleto. Atualize a página e tente de novo.';
+  }
+  return error.message || 'Erro desconhecido';
+}
+
 // Supabase-backed categories
 export async function fetchCategoriesFromDb(companyId?: string): Promise<CategoryItem[]> {
   try {
@@ -105,11 +114,9 @@ export async function upsertCategoryToDb(category: CategoryItem, companyId: stri
   }
 }
 
-export async function deleteCategoryFromDb(categoryId: string, companyId?: string): Promise<{ success: boolean; error?: string }> {
+export async function deleteCategoryFromDb(categoryId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    let query = supabase.from('categories').delete().eq('id', categoryId);
-    if (companyId) query = query.eq('company_id', companyId);
-    const { error } = await query;
+    const { error } = await supabase.from('categories').delete().eq('id', categoryId);
     if (error) return { success: false, error: describeDbError(error) };
     return { success: true };
   } catch (e) {
@@ -142,7 +149,6 @@ export async function fetchSettingsFromDb(companyId: string): Promise<AppSetting
 export async function upsertSettingsToDb(settings: AppSettings, companyId: string): Promise<{ success: boolean; error?: string }> {
   try {
     const { error } = await supabase.from('app_settings').upsert({
-      id: `settings-${companyId}`,
       company_id: companyId,
       default_currency: settings.defaultCurrency,
       user_name: settings.userName,
@@ -150,12 +156,18 @@ export async function upsertSettingsToDb(settings: AppSettings, companyId: strin
       exchange_rates: settings.exchangeRates || {},
       email_settings: (settings as any).emailSettings || {},
       updated_at: new Date().toISOString(),
+    }, {
+      onConflict: 'company_id',
     });
-    if (error) return { success: false, error: describeDbError(error) };
+
+    if (error) {
+      console.error('[upsertSettingsToDb] Supabase error:', error);
+      return { success: false, error: error.message };
+    }
     return { success: true };
-  } catch (e) {
-    console.error('[upsertSettingsToDb]', e);
-    return { success: false, error: e instanceof Error ? e.message : 'Erro desconhecido' };
+  } catch (e: any) {
+    console.error('[upsertSettingsToDb] Exception:', e);
+    return { success: false, error: e?.message };
   }
 }
 
@@ -176,43 +188,14 @@ export function saveAgendaEvents(events: AgendaEvent[]): void {
 // SUPABASE SYNC OPERATIONS
 // ----------------------------------------------------
 
-// O servidor é a única fonte de verdade. A cópia local só é usada quando o pedido falha
-// (sem rede); nunca é devolvida no lugar de uma resposta válida do servidor, para não
-// mostrar nem voltar a gravar registos que já não existem.
-// PostgREST PGRST204 / Postgres 42703: a coluna ainda não existe nesta base de dados.
-function isMissingColumnError(error: { code?: string; message?: string }): boolean {
-  return error.code === 'PGRST204' || error.code === '42703' || /column .* does not exist|Could not find the .* column/i.test(error.message || '');
-}
-
-// Uma referência inválida (cliente/projeto/parceiro apagado) nunca é "resolvida" gravando o
-// registo sem o vínculo: isso deixava receitas órfãs e relatórios por cliente/projeto errados.
-function describeDbError(error: { code?: string; message?: string }): string {
-  if (error.code === '23503') {
-    return 'O cliente, projeto ou parceiro ligado a este registo já não existe. Atualize a página e escolha-o de novo.';
-  }
-  return error.message || 'Erro desconhecido';
-}
-
-function acceptServerRows<T>(label: string, rows: T[], cached: T[], save: (rows: T[]) => void): T[] {
-  if (rows.length === 0 && cached.length > 0) {
-    console.warn(`[DB] ${label}: servidor devolveu 0 registos; cópia local (${cached.length}) guardada só para recuperação.`);
-    return rows;
-  }
-  save(rows);
-  return rows;
-}
-
 export async function fetchClientsFromDb(companyId?: string): Promise<Client[]> {
-  // PROTEÇÃO: Sem companyId, retornar cache local — NUNCA buscar sem filtro de empresa
-  if (!companyId) {
-    console.warn('[DB ⚠️] fetchClientsFromDb chamado sem companyId — usando cache local');
-    return getStoredClients();
-  }
   try {
-    console.log(`[DB 📥] Buscando clientes no Supabase para companyId: ${companyId}...`);
-    const query = supabase.from('clients').select('*').eq('company_id', companyId).order('created_at', { ascending: false });
-    const { data, error } = await query;
+    let query = supabase.from('clients').select('*').order('created_at', { ascending: false });
+    if (companyId) query = query.eq('company_id', companyId);
+    let { data, error } = await query;
     if (error) throw error;
+    // As colunas da ficha completa existem? (select * devolve a chave mesmo com valor nulo)
+    if (data && data.length > 0) clientProfileSupported = 'tax_id' in data[0];
     const formatted: Client[] = (data || []).map((item) => ({
       id: item.id,
       name: item.name,
@@ -224,20 +207,45 @@ export async function fetchClientsFromDb(companyId?: string): Promise<Client[]> 
       currency: item.currency || 'BRL',
       notes: item.notes || '',
       createdAt: item.created_at ? item.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
+      // Ficha completa (migração 014; ausentes antes da migração)
+      taxId: item.tax_id || undefined,
+      website: item.website || undefined,
+      address: item.address || undefined,
+      city: item.city || undefined,
+      postalCode: item.postal_code || undefined,
+      contactName: item.contact_name || undefined,
+      contactRole: item.contact_role || undefined,
+      preferredChannel: item.preferred_channel || undefined,
+      paymentTermsDays: item.payment_terms_days ?? undefined,
+      tags: Array.isArray(item.tags) ? item.tags : undefined,
+      source: item.source || undefined,
     }));
-
-    return acceptServerRows('clientes', formatted, getStoredClients(), saveClients);
+    saveClients(formatted);
+    return formatted;
   } catch (err) {
-    console.warn('[DB ⚠️] fetchClientsFromDb falhou, recorrendo ao cache local:', err);
+    console.warn('[DB] fetchClientsFromDb failed, using local cache:', err);
     return getStoredClients();
   }
 }
 
 
 
+/** Colunas da ficha completa (migração 014). Antes da migração não envia nada destas colunas;
+    depois, envia todas (vazio → NULL, para permitir limpar um campo). */
+let clientProfileSupported = true; // migração 014 aplicada em produção; a leitura desliga isto se as colunas faltarem
+function clientProfileColumns(c: Client): Record<string, unknown> {
+  if (!clientProfileSupported) return {};
+  const v = (x?: string) => (x && x.trim() ? x.trim() : null);
+  return {
+    tax_id: v(c.taxId), website: v(c.website), address: v(c.address), city: v(c.city), postal_code: v(c.postalCode),
+    contact_name: v(c.contactName), contact_role: v(c.contactRole), preferred_channel: c.preferredChannel || null,
+    payment_terms_days: typeof c.paymentTermsDays === 'number' && !isNaN(c.paymentTermsDays) ? c.paymentTermsDays : null,
+    tags: c.tags && c.tags.length ? c.tags : null, source: v(c.source),
+  };
+}
+
 export async function upsertClientToDb(client: Client, companyId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    console.log(`[DB 💾] Enviando cliente "${client.name}" (${client.id}) para o Supabase...`);
     const { error } = await supabase.from('clients').upsert({
       id: client.id,
       company_id: companyId,
@@ -249,30 +257,28 @@ export async function upsertClientToDb(client: Client, companyId: string): Promi
       country: client.country,
       currency: client.currency,
       notes: client.notes,
+      ...clientProfileColumns(client),
     });
     if (error) {
-      console.error('[DB ❌] upsertClientToDb erro Supabase:', error.message);
-      return { success: false, error: error.message };
+      console.error('[DB] upsertClientToDb:', error.message);
+      return { success: false, error: describeDbError(error) };
     }
     saveClients([client, ...getStoredClients().filter(c => c.id !== client.id)]);
     return { success: true };
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Erro desconhecido';
-    console.error('[DB ❌] upsertClientToDb exceção:', msg);
+    console.error('[DB] upsertClientToDb exception:', msg);
     return { success: false, error: msg };
   }
 }
 
-export async function deleteClientFromDb(clientId: string, companyId?: string): Promise<{ success: boolean; error?: string }> {
+export async function deleteClientFromDb(clientId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    let query = supabase.from('clients').delete().eq('id', clientId);
-    if (companyId) query = query.eq('company_id', companyId);
-    const { error } = await query;
+    const { error } = await supabase.from('clients').delete().eq('id', clientId);
     if (error) {
       console.error('[DB] deleteClientFromDb error:', error.message);
-      return { success: false, error: error.message };
+      return { success: false, error: describeDbError(error) };
     }
-    // PROTEÇÃO: Só atualizar cache local APÓS confirmação de exclusão do Supabase
     saveClients(getStoredClients().filter(c => c.id !== clientId));
     return { success: true };
   } catch (err) {
@@ -283,15 +289,10 @@ export async function deleteClientFromDb(clientId: string, companyId?: string): 
 
 
 export async function fetchProjectsFromDb(companyId?: string): Promise<Project[]> {
-  // PROTEÇÃO: Sem companyId, retornar cache local — NUNCA buscar sem filtro de empresa
-  if (!companyId) {
-    console.warn('[DB ⚠️] fetchProjectsFromDb chamado sem companyId — usando cache local');
-    return getStoredProjects();
-  }
   try {
-    console.log(`[DB 📥] Buscando projetos no Supabase para companyId: ${companyId}...`);
-    const query = supabase.from('projects').select('*').eq('company_id', companyId).order('created_at', { ascending: false });
-    const { data, error } = await query;
+    let query = supabase.from('projects').select('*').order('created_at', { ascending: false });
+    if (companyId) query = query.eq('company_id', companyId);
+    let { data, error } = await query;
     if (error) throw error;
 
     const formatted: Project[] = (data || []).map((item) => {
@@ -327,81 +328,65 @@ export async function fetchProjectsFromDb(companyId?: string): Promise<Project[]
       };
     });
 
-    return acceptServerRows('projetos', formatted, getStoredProjects(), saveProjects);
+    // BD é a fonte de verdade — não misturar com dados locais
+    saveProjects(formatted);
+    return formatted;
   } catch (err) {
-    console.warn('[DB ⚠️] fetchProjectsFromDb falhou, usando cache local:', err);
+    console.warn('[DB] fetchProjectsFromDb failed, using local cache:', err);
     return getStoredProjects();
   }
 }
 
 export async function upsertProjectToDb(project: Project, companyId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    console.log(`[DB 💾] Enviando projeto "${project.name}" (${project.id}) para o Supabase...`);
-
-    // Payload básico garantido no schema PostgreSQL
-    const payloadCore: any = {
+    const payload = {
       id: project.id,
       company_id: companyId,
       name: project.name,
       client_id: project.clientId || null,
-      category: project.category || 'Outro',
+      client_ids: project.clientIds && project.clientIds.length > 0 ? project.clientIds : [project.clientId],
+      category: project.category,
       total_amount: Number(project.totalAmount) || 0,
       paid_amount: Number(project.paidAmount) || 0,
-      currency: project.currency || 'BRL',
+      currency: project.currency,
       start_date: project.startDate || null,
       due_date: project.dueDate || null,
       next_payment_date: project.nextPaymentDate || null,
-      status: project.status || 'Em andamento',
+      status: project.status,
       notes: project.notes || null,
+      rating: Number(project.rating) || 0,
+      attachments: project.attachments || [],
       partner_id: project.partnerId || null,
       partner_name: project.partnerName || null,
       commission_type: project.commissionType || 'percent',
       commission_value: Number(project.commissionValue) || 0,
       commission_amount: Number(project.commissionAmount) || 0,
       commission_paid: Boolean(project.commissionPaid),
-    };
-
-    // Payload completo com campos adicionais (caso colunas existam)
-    const payloadAdvanced: any = {
-      ...payloadCore,
-      rating: Number(project.rating) || 0,
-      attachments: project.attachments || [],
-      client_ids: project.clientIds && project.clientIds.length > 0 ? project.clientIds : (project.clientId ? [project.clientId] : null),
       invoice_footer: project.invoiceFooter || null,
       invoice_notes: project.invoiceNotes || null,
     };
 
-    let { error } = await supabase.from('projects').upsert(payloadAdvanced);
-
-    if (error && isMissingColumnError(error)) {
-      console.warn(`[DB ⚠️] upsertProjectToDb: coluna em falta no servidor (${error.message}). A gravar só os campos base.`);
-      error = (await supabase.from('projects').upsert(payloadCore)).error;
-    }
-
+    const { error } = await supabase.from('projects').upsert(payload);
     if (error) {
-      console.error('[DB ❌] upsertProjectToDb:', error.message);
+      console.error('[DB] upsertProjectToDb:', error.message);
       return { success: false, error: describeDbError(error) };
     }
-
     saveProjects([project, ...getStoredProjects().filter((p) => p.id !== project.id)]);
     return { success: true };
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Erro desconhecido';
-    console.error('[DB ❌] upsertProjectToDb exceção:', msg);
+    console.error('[DB] upsertProjectToDb exception:', msg);
     return { success: false, error: msg };
   }
 }
 
-export async function deleteProjectFromDb(projectId: string, companyId?: string): Promise<{ success: boolean; error?: string }> {
+export async function deleteProjectFromDb(projectId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    let query = supabase.from('projects').delete().eq('id', projectId);
-    if (companyId) query = query.eq('company_id', companyId);
-    const { error } = await query;
+    const { error } = await supabase.from('projects').delete().eq('id', projectId);
     if (error) {
       console.error('[DB] deleteProjectFromDb error:', error.message);
-      return { success: false, error: error.message };
+      return { success: false, error: describeDbError(error) };
     }
-    // PROTEÇÃO: Só atualizar cache local APÓS confirmação de exclusão do Supabase
     saveProjects(getStoredProjects().filter(p => p.id !== projectId));
     return { success: true };
   } catch (err) {
@@ -412,15 +397,10 @@ export async function deleteProjectFromDb(projectId: string, companyId?: string)
 
 
 export async function fetchIncomesFromDb(companyId?: string): Promise<Income[]> {
-  // PROTEÇÃO: Sem companyId, retornar cache local
-  if (!companyId) {
-    console.warn('[DB ⚠️] fetchIncomesFromDb chamado sem companyId — usando cache local');
-    return getStoredIncomes();
-  }
   try {
-    console.log(`[DB 📥] Buscando receitas no Supabase para companyId: ${companyId}...`);
-    const query = supabase.from('incomes').select('*').eq('company_id', companyId).order('created_at', { ascending: false });
-    const { data, error } = await query;
+    let query = supabase.from('incomes').select('*').order('created_at', { ascending: false });
+    if (companyId) query = query.eq('company_id', companyId);
+    let { data, error } = await query;
     if (error) throw error;
     const formatted: Income[] = (data || []).map((item) => ({
       id: item.id,
@@ -446,10 +426,10 @@ export async function fetchIncomesFromDb(companyId?: string): Promise<Income[]> 
       stripeStatus: item.stripe_status || undefined,
       createdAt: item.created_at ? item.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
     }));
-
-    return acceptServerRows('receitas', formatted, getStoredIncomes(), saveIncomes);
+    saveIncomes(formatted);
+    return formatted;
   } catch (err) {
-    console.warn('[DB ⚠️] fetchIncomesFromDb falhou, usando cache local:', err);
+    console.warn('[DB] fetchIncomesFromDb failed, using local cache:', err);
     return getStoredIncomes();
   }
 }
@@ -457,9 +437,7 @@ export async function fetchIncomesFromDb(companyId?: string): Promise<Income[]> 
 
 export async function upsertIncomeToDb(income: Income, companyId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    console.log(`[DB 💾] Enviando receita "${income.description}" (${income.id}) para o Supabase...`);
-
-    const payloadCore: any = {
+    const payload = {
       id: income.id,
       company_id: companyId,
       client_id: income.clientId || null,
@@ -476,10 +454,6 @@ export async function upsertIncomeToDb(income: Income, companyId: string): Promi
       partner_name: income.partnerName || null,
       commission_amount: Number(income.commissionAmount) || 0,
       commission_paid: Boolean(income.commissionPaid),
-    };
-
-    const payloadFull: any = {
-      ...payloadCore,
       stripe_invoice_id: income.stripeInvoiceId || null,
       stripe_customer_id: income.stripeCustomerId || null,
       stripe_invoice_url: income.stripeInvoiceUrl || null,
@@ -488,36 +462,27 @@ export async function upsertIncomeToDb(income: Income, companyId: string): Promi
       stripe_status: income.stripeStatus || null,
     };
 
-    let { error } = await supabase.from('incomes').upsert(payloadFull);
-    if (error && isMissingColumnError(error)) {
-      console.warn(`[DB ⚠️] upsertIncomeToDb: coluna em falta no servidor (${error.message}). A gravar só os campos base.`);
-      error = (await supabase.from('incomes').upsert(payloadCore)).error;
-    }
-
+    const { error } = await supabase.from('incomes').upsert(payload);
     if (error) {
-      console.error('[DB ❌] upsertIncomeToDb:', error.message);
+      console.error('[DB] upsertIncomeToDb:', error.message);
       return { success: false, error: describeDbError(error) };
     }
-
     saveIncomes([income, ...getStoredIncomes().filter(i => i.id !== income.id)]);
     return { success: true };
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Erro desconhecido';
-    console.error('[DB ❌] upsertIncomeToDb exceção:', msg);
+    console.error('[DB] upsertIncomeToDb exception:', msg);
     return { success: false, error: msg };
   }
 }
 
-export async function deleteIncomeFromDb(incomeId: string, companyId?: string): Promise<{ success: boolean; error?: string }> {
+export async function deleteIncomeFromDb(incomeId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    let query = supabase.from('incomes').delete().eq('id', incomeId);
-    if (companyId) query = query.eq('company_id', companyId);
-    const { error } = await query;
+    const { error } = await supabase.from('incomes').delete().eq('id', incomeId);
     if (error) {
       console.error('[DB] deleteIncomeFromDb error:', error.message);
-      return { success: false, error: error.message };
+      return { success: false, error: describeDbError(error) };
     }
-    // PROTEÇÃO: Só atualizar cache local APÓS confirmação de exclusão do Supabase
     saveIncomes(getStoredIncomes().filter(i => i.id !== incomeId));
     return { success: true };
   } catch (err) {
@@ -527,15 +492,10 @@ export async function deleteIncomeFromDb(incomeId: string, companyId?: string): 
 }
 
 export async function fetchExpensesFromDb(companyId?: string): Promise<Expense[]> {
-  // PROTEÇÃO: Sem companyId, retornar cache local
-  if (!companyId) {
-    console.warn('[DB ⚠️] fetchExpensesFromDb chamado sem companyId — usando cache local');
-    return getStoredExpenses();
-  }
   try {
-    console.log(`[DB 📥] Buscando despesas no Supabase para companyId: ${companyId}...`);
-    const query = supabase.from('expenses').select('*').eq('company_id', companyId).order('created_at', { ascending: false });
-    const { data, error } = await query;
+    let query = supabase.from('expenses').select('*').order('created_at', { ascending: false });
+    if (companyId) query = query.eq('company_id', companyId);
+    let { data, error } = await query;
     if (error) throw error;
     const formatted: Expense[] = (data || []).map((item) => ({
       id: item.id,
@@ -550,10 +510,10 @@ export async function fetchExpensesFromDb(companyId?: string): Promise<Expense[]
       receiptUrl: item.receipt_url || undefined,
       createdAt: item.created_at ? item.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
     }));
-
-    return acceptServerRows('despesas', formatted, getStoredExpenses(), saveExpenses);
+    saveExpenses(formatted);
+    return formatted;
   } catch (err) {
-    console.warn('[DB ⚠️] fetchExpensesFromDb falhou, usando cache local:', err);
+    console.warn('[DB] fetchExpensesFromDb failed, using local cache:', err);
     return getStoredExpenses();
   }
 }
@@ -561,8 +521,7 @@ export async function fetchExpensesFromDb(companyId?: string): Promise<Expense[]
 
 export async function upsertExpenseToDb(expense: Expense, companyId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    console.log(`[DB 💾] Enviando despesa "${expense.description}" (${expense.id}) para o Supabase...`);
-    const payloadCore = {
+    const { error } = await supabase.from('expenses').upsert({
       id: expense.id,
       company_id: companyId,
       category: expense.category,
@@ -574,32 +533,27 @@ export async function upsertExpenseToDb(expense: Expense, companyId: string): Pr
       partner_id: expense.partnerId || null,
       partner_name: expense.partnerName || null,
       receipt_url: expense.receiptUrl || null,
-    };
-
-    const { error } = await supabase.from('expenses').upsert(payloadCore);
+    });
     if (error) {
-      console.error('[DB ❌] upsertExpenseToDb:', error.message);
+      console.error('[DB] upsertExpenseToDb:', error.message);
       return { success: false, error: describeDbError(error) };
     }
     saveExpenses([expense, ...getStoredExpenses().filter(e => e.id !== expense.id)]);
     return { success: true };
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Erro desconhecido';
-    console.error('[DB ❌] upsertExpenseToDb exceção:', msg);
+    console.error('[DB] upsertExpenseToDb exception:', msg);
     return { success: false, error: msg };
   }
 }
 
-export async function deleteExpenseFromDb(expenseId: string, companyId?: string): Promise<{ success: boolean; error?: string }> {
+export async function deleteExpenseFromDb(expenseId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    let query = supabase.from('expenses').delete().eq('id', expenseId);
-    if (companyId) query = query.eq('company_id', companyId);
-    const { error } = await query;
+    const { error } = await supabase.from('expenses').delete().eq('id', expenseId);
     if (error) {
       console.error('[DB] deleteExpenseFromDb error:', error.message);
-      return { success: false, error: error.message };
+      return { success: false, error: describeDbError(error) };
     }
-    // PROTEÇÃO: Só atualizar cache local APÓS confirmação de exclusão do Supabase
     saveExpenses(getStoredExpenses().filter(e => e.id !== expenseId));
     return { success: true };
   } catch (err) {
@@ -613,15 +567,10 @@ export async function deleteExpenseFromDb(expenseId: string, companyId?: string)
 // ----------------------------------------------------
 
 export async function fetchPartnersFromDb(companyId?: string): Promise<Partner[]> {
-  // PROTEÇÃO: Sem companyId, retornar cache local
-  if (!companyId) {
-    console.warn('[DB ⚠️] fetchPartnersFromDb chamado sem companyId — usando cache local');
-    return getStoredPartners();
-  }
   try {
-    console.log(`[DB 📥] Buscando parceiros no Supabase para companyId: ${companyId}...`);
-    const query = supabase.from('partners').select('*').eq('company_id', companyId).order('created_at', { ascending: false });
-    const { data, error } = await query;
+    let query = supabase.from('partners').select('*').order('created_at', { ascending: false });
+    if (companyId) query = query.eq('company_id', companyId);
+    let { data, error } = await query;
     if (error) throw error;
     const formatted: Partner[] = (data || []).map((item) => ({
       id: item.id,
@@ -632,17 +581,16 @@ export async function fetchPartnersFromDb(companyId?: string): Promise<Partner[]
       notes: item.notes || '',
       createdAt: item.created_at ? item.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
     }));
-
-    return acceptServerRows('parceiros', formatted, getStoredPartners(), savePartners);
+    savePartners(formatted);
+    return formatted;
   } catch (err) {
-    console.warn('[DB ⚠️] fetchPartnersFromDb falhou, usando cache local:', err);
+    console.warn('[DB] fetchPartnersFromDb failed, using local cache:', err);
     return getStoredPartners();
   }
 }
 
 export async function upsertPartnerToDb(partner: Partner, companyId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    console.log(`[DB 💾] Enviando parceiro "${partner.name}" (${partner.id}) para o Supabase...`);
     const { error } = await supabase.from('partners').upsert({
       id: partner.id,
       company_id: companyId,
@@ -653,28 +601,25 @@ export async function upsertPartnerToDb(partner: Partner, companyId: string): Pr
       notes: partner.notes || null,
     });
     if (error) {
-      console.error('[DB ❌] upsertPartnerToDb erro Supabase:', error.message);
-      return { success: false, error: error.message };
+      console.error('[DB] upsertPartnerToDb:', error.message);
+      return { success: false, error: describeDbError(error) };
     }
     savePartners([partner, ...getStoredPartners().filter(p => p.id !== partner.id)]);
     return { success: true };
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Erro desconhecido';
-    console.error('[DB ❌] upsertPartnerToDb exceção:', msg);
+    console.error('[DB] upsertPartnerToDb exception:', msg);
     return { success: false, error: msg };
   }
 }
 
-export async function deletePartnerFromDb(partnerId: string, companyId?: string): Promise<{ success: boolean; error?: string }> {
+export async function deletePartnerFromDb(partnerId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    let query = supabase.from('partners').delete().eq('id', partnerId);
-    if (companyId) query = query.eq('company_id', companyId);
-    const { error } = await query;
+    const { error } = await supabase.from('partners').delete().eq('id', partnerId);
     if (error) {
       console.error('[DB] deletePartnerFromDb error:', error.message);
-      return { success: false, error: error.message };
+      return { success: false, error: describeDbError(error) };
     }
-    // PROTEÇÃO: Só atualizar cache local APÓS confirmação de exclusão do Supabase
     savePartners(getStoredPartners().filter(p => p.id !== partnerId));
     return { success: true };
   } catch (err) {
@@ -688,15 +633,10 @@ export async function deletePartnerFromDb(partnerId: string, companyId?: string)
 // ----------------------------------------------------
 
 export async function fetchAgendaEventsFromDb(companyId?: string): Promise<AgendaEvent[]> {
-  // PROTEÇÃO: Sem companyId, retornar cache local
-  if (!companyId) {
-    console.warn('[DB ⚠️] fetchAgendaEventsFromDb chamado sem companyId — usando cache local');
-    return getStoredAgendaEvents();
-  }
   try {
-    console.log(`[DB 📥] Buscando eventos da agenda no Supabase para companyId: ${companyId}...`);
-    const query = supabase.from('agenda_events').select('*').eq('company_id', companyId).order('date', { ascending: true });
-    const { data, error } = await query;
+    let query = supabase.from('agenda_events').select('*').order('date', { ascending: true });
+    if (companyId) query = query.eq('company_id', companyId);
+    let { data, error } = await query;
     if (error) throw error;
     const formatted: AgendaEvent[] = (data || []).map((item) => ({
       id: item.id,
@@ -711,18 +651,17 @@ export async function fetchAgendaEventsFromDb(companyId?: string): Promise<Agend
       notifyPush: item.notify_push ?? true,
       createdAt: item.created_at || new Date().toISOString(),
     }));
-
-    return acceptServerRows('agenda', formatted, getStoredAgendaEvents(), saveAgendaEvents);
+    saveAgendaEvents(formatted);
+    return formatted;
   } catch (err) {
-    console.warn('[DB ⚠️] fetchAgendaEventsFromDb falhou, usando cache local:', err);
+    console.warn('[DB] fetchAgendaEventsFromDb failed, using local cache:', err);
     return getStoredAgendaEvents();
   }
 }
 
 export async function upsertAgendaEventToDb(event: AgendaEvent, companyId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    console.log(`[DB 💾] Enviando evento da agenda "${event.title}" (${event.id}) para o Supabase...`);
-    const payloadCore = {
+    const { error } = await supabase.from('agenda_events').upsert({
       id: event.id,
       company_id: companyId,
       title: event.title,
@@ -734,32 +673,27 @@ export async function upsertAgendaEventToDb(event: AgendaEvent, companyId: strin
       description: event.description || null,
       status: event.status,
       notify_push: event.notifyPush,
-    };
-
-    const { error } = await supabase.from('agenda_events').upsert(payloadCore);
+    });
     if (error) {
-      console.error('[DB ❌] upsertAgendaEventToDb:', error.message);
+      console.error('[DB] upsertAgendaEventToDb:', error.message);
       return { success: false, error: describeDbError(error) };
     }
     saveAgendaEvents([event, ...getStoredAgendaEvents().filter(e => e.id !== event.id)]);
     return { success: true };
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Erro desconhecido';
-    console.error('[DB ❌] upsertAgendaEventToDb exceção:', msg);
+    console.error('[DB] upsertAgendaEventToDb exception:', msg);
     return { success: false, error: msg };
   }
 }
 
-export async function deleteAgendaEventFromDb(eventId: string, companyId?: string): Promise<{ success: boolean; error?: string }> {
+export async function deleteAgendaEventFromDb(eventId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    let query = supabase.from('agenda_events').delete().eq('id', eventId);
-    if (companyId) query = query.eq('company_id', companyId);
-    const { error } = await query;
+    const { error } = await supabase.from('agenda_events').delete().eq('id', eventId);
     if (error) {
       console.error('[DB] deleteAgendaEventFromDb error:', error.message);
-      return { success: false, error: error.message };
+      return { success: false, error: describeDbError(error) };
     }
-    // PROTEÇÃO: Só atualizar cache local APÓS confirmação de exclusão do Supabase
     saveAgendaEvents(getStoredAgendaEvents().filter(e => e.id !== eventId));
     return { success: true };
   } catch (err) {
@@ -806,7 +740,7 @@ export async function fetchUserProfile(userId: string): Promise<UserProfile | nu
       .from('user_profiles')
       .select('*')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
     if (error || !data) return null;
     return {
       id: data.id,
@@ -829,7 +763,7 @@ export async function fetchUserProfile(userId: string): Promise<UserProfile | nu
 
 export async function upsertUserProfile(profile: Partial<UserProfile> & { id: string; companyId: string }): Promise<void> {
   try {
-    await supabase.from('user_profiles').upsert({
+    const payload: any = {
       id: profile.id,
       company_id: profile.companyId,
       email: profile.email,
@@ -839,7 +773,16 @@ export async function upsertUserProfile(profile: Partial<UserProfile> & { id: st
       avatar_url: profile.avatarUrl || null,
       must_change_password: profile.mustChangePassword ?? false,
       updated_at: new Date().toISOString(),
-    });
+    };
+    if (profile.language) {
+      payload.language = profile.language;
+    }
+    const { error } = await supabase.from('user_profiles').upsert(payload);
+    if (error && profile.language) {
+      // Column might not exist yet in DB schema; fallback without language column
+      delete payload.language;
+      await supabase.from('user_profiles').upsert(payload);
+    }
   } catch (err) {
     console.warn('[DB] upsertUserProfile failed:', err);
   }
@@ -898,7 +841,7 @@ export async function createCompanyUser(params: {
     });
 
     if (!error && data?.success && data?.userId) {
-      console.log('[createCompanyUser] ✅ Edge Function sucesso! userId:', data.userId);
+      console.log('[createCompanyUser] [SUCCESS] Edge Function sucesso! userId:', data.userId);
       return { success: true, userId: data.userId };
     }
 
@@ -915,8 +858,8 @@ export async function createCompanyUser(params: {
   try {
     console.log('[createCompanyUser] Tentando signUp isolado...');
 
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://ixwcdkkskhcmwdopexwt.supabase.co';
-    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_PcHTPrXgoKsYikSqdzUYPQ_YjElfxwh';
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
     // Cliente completamente isolado — não toca no localStorage do Owner
     const isolatedClient = createClient(supabaseUrl, supabaseAnonKey, {
@@ -966,7 +909,7 @@ export async function createCompanyUser(params: {
     }
 
     const userId = signUpData.user.id;
-    console.log('[createCompanyUser] ✅ signUp sucesso! userId:', userId);
+    console.log('[createCompanyUser] [SUCCESS] signUp sucesso! userId:', userId);
 
     // Inserir perfil via upsert
     await upsertUserProfileSafe(userId, cleanEmail, cleanName, params.role, params.companyId);
@@ -1020,10 +963,10 @@ async function upsertUserProfileSafe(
     if (insertErr) {
       console.error('[upsertUserProfileSafe] INSERT directo também falhou:', insertErr.message);
     } else {
-      console.log('[upsertUserProfileSafe] ✅ INSERT directo sucesso');
+      console.log('[upsertUserProfileSafe] [SUCCESS] INSERT directo sucesso');
     }
   } else {
-    console.log('[upsertUserProfileSafe] ✅ Upsert sucesso');
+    console.log('[upsertUserProfileSafe] [SUCCESS] Upsert sucesso');
   }
 }
 
@@ -1082,29 +1025,15 @@ export async function setUserPermissions(
   userId: string,
   permissions: Array<{ permissionId: string; scope: PermissionScope; granted: boolean }>,
   grantedBy: string
-): Promise<{ success: boolean; error?: string }> {
+): Promise<void> {
   try {
-    // 1. Backup das permissões existentes caso o insert falhe
-    const { data: previousPerms } = await supabase
-      .from('user_permissions')
-      .select('*')
-      .eq('user_id', userId);
+    // Delete existing custom permissions for this user
+    await supabase.from('user_permissions').delete().eq('user_id', userId);
 
-    // 2. Excluir permissões antigas
-    const { error: deleteError } = await supabase
-      .from('user_permissions')
-      .delete()
-      .eq('user_id', userId);
+    if (permissions.length === 0) return;
 
-    if (deleteError) {
-      console.error('[DB] setUserPermissions delete error:', deleteError.message);
-      return { success: false, error: deleteError.message };
-    }
-
-    if (permissions.length === 0) return { success: true };
-
-    // 3. Inserir novas permissões
-    const { error: insertError } = await supabase.from('user_permissions').insert(
+    // Insert new permissions
+    await supabase.from('user_permissions').insert(
       permissions.map((p) => ({
         user_id: userId,
         permission_id: p.permissionId,
@@ -1114,20 +1043,8 @@ export async function setUserPermissions(
         granted_at: new Date().toISOString(),
       }))
     );
-
-    if (insertError) {
-      console.error('[DB] setUserPermissions insert error, restaurando permissões anteriores:', insertError.message);
-      if (previousPerms && previousPerms.length > 0) {
-        await supabase.from('user_permissions').insert(previousPerms);
-      }
-      return { success: false, error: insertError.message };
-    }
-
-    return { success: true };
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Erro desconhecido';
-    console.warn('[DB] setUserPermissions failed:', msg);
-    return { success: false, error: msg };
+    console.warn('[DB] setUserPermissions failed:', err);
   }
 }
 
@@ -1233,82 +1150,123 @@ export async function fetchTasks(companyId: string, projectId?: string): Promise
     const { data, error } = await query;
     if (error) throw error;
 
-    return (data || []).map((t) => ({
-      id: t.id,
-      companyId: t.company_id,
-      projectId: t.project_id || undefined,
-      title: t.title,
-      description: t.description || undefined,
-      status: t.status as TaskStatus,
-      priority: t.priority as TaskPriority,
-      assignedTo: t.assigned_to || undefined,
-      assignedToName: t.user_profiles?.name || undefined,
-      assignedBy: t.assigned_by || undefined,
-      dueDate: t.due_date || undefined,
-      completedAt: t.completed_at || undefined,
-      notes: t.notes || undefined,
-      createdBy: t.created_by,
-      createdAt: t.created_at,
-      updatedAt: t.updated_at,
-    }));
+    return (data || []).map((t) => {
+      const catMatch = t.notes?.match(/^\[CAT:([^\]]+)\]\n?/);
+      const cleanNotes = catMatch ? t.notes.replace(/^\[CAT:[^\]]+\]\n?/, '') : t.notes;
+      const taskCategory = t.category || (catMatch ? catMatch[1] : undefined);
+
+      return {
+        id: t.id,
+        companyId: t.company_id,
+        projectId: t.project_id || undefined,
+        category: taskCategory,
+        title: t.title,
+        description: t.description || undefined,
+        status: t.status as TaskStatus,
+        priority: t.priority as TaskPriority,
+        assignedTo: t.assigned_to || undefined,
+        assignedToName: t.user_profiles?.name || undefined,
+        assignedBy: t.assigned_by || undefined,
+        dueDate: t.due_date || undefined,
+        completedAt: t.completed_at || undefined,
+        notes: cleanNotes || undefined,
+        createdBy: t.created_by,
+        createdAt: t.created_at,
+        updatedAt: t.updated_at,
+      };
+    });
   } catch (err) {
     console.warn('[DB] fetchTasks failed:', err);
     return [];
   }
 }
 
-export async function upsertTask(task: Partial<Task> & { id?: string; companyId: string; title: string; createdBy: string }): Promise<Task | null> {
-  try {
-    const now = new Date().toISOString();
-    const id = task.id || crypto.randomUUID();
+export async function upsertTask(task: Partial<Task> & { id?: string; companyId: string; title: string; createdBy: string }): Promise<Task> {
+  const now = new Date().toISOString();
+  const id = task.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
 
-    const payload = {
+  let notesPayload = task.notes || null;
+  if (task.category) {
+    notesPayload = `[CAT:${task.category.trim()}]\n${task.notes || ''}`.trim();
+  }
+
+  // Format dueDate cleanly as YYYY-MM-DD for PostgreSQL DATE type
+  const cleanDueDate = task.dueDate ? task.dueDate.split('T')[0] : null;
+
+  const localTask: Task = {
+    id,
+    companyId: task.companyId,
+    projectId: task.projectId || undefined,
+    category: task.category || undefined,
+    title: task.title,
+    description: task.description || undefined,
+    status: (task.status as TaskStatus) || 'Disponível',
+    priority: (task.priority as TaskPriority) || 'normal',
+    assignedTo: task.assignedTo || undefined,
+    assignedBy: task.assignedBy || undefined,
+    dueDate: cleanDueDate || undefined,
+    notes: task.notes || undefined,
+    createdBy: task.createdBy,
+    createdAt: task.createdAt || now,
+    updatedAt: now,
+  };
+
+  try {
+    const payload: Record<string, unknown> = {
       id,
       company_id: task.companyId,
-      project_id: task.projectId || null,
-      title: task.title,
-      description: task.description || null,
+      project_id: task.projectId && task.projectId.trim() ? task.projectId : null,
+      title: task.title.trim(),
+      description: task.description ? task.description.trim() : null,
       status: task.status || 'Disponível',
       priority: task.priority || 'normal',
-      assigned_to: task.assignedTo || null,
-      assigned_by: task.assignedBy || null,
-      due_date: task.dueDate || null,
-      notes: task.notes || null,
+      assigned_to: task.assignedTo && task.assignedTo.trim() ? task.assignedTo : null,
+      assigned_by: task.assignedBy && task.assignedBy.trim() ? task.assignedBy : null,
+      due_date: cleanDueDate,
+      notes: notesPayload,
       created_by: task.createdBy,
       updated_at: now,
     };
 
-    const { data, error } = await supabase
-      .from('tasks')
-      .upsert(payload)
-      .select()
-      .single();
+    if (task.id) {
+      // Update existing task
+      const { data, error } = await supabase
+        .from('tasks')
+        .update(payload)
+        .eq('id', task.id)
+        .select()
+        .single();
 
-    if (error) throw error;
-    return {
-      id: data.id,
-      companyId: data.company_id,
-      projectId: data.project_id || undefined,
-      title: data.title,
-      description: data.description || undefined,
-      status: data.status as TaskStatus,
-      priority: data.priority as TaskPriority,
-      assignedTo: data.assigned_to || undefined,
-      assignedBy: data.assigned_by || undefined,
-      dueDate: data.due_date || undefined,
-      completedAt: data.completed_at || undefined,
-      notes: data.notes || undefined,
-      createdBy: data.created_by,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at,
-    };
+      if (error) {
+        console.warn('[DB] tasks update warning:', error);
+      } else if (data) {
+        localTask.updatedAt = data.updated_at || now;
+      }
+    } else {
+      // Insert new task
+      const { data, error } = await supabase
+        .from('tasks')
+        .insert(payload)
+        .select()
+        .single();
+
+      if (error) {
+        console.warn('[DB] tasks insert warning:', error);
+      } else if (data) {
+        localTask.id = data.id;
+        localTask.createdAt = data.created_at || now;
+        localTask.updatedAt = data.updated_at || now;
+      }
+    }
+
+    return localTask;
   } catch (err) {
-    console.warn('[DB] upsertTask failed:', err);
-    return null;
+    console.warn('[DB] upsertTask exception — retaining local task:', err);
+    return localTask;
   }
 }
 
-export async function updateTaskStatus(taskId: string, status: TaskStatus): Promise<void> {
+export async function updateTaskStatus(taskId: string, status: TaskStatus): Promise<boolean> {
   try {
     const updates: Record<string, unknown> = {
       status,
@@ -1316,9 +1274,15 @@ export async function updateTaskStatus(taskId: string, status: TaskStatus): Prom
     };
     if (status === 'Concluída') updates.completed_at = new Date().toISOString();
 
-    await supabase.from('tasks').update(updates).eq('id', taskId);
+    const { error } = await supabase.from('tasks').update(updates).eq('id', taskId);
+    if (error) {
+      console.warn('[DB] updateTaskStatus failed:', error.message);
+      return false;
+    }
+    return true;
   } catch (err) {
     console.warn('[DB] updateTaskStatus failed:', err);
+    return false;
   }
 }
 
@@ -1386,6 +1350,130 @@ export async function initializeOwnerCompany(params: {
   } catch (err) {
     console.warn('[DB] initializeOwnerCompany failed:', err);
     return null;
+  }
+}
+
+// ============================================================
+// COMMERCIAL SAAS — Onboarding: Cria empresa + trial
+// ============================================================
+
+export interface CreateTenantResult {
+  success: boolean;
+  companyId?: string;
+  subscriptionId?: string;
+  trialEndsAt?: string;
+  alreadyExists?: boolean;
+  error?: string;
+}
+
+export async function createTenantWithTrial(params: {
+  userId: string;
+  email: string;
+  name: string;
+  businessName: string;
+  defaultCurrency?: string;
+}): Promise<CreateTenantResult> {
+  try {
+    // 1. Tentar chamada RPC transacional no PostgreSQL
+    const { data, error } = await supabase.rpc('create_tenant_with_trial', {
+      p_user_id: params.userId,
+      p_user_email: params.email,
+      p_user_name: params.name || 'Gestor',
+      p_business_name: params.businessName || 'Minha Empresa',
+      p_default_currency: params.defaultCurrency || 'BRL',
+    });
+
+    if (error) {
+      console.warn('[DB] create_tenant_with_trial RPC warning, attempting direct setup:', error.message);
+      return await createTenantDirectFallback(params);
+    }
+
+    if (!data?.success) {
+      return { success: false, error: data?.error || 'Falha ao inicializar empresa' };
+    }
+
+    return {
+      success: true,
+      companyId: data.company_id,
+      subscriptionId: data.subscription_id,
+      trialEndsAt: data.trial_ends_at,
+      alreadyExists: data.already_exists || false,
+    };
+  } catch (err) {
+    console.warn('[DB] createTenantWithTrial exception, running direct fallback:', err);
+    return await createTenantDirectFallback(params);
+  }
+}
+
+async function createTenantDirectFallback(params: {
+  userId: string;
+  email: string;
+  name: string;
+  businessName: string;
+  defaultCurrency?: string;
+}): Promise<CreateTenantResult> {
+  try {
+    const { data: existing } = await supabase
+      .from('user_profiles')
+      .select('company_id')
+      .eq('id', params.userId)
+      .maybeSingle();
+
+    if (existing?.company_id) {
+      return { success: true, companyId: existing.company_id, alreadyExists: true };
+    }
+
+    const { data: company, error: companyError } = await supabase
+      .from('companies')
+      .insert({
+        name: params.businessName || 'Minha Empresa',
+        created_by: params.userId,
+      })
+      .select()
+      .single();
+
+    if (companyError || !company) {
+      return { success: false, error: companyError?.message || 'Erro ao criar empresa' };
+    }
+
+    await supabase.from('user_profiles').upsert({
+      id: params.userId,
+      company_id: company.id,
+      email: params.email,
+      name: params.name || 'Gestor',
+      role: 'owner',
+      status: 'active',
+      must_change_password: false,
+    });
+
+    const trialEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: subscription } = await supabase
+      .from('subscriptions')
+      .insert({
+        company_id: company.id,
+        plan_id: 'plan_individual',
+        status: 'trialing',
+        trial_starts_at: new Date().toISOString(),
+        trial_ends_at: trialEndsAt,
+      })
+      .select()
+      .maybeSingle();
+
+    await supabase.from('app_settings').upsert({
+      company_id: company.id,
+      default_currency: params.defaultCurrency || 'BRL',
+      business_name: params.businessName || 'Minha Empresa',
+      user_name: params.name || 'Gestor',
+    });
+
+    return {
+      success: true,
+      companyId: company.id,
+      subscriptionId: subscription?.id,
+      trialEndsAt,
+    };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Erro ao registrar empresa' };
   }
 }
 
