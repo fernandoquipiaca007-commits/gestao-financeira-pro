@@ -2306,6 +2306,7 @@ export default function App() {
         defaultCurrency={settings.defaultCurrency}
         partners={partners}
         categories={categories}
+        reserves={cashReserves}
       />
 
       <CategoryModal

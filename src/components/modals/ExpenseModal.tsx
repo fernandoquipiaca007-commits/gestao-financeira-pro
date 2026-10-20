@@ -14,6 +14,8 @@ interface ExpenseModalProps {
   defaultCurrency: CurrencyCode;
   partners?: Partner[];
   categories?: import('../../types').CategoryItem[];
+  /** Reservas abertas de onde a despesa pode ser paga. */
+  reserves?: import('../../types').CashReserve[];
 }
 
 export const ExpenseModal: React.FC<ExpenseModalProps> = ({
@@ -24,6 +26,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
   defaultCurrency,
   partners = [],
   categories = [],
+  reserves = [],
 }) => {
   const { lang } = useLanguage();
   const isEn = lang === 'en';
@@ -36,6 +39,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
   const [partnerId, setPartnerId] = useState('');
   const [partnerName, setPartnerName] = useState('');
   const [receiptUrl, setReceiptUrl] = useState<string>('');
+  const [reserveId, setReserveId] = useState('');
   const [receiptPreview, setReceiptPreview] = useState<string>('');
   const [receiptFileName, setReceiptFileName] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -51,6 +55,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
       setPartnerId(expenseToEdit.partnerId || '');
       setPartnerName(expenseToEdit.partnerName || '');
       setReceiptUrl(expenseToEdit.receiptUrl || '');
+      setReserveId(expenseToEdit.reserveId || '');
       setReceiptPreview(expenseToEdit.receiptUrl || '');
       setReceiptFileName('');
     } else {
@@ -63,6 +68,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
       setPartnerId('');
       setPartnerName('');
       setReceiptUrl('');
+      setReserveId('');
       setReceiptPreview('');
       setReceiptFileName('');
     }
@@ -150,8 +156,10 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
       date,
       paid,
       partnerId: isCommission ? partnerId || undefined : undefined,
-      partnerName: isCommission ? partnerName || undefined : undefined,
+      // o nome do sócio numa distribuição também se mantém ao editar
+      partnerName: isCommission || category === 'Distribuição a sócios' ? partnerName || undefined : undefined,
       receiptUrl: receiptUrl || undefined,
+      reserveId: reserveId || undefined,
     });
 
     onClose();
@@ -204,6 +212,18 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
               ))}
             </select>
           </div>
+
+          {reserves.some((r) => !r.closed) && (
+            <div>
+              <label className="block text-xs font-medium text-fg-secondary mb-1.5">{isEn ? 'Paid from reserve (optional)' : 'Paga com a reserva (opcional)'}</label>
+              <select value={reserveId} onChange={(e) => setReserveId(e.target.value)} className="aura-input w-full">
+                <option value="">{isEn ? 'No reserve (free cash)' : 'Sem reserva (caixa livre)'}</option>
+                {reserves.filter((r) => !r.closed || r.id === reserveId).map((r) => (
+                  <option key={r.id} value={r.id}>{r.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Info Retirada */}
           {category === 'Retirada Própria' && (
