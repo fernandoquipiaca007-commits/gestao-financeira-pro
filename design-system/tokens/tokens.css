@@ -1,0 +1,457 @@
+/* =====================================================================
+   AURA DESIGN SYSTEM — TOKENS (fonte única de verdade)
+   Produto: CodeEngine Manager · Versão 1.0.0
+   ---------------------------------------------------------------------
+   Camadas:
+     1. Primitivos   (--aura-*)        → valores brutos. NUNCA usar direto em componentes.
+     2. Semânticos   (--surface-*, --text-*, --accent-* ...) → o que os componentes usam.
+     3. Tailwind v4  (@theme)          → expõe os semânticos como utilities.
+   Tema claro  = "Champagne Glass"  (padrão)
+   Tema escuro = "Obsidian Glass"   (html.dark ou [data-theme="dark"])
+   ===================================================================== */
+
+/* ---------------------------------------------------------------------
+   1. PRIMITIVOS
+   --------------------------------------------------------------------- */
+:root {
+  /* Ink — preto quente (base de botões primários, texto, pills ativas) */
+  --aura-ink-950: #12110e;
+  --aura-ink-900: #1d1b17;
+  --aura-ink-800: #2b2925;
+  --aura-ink-700: #3d3a35;
+  --aura-ink-600: #57534c;
+  --aura-ink-500: #77726a;
+  --aura-ink-400: #9c978e;
+  --aura-ink-300: #c4bfb5;
+  --aura-ink-200: #e2ded6;
+  --aura-ink-100: #f0ede7;
+  --aura-ink-50:  #f7f5f1;
+  --aura-white:   #ffffff;
+
+  /* Ember — cor de marca (energia, CTA de destaque, KPI hero) */
+  --aura-ember-50:  #fff4ec;
+  --aura-ember-100: #ffe4d1;
+  --aura-ember-200: #ffc7a3;
+  --aura-ember-300: #ffa36e;
+  --aura-ember-400: #ff8a4c;
+  --aura-ember-500: #f76a2c;
+  --aura-ember-600: #e9521f;
+  --aura-ember-700: #c23e15;
+  --aura-ember-800: #993214;
+  --aura-ember-900: #7a2a13;
+
+  /* Citrine — destaque secundário (progresso, foco de dados, conquistas) */
+  --aura-citrine-50:  #fffbea;
+  --aura-citrine-100: #fff3c4;
+  --aura-citrine-200: #ffe891;
+  --aura-citrine-300: #ffdf70;
+  --aura-citrine-400: #ffd85f;
+  --aura-citrine-500: #f5c232;
+  --aura-citrine-600: #d9a312;
+  --aura-citrine-700: #a97b0a;
+
+  /* Canvas — gradiente translúcido do fundo (prata fria → champanhe quente) */
+  --aura-silver-100: #eef0f1;
+  --aura-silver-200: #e3e5e7;
+  --aura-silver-300: #d5d8dc;
+  --aura-champagne-100: #fbf5e4;
+  --aura-champagne-200: #f6ebc8;
+  --aura-champagne-300: #efdca8;
+  --aura-slate-backdrop: #a4abb6; /* moldura exterior (apresentações / mockups) */
+
+  /* Status (fixos — nunca usar como cor de série de gráfico) */
+  --aura-success-500: #12a150;
+  --aura-success-700: #0b7a3b;
+  --aura-success-50:  #e7f8ee;
+  --aura-warning-500: #e8a20c;
+  --aura-warning-700: #8a5a00;
+  --aura-warning-50:  #fff5dc;
+  --aura-danger-500:  #e5484d;
+  --aura-danger-700:  #c22f34;
+  --aura-danger-50:   #fdecec;
+  --aura-info-500:    #3b74e0;
+  --aura-info-700:    #2456b8;
+  --aura-info-50:     #e9f0fd;
+
+  /* Data-viz — ordem categórica FIXA (nunca ciclar, ver foundations/07-data-viz.md) */
+  --aura-viz-1: #1d1b17; /* ink   */
+  --aura-viz-2: #f76a2c; /* ember */
+  --aura-viz-3: #2a78d6; /* azul  */
+  --aura-viz-4: #f5c232; /* citrine */
+  --aura-viz-5: #1baf7a; /* aqua  */
+  --aura-viz-6: #8b7ff0; /* violeta */
+}
+
+/* ---------------------------------------------------------------------
+   1b. ESCALAS NÃO-CROMÁTICAS
+   --------------------------------------------------------------------- */
+:root {
+  /* Tipografia — famílias */
+  --font-display: 'Outfit', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+
+  /* Tipografia — escala (size / line-height) */
+  --text-display-2xl: 4.5rem;   --leading-display-2xl: 1.04;  /* 72 — hero landing */
+  --text-display-xl:  3.5rem;   --leading-display-xl:  1.06;  /* 56 — número hero */
+  --text-display-lg:  2.75rem;  --leading-display-lg:  1.1;   /* 44 — saudação da página */
+  --text-h1:   2.25rem;  --leading-h1:   1.15;  /* 36 */
+  --text-h2:   1.75rem;  --leading-h2:   1.2;   /* 28 */
+  --text-h3:   1.375rem; --leading-h3:   1.27;  /* 22 */
+  --text-h4:   1.125rem; --leading-h4:   1.33;  /* 18 */
+  --text-body-lg: 1.0625rem; --leading-body-lg: 1.55; /* 17 */
+  --text-body:    0.9375rem; --leading-body:    1.5;  /* 15 */
+  --text-body-sm: 0.8125rem; --leading-body-sm: 1.45; /* 13 */
+  --text-caption: 0.75rem;   --leading-caption: 1.35; /* 12 */
+  --text-overline: 0.6875rem; --leading-overline: 1.3; /* 11 */
+
+  --tracking-display: -0.035em;
+  --tracking-heading: -0.022em;
+  --tracking-body: -0.006em;
+  --tracking-overline: 0.08em;
+
+  /* Espaçamento — base 4px */
+  --space-0: 0;
+  --space-0-5: 0.125rem; /* 2  */
+  --space-1: 0.25rem;    /* 4  */
+  --space-1-5: 0.375rem; /* 6  */
+  --space-2: 0.5rem;     /* 8  */
+  --space-3: 0.75rem;    /* 12 */
+  --space-4: 1rem;       /* 16 */
+  --space-5: 1.25rem;    /* 20 */
+  --space-6: 1.5rem;     /* 24 */
+  --space-8: 2rem;       /* 32 */
+  --space-10: 2.5rem;    /* 40 */
+  --space-12: 3rem;      /* 48 */
+  --space-16: 4rem;      /* 64 */
+  --space-20: 5rem;      /* 80 */
+  --space-24: 6rem;      /* 96 */
+
+  /* Raios — "squircle" generoso; pills para tudo que é clicável em linha */
+  --radius-xs: 6px;    /* checkbox, kbd */
+  --radius-sm: 10px;   /* chips quadrados, ícones em tile */
+  --radius-md: 14px;   /* inputs, botões quadrados, mini-cards */
+  --radius-lg: 20px;   /* cards internos (nested) */
+  --radius-xl: 28px;   /* cards principais (glass panels) */
+  --radius-2xl: 36px;  /* app shell / janela */
+  --radius-full: 9999px;
+
+  /* Blur (glass) */
+  --blur-sm: 12px;
+  --blur-md: 20px;
+  --blur-lg: 32px;
+  --blur-xl: 56px;
+
+  /* Motion — durações */
+  --duration-instant: 90ms;
+  --duration-fast: 160ms;
+  --duration-base: 240ms;
+  --duration-slow: 420ms;
+  --duration-slower: 640ms;
+  --duration-ambient: 24s;
+
+  /* Motion — curvas */
+  --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);   /* expo-out: entradas */
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);            /* saídas rápidas */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);   /* overshoot leve: toggles, badges */
+  --ease-linear: linear;
+
+  /* Camadas */
+  --z-base: 0;
+  --z-raised: 10;
+  --z-sticky: 100;
+  --z-nav: 200;
+  --z-dropdown: 800;
+  --z-overlay: 900;
+  --z-modal: 1000;
+  --z-toast: 1100;
+  --z-tooltip: 1200;
+
+  /* Layout */
+  --layout-rail: 76px;          /* sidebar colapsada (ícones) */
+  --layout-sidebar: 264px;      /* sidebar expandida */
+  --layout-topbar: 76px;
+  --layout-bottom-nav: 72px;    /* mobile */
+  --layout-content-max: 1440px;
+  --layout-gutter-mobile: 16px;
+  --layout-gutter-tablet: 24px;
+  --layout-gutter-desktop: 32px;
+  --layout-grid-gap: 20px;
+
+  /* Tamanhos de controlo (altura) */
+  --control-xs: 28px;
+  --control-sm: 36px;
+  --control-md: 44px;
+  --control-lg: 52px;
+  --control-xl: 60px;
+  --touch-target: 44px;
+}
+
+/* ---------------------------------------------------------------------
+   2. SEMÂNTICOS — TEMA CLARO "Champagne Glass" (padrão)
+   Componentes usam APENAS estes tokens.
+   --------------------------------------------------------------------- */
+:root {
+  color-scheme: light;
+
+  /* Fundo da aplicação (canvas translúcido em camadas) */
+  --bg-base: #e6e3db;
+  /* Canvas com profundidade: prata fria em cima à esquerda, champanhe/citrine quente
+     em baixo à direita, e um vale mais escuro ao centro para o vidro "ler". */
+  --bg-canvas:
+    radial-gradient(1100px 760px at 4% -6%, #f4f5f6 0%, transparent 62%),
+    radial-gradient(900px 700px at 96% 4%, #f8ecd0 0%, transparent 58%),
+    radial-gradient(1200px 900px at 100% 100%, #f3d98f 0%, transparent 62%),
+    radial-gradient(900px 760px at 0% 100%, #e9dfc4 0%, transparent 60%),
+    radial-gradient(700px 520px at 52% 46%, rgba(186, 180, 166, 0.35) 0%, transparent 70%),
+    linear-gradient(135deg, #dfe1e3 0%, #e9e3d3 48%, #efd9a1 100%);
+  --bg-aurora-1: rgba(255, 207, 72, 0.70);   /* blob citrine (grande, canto inferior direito) */
+  --bg-aurora-2: rgba(255, 122, 56, 0.40);   /* blob ember (topo) */
+  --bg-aurora-3: rgba(206, 211, 218, 0.95);  /* blob prata (canto superior esquerdo) */
+  --bg-aurora-4: rgba(150, 172, 205, 0.30);  /* blob frio de contraste (centro-esquerda) */
+  --bg-grid-color: rgba(29, 27, 23, 0.045);  /* malha de pontos por trás do vidro */
+  --bg-vignette: radial-gradient(130% 100% at 50% 40%, transparent 55%, rgba(76, 64, 36, 0.10) 100%);
+  --bg-noise-opacity: 0.04;
+
+  /* Superfícies de vidro */
+  --glass-bg: rgba(255, 255, 255, 0.44);           /* cards: o fundo passa por trás */
+  --glass-bg-strong: rgba(255, 255, 255, 0.66);    /* tabelas densas, menus */
+  --glass-bg-subtle: rgba(255, 255, 255, 0.26);
+  --glass-bg-bar: rgba(255, 255, 255, 0.50);       /* barra superior e sidebar */
+  --glass-bg-hover: rgba(255, 255, 255, 0.60);
+  --glass-tint-top: rgba(255, 255, 255, 0.60);     /* reflexo superior (gradient overlay) */
+  --glass-tint-bottom: rgba(255, 255, 255, 0.0);
+  --glass-border: rgba(255, 255, 255, 0.75);       /* aresta luminosa */
+  --glass-outline: rgba(29, 27, 23, 0.07);         /* contorno externo p/ separar do fundo */
+  --glass-blur: 40px;
+  --glass-saturate: 1.8;
+
+  /* Superfícies sólidas */
+  --surface-1: #ffffff;                 /* cards sólidos, popovers */
+  --surface-2: #f7f6f2;                 /* nested / inputs / headers de tabela */
+  --surface-3: #efede7;                 /* hover, trilhos */
+  --surface-inverse: var(--aura-ink-900);  /* cards escuros (ex.: tarefas) */
+  --surface-inverse-2: var(--aura-ink-800);
+  --surface-sunken: rgba(29, 27, 23, 0.04);
+
+  /* Texto */
+  --text-primary: var(--aura-ink-900);
+  --text-secondary: var(--aura-ink-600);
+  --text-muted: var(--aura-ink-500);
+  --text-disabled: var(--aura-ink-400);
+  --text-inverse: #f7f5f1;
+  --text-inverse-muted: rgba(247, 245, 241, 0.62);
+  --text-on-accent: #ffffff;
+  --text-on-citrine: var(--aura-ink-900);
+  --text-link: var(--aura-ember-700);
+
+  /* Bordas */
+  --border-subtle: rgba(29, 27, 23, 0.06);
+  --border-default: rgba(29, 27, 23, 0.10);
+  --border-strong: rgba(29, 27, 23, 0.18);
+  --border-dashed: rgba(29, 27, 23, 0.16);
+  --divider: rgba(29, 27, 23, 0.07);
+
+  /* Ação primária — "Ink 3D" (preto quente com relevo) */
+  --primary-bg: linear-gradient(180deg, #3a3832 0%, var(--aura-ink-900) 55%, var(--aura-ink-950) 100%);
+  --primary-bg-hover: linear-gradient(180deg, #46433c 0%, #26241f 55%, #161512 100%);
+  --primary-fg: #ffffff;
+  --primary-solid: var(--aura-ink-900);
+
+  /* Acento de marca — "Ember" */
+  --accent: var(--aura-ember-500);
+  --accent-hover: var(--aura-ember-600);
+  --accent-pressed: var(--aura-ember-700);
+  --accent-gradient: linear-gradient(160deg, var(--aura-ember-400) 0%, var(--aura-ember-500) 45%, var(--aura-ember-600) 100%);
+  --accent-soft: var(--aura-ember-50);
+  --accent-soft-fg: var(--aura-ember-700);
+  --accent-ring: rgba(247, 106, 44, 0.35);
+
+  /* Destaque secundário — "Citrine" */
+  --highlight: var(--aura-citrine-400);
+  --highlight-hover: var(--aura-citrine-500);
+  --highlight-soft: var(--aura-citrine-100);
+  --highlight-fg: var(--aura-ink-900);
+
+  /* Status */
+  --success: var(--aura-success-500);
+  --success-fg: var(--aura-success-700);
+  --success-soft: var(--aura-success-50);
+  --warning: var(--aura-warning-500);
+  --warning-fg: var(--aura-warning-700);
+  --warning-soft: var(--aura-warning-50);
+  --danger: var(--aura-danger-500);
+  --danger-fg: var(--aura-danger-700);
+  --danger-soft: var(--aura-danger-50);
+  --info: var(--aura-info-500);
+  --info-fg: var(--aura-info-700);
+  --info-soft: var(--aura-info-50);
+
+  /* Foco (acessibilidade — SEMPRE visível em navegação por teclado) */
+  --focus-ring: 0 0 0 2px var(--surface-1), 0 0 0 4px var(--aura-ember-500);
+
+  /* Padrão "hatch" (listras diagonais — trilhos e valores inativos) */
+  --hatch-color: rgba(29, 27, 23, 0.07);
+  --hatch-accent: rgba(255, 255, 255, 0.38);
+
+  /* Gráficos */
+  --chart-grid: rgba(29, 27, 23, 0.07);
+  --chart-axis: var(--aura-ink-500);
+  --chart-surface: rgba(255, 255, 255, 0.0);
+  --chart-tooltip-bg: var(--aura-ink-900);
+  --chart-tooltip-fg: #ffffff;
+  --viz-1: var(--aura-viz-1);
+  --viz-2: var(--aura-viz-2);
+  --viz-3: var(--aura-viz-3);
+  --viz-4: var(--aura-viz-4);
+  --viz-5: var(--aura-viz-5);
+  --viz-6: var(--aura-viz-6);
+
+  /* Sombras / elevação (sombras quentes, nunca cinza puro) */
+  --shadow-xs: 0 1px 2px rgba(29, 27, 23, 0.06);
+  --shadow-sm: 0 1px 2px rgba(29, 27, 23, 0.05), 0 2px 6px rgba(29, 27, 23, 0.05);
+  --shadow-md: 0 2px 4px rgba(29, 27, 23, 0.04), 0 8px 24px -6px rgba(29, 27, 23, 0.10);
+  --shadow-lg: 0 4px 8px rgba(29, 27, 23, 0.04), 0 24px 48px -12px rgba(29, 27, 23, 0.18);
+  --shadow-xl: 0 8px 16px rgba(29, 27, 23, 0.05), 0 40px 80px -20px rgba(29, 27, 23, 0.28);
+  --shadow-glass: 0 1px 0 rgba(255, 255, 255, 0.95) inset, 0 0 0 1px var(--glass-outline), 0 2px 6px rgba(76, 64, 36, 0.05), 0 22px 48px -20px rgba(76, 64, 36, 0.30);
+  --shadow-primary-3d: 0 1px 0 rgba(255, 255, 255, 0.18) inset, 0 -1px 0 rgba(0, 0, 0, 0.4) inset, 0 6px 16px -4px rgba(29, 27, 23, 0.45), 0 2px 4px rgba(29, 27, 23, 0.2);
+  --shadow-accent-3d: 0 1px 0 rgba(255, 255, 255, 0.35) inset, 0 -1px 0 rgba(122, 42, 19, 0.35) inset, 0 10px 24px -8px rgba(233, 82, 31, 0.55);
+  --shadow-inset: inset 0 1px 2px rgba(29, 27, 23, 0.06);
+}
+
+/* ---------------------------------------------------------------------
+   3. SEMÂNTICOS — TEMA ESCURO "Obsidian Glass"
+   Ativado por html.dark (padrão do projeto) ou [data-theme="dark"].
+   Não é uma inversão: vidro fumado quente + brilho ember/citrine ao fundo.
+   --------------------------------------------------------------------- */
+html.dark,
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg-base: #0e0d0b;
+  --bg-canvas:
+    radial-gradient(1000px 700px at 0% 0%, #1c1b18 0%, transparent 60%),
+    radial-gradient(900px 700px at 100% 0%, #1f1a10 0%, transparent 55%),
+    radial-gradient(1100px 900px at 100% 100%, #2a1f0e 0%, transparent 60%),
+    radial-gradient(800px 700px at 0% 100%, #1a1510 0%, transparent 55%),
+    linear-gradient(135deg, #121110 0%, #15130f 50%, #1d170d 100%);
+  --bg-aurora-1: rgba(255, 216, 95, 0.16);
+  --bg-aurora-2: rgba(247, 106, 44, 0.20);
+  --bg-aurora-3: rgba(120, 124, 132, 0.18);
+  --bg-aurora-4: rgba(90, 120, 180, 0.14);
+  --bg-grid-color: rgba(255, 255, 255, 0.04);
+  --bg-vignette: radial-gradient(130% 100% at 50% 40%, transparent 50%, rgba(0, 0, 0, 0.45) 100%);
+  --bg-noise-opacity: 0.05;
+
+  --glass-bg: rgba(32, 30, 26, 0.56);
+  --glass-bg-strong: rgba(38, 36, 31, 0.74);
+  --glass-bg-bar: rgba(30, 28, 24, 0.58);
+  --glass-bg-subtle: rgba(32, 30, 26, 0.34);
+  --glass-bg-hover: rgba(44, 41, 36, 0.66);
+  --glass-tint-top: rgba(255, 255, 255, 0.06);
+  --glass-tint-bottom: rgba(255, 255, 255, 0.0);
+  --glass-border: rgba(255, 255, 255, 0.09);
+  --glass-outline: rgba(0, 0, 0, 0.45);
+  --glass-saturate: 1.3;
+
+  --surface-1: #1b1a17;
+  --surface-2: #232220;
+  --surface-3: #2c2a27;
+  --surface-inverse: #f3f0e9;
+  --surface-inverse-2: #e6e2d8;
+  --surface-sunken: rgba(0, 0, 0, 0.25);
+
+  --text-primary: #f5f3ee;
+  --text-secondary: #bcb6aa;
+  --text-muted: #8a847a;
+  --text-disabled: #5e5a53;
+  --text-inverse: var(--aura-ink-900);
+  --text-inverse-muted: rgba(29, 27, 23, 0.6);
+  --text-on-accent: #ffffff;
+  --text-link: var(--aura-ember-300);
+
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --border-default: rgba(255, 255, 255, 0.09);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --border-dashed: rgba(255, 255, 255, 0.14);
+  --divider: rgba(255, 255, 255, 0.06);
+
+  /* No escuro o primário passa a "Pearl" (claro em relevo) para manter contraste */
+  --primary-bg: linear-gradient(180deg, #ffffff 0%, #f1eee7 60%, #e2ded4 100%);
+  --primary-bg-hover: linear-gradient(180deg, #ffffff 0%, #f7f5ef 60%, #ebe7de 100%);
+  --primary-fg: var(--aura-ink-900);
+  --primary-solid: #f3f0e9;
+
+  --accent: var(--aura-ember-400);
+  --accent-hover: var(--aura-ember-300);
+  --accent-pressed: var(--aura-ember-500);
+  --accent-soft: rgba(255, 138, 76, 0.14);
+  --accent-soft-fg: var(--aura-ember-300);
+  --accent-ring: rgba(255, 138, 76, 0.40);
+
+  --highlight-soft: rgba(255, 216, 95, 0.14);
+
+  --success: #2fc46b;
+  --success-fg: #5fd992;
+  --success-soft: rgba(47, 196, 107, 0.14);
+  --warning: #f2b632;
+  --warning-fg: #f7cd6c;
+  --warning-soft: rgba(242, 182, 50, 0.14);
+  --danger: #f06368;
+  --danger-fg: #ff8c90;
+  --danger-soft: rgba(240, 99, 104, 0.14);
+  --info: #5b8ff0;
+  --info-fg: #8fb2f6;
+  --info-soft: rgba(91, 143, 240, 0.14);
+
+  --focus-ring: 0 0 0 2px var(--bg-base), 0 0 0 4px var(--aura-ember-400);
+
+  --hatch-color: rgba(255, 255, 255, 0.06);
+  --hatch-accent: rgba(255, 255, 255, 0.22);
+
+  --chart-grid: rgba(255, 255, 255, 0.06);
+  --chart-axis: #8a847a;
+  --chart-tooltip-bg: #f3f0e9;
+  --chart-tooltip-fg: var(--aura-ink-900);
+  --viz-1: #ece8df;
+  --viz-2: #ff8a4c;
+  --viz-3: #4b92ea;
+  --viz-4: #f5c232;
+  --viz-5: #22b981;
+  --viz-6: #9d93f3;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.3), 0 10px 28px -6px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.3), 0 28px 56px -12px rgba(0, 0, 0, 0.6);
+  --shadow-xl: 0 8px 16px rgba(0, 0, 0, 0.35), 0 44px 88px -20px rgba(0, 0, 0, 0.7);
+  --shadow-glass: 0 1px 0 rgba(255, 255, 255, 0.07) inset, 0 0 0 1px var(--glass-outline), 0 16px 40px -12px rgba(0, 0, 0, 0.55);
+  --shadow-primary-3d: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 -1px 0 rgba(0, 0, 0, 0.12) inset, 0 6px 18px -4px rgba(0, 0, 0, 0.6);
+  --shadow-accent-3d: 0 1px 0 rgba(255, 255, 255, 0.3) inset, 0 -1px 0 rgba(0, 0, 0, 0.3) inset, 0 10px 28px -8px rgba(247, 106, 44, 0.5);
+  --shadow-inset: inset 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+/* Respeitar utilizadores que pedem menos movimento */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-instant: 0ms;
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+    --duration-slower: 0ms;
+  }
+}
+
+/* Responsivo: tipografia display encolhe no mobile */
+@media (max-width: 767px) {
+  :root {
+    --text-display-2xl: 2.75rem;
+    --text-display-xl: 2.5rem;
+    --text-display-lg: 2rem;
+    --text-h1: 1.75rem;
+    --text-h2: 1.5rem;
+    --text-h3: 1.25rem;
+    --layout-grid-gap: 12px;
+  }
+}

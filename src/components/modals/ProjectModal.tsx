@@ -1,9 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, FolderKanban, Save, UserCheck, Paperclip, Upload, FileText, Download, Trash2, User, Users, Globe } from 'lucide-react';
-import { Project, Client, ProjectCategory, ProjectStatus, CurrencyCode, CURRENCIES, Partner, ProjectAttachment } from '../../types';
+import { confirmAction, toast } from '../../lib/feedback';
+import { EditorPage } from '../shell/EditorPage';
+import { RichTextField } from '../editor/RichTextField';
+import { X, FolderKanban, Save, UserCheck, Paperclip, Upload, FileText, Download, Trash2, User, Users, Globe, Building2 } from 'lucide-react';
+import { Project, Client, ProjectCategory, ProjectStatus, CurrencyCode, CURRENCIES, Partner, ProjectAttachment, getProjectStatusLabel } from '../../types';
 import { UserProfile, ProjectAssignmentType } from '../../types/rbac';
 import { getTodayIso, addDaysIso } from '../../lib/storage';
 import { formatCurrency } from '../../lib/formatters';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface ProjectModalProps {
   isOpen: boolean;
@@ -13,6 +17,7 @@ interface ProjectModalProps {
   clients: Client[];
   partners?: Partner[];
   employees?: UserProfile[];
+  categories?: import('../../types').CategoryItem[];
   defaultCurrency: CurrencyCode;
 }
 
@@ -24,8 +29,10 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   clients,
   partners = [],
   employees = [],
+  categories = [],
   defaultCurrency,
 }) => {
+  const { lang, isEn, t } = useLanguage();
   const [name, setName] = useState('');
   const [clientId, setClientId] = useState('');
   const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
@@ -95,7 +102,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         setSelectedClientIds([]);
         setCurrency(defaultCurrency);
       }
-      setCategory('Website');
+      setCategory(categories.length > 0 ? categories[0].name : 'Website');
       setTotalAmount(0);
       setPaidAmount(0);
       setStartDate(getTodayIso());
@@ -122,7 +129,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
 
     Array.from(files).forEach((file: File) => {
       if (file.size > 15 * 1024 * 1024) {
-        alert(`O ficheiro "${file.name}" excede o tamanho máximo de 15MB.`);
+        toast({ tone: 'warning', title: isEn ? `The file "${file.name}" exceeds the maximum 15MB limit.` : `O ficheiro "${file.name}" excede o tamanho máximo de 15MB.` });
         return;
       }
 
@@ -192,6 +199,16 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
     }
   }
 
+  // Dynamic categories combined with standard project presets and current category
+  const defaultProjectPresets = ['Website', 'Landing Page', 'Loja Virtual', 'Tráfego Pago', 'Automação', 'Consultoria', 'Design', 'Outro'];
+  const availableProjectCategories = Array.from(
+    new Set([
+      ...categories.map((c) => c.name),
+      ...defaultProjectPresets,
+      ...(category ? [category] : []),
+    ])
+  );
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !clientId) return;
@@ -231,61 +248,49 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm font-sans">
-      <div className="bg-white border border-[#c4c7c7]/30 rounded-[24px] w-full max-w-2xl shadow-[0_8px_40px_rgba(0,0,0,0.06)] overflow-hidden max-h-[90vh] flex flex-col">
-        
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-[#c4c7c7]/40 bg-[#f7f3f2] shrink-0">
-          <div className="flex items-center space-x-3">
-            <div className="w-9 h-9 rounded-full bg-[#f1edec] text-[#444747] flex items-center justify-center">
-              <FolderKanban className="w-4 h-4 stroke-[2]" />
-            </div>
-            <div>
-              <h3 className="text-base font-semibold text-[#1c1b1b]">
-                {projectToEdit ? 'Editar Projeto' : 'Novo Projeto'}
-              </h3>
-              <p className="text-xs text-[#747878]">
-                Gerencie os detalhes, finanças e arquivos do seu projeto
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-full text-[#747878] hover:bg-[#f1edec] hover:text-[#1c1b1b] transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto flex-1">
+    <EditorPage
+      title={<>{projectToEdit ? (isEn ? 'Edit project' : 'Editar projeto') : (isEn ? 'New project' : 'Novo projeto')}</>}
+      trail={[isEn ? 'Projects' : 'Projetos']}
+      subtitle={<>{isEn ? 'Details, clients, finances and files.' : 'Detalhes, clientes, finanças e ficheiros do projeto.'}</>}
+      icon={<FolderKanban className="w-5 h-5" />}
+      onClose={onClose}
+      actions={<>
+            <button type="button" onClick={onClose} className="aura-btn aura-btn--ghost">
+              {isEn ? 'Cancel' : 'Cancelar'}
+            </button>
+            <button type="submit" className="aura-btn aura-btn--primary" form="project-form">
+              {projectToEdit ? (isEn ? 'Save changes' : 'Guardar alterações') : (isEn ? 'Create project' : 'Criar projeto')}
+            </button>
+          </>}
+    >
+      <form id="project-form" className="space-y-6 text-fg" onSubmit={handleSubmit}>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid gap-5">
             <div>
-              <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
-                Nome do Projeto *
+              <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
+                {isEn ? 'Project name *' : 'Nome do projeto *'}
               </label>
               <input
                 type="text"
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Ex: Identidade Visual"
-                className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-sm text-[#1c1b1b] placeholder-[#747878] focus:outline-none focus:border-[#000000] focus:bg-white transition-all"
+                placeholder={isEn ? "e.g. Brand Identity & Redesign" : "Ex: Identidade Visual"}
+                className="w-full bg-surface-2 border border-line-subtle rounded-md px-4 py-3 text-sm text-fg placeholder:text-fg-muted focus:outline-none focus:border-accent focus:bg-surface-1 focus:shadow-[0_0_0_4px_var(--accent-ring)] transition-all"
               />
             </div>
 
             <div>
-              <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
-                Cliente Principal *
+              <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
+                {isEn ? 'Primary client *' : 'Cliente principal *'}
               </label>
               <select
                 required
                 value={clientId}
                 onChange={(e) => handleClientChange(e.target.value)}
-                className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-sm font-medium text-[#1c1b1b] focus:outline-none focus:border-[#000000] focus:bg-white transition-all"
+                className="w-full bg-surface-2 border border-line-subtle rounded-md px-4 py-3 text-sm font-medium text-fg focus:outline-none focus:border-accent focus:bg-surface-1 focus:shadow-[0_0_0_4px_var(--accent-ring)] transition-all cursor-pointer"
               >
-                <option value="">Selecione o cliente principal...</option>
+                <option value="">{isEn ? 'Select primary client...' : 'Selecione o cliente principal...'}</option>
                 {clients.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name} {c.company ? `(${c.company})` : ''} - [{c.currency}]
@@ -297,17 +302,14 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
 
           {/* Multiple Clients Selection Box */}
           {clients.length > 1 && (
-            <div className="bg-[#f7f3f2] border border-[#c4c7c7]/30 p-3.5 rounded-[16px] space-y-2 text-xs">
+            <div className="bg-surface-2 border border-line-subtle p-3.5 rounded-lg space-y-2 text-xs">
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-[#1c1b1b] flex items-center gap-1.5">
-                  <UserCheck className="w-4 h-4 text-[#0050d7]" />
-                  Clientes Participantes do Projeto ({selectedClientIds.length})
-                </span>
-                <span className="text-[11px] text-[#747878]">
-                  Marque se o projeto envolve múltiplos clientes
+                <span className="font-semibold text-fg flex items-center gap-1.5">
+                  <UserCheck className="w-4 h-4 text-accent-soft-fg " />
+                  {isEn ? `Participating Project Clients (${selectedClientIds.length})` : `Clientes participantes (${selectedClientIds.length})`}
                 </span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 max-h-36 overflow-y-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                 {clients.map((c) => {
                   const isPrimary = c.id === clientId;
                   const isChecked = selectedClientIds.includes(c.id);
@@ -315,23 +317,23 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                   return (
                     <label
                       key={c.id}
-                      className={`flex items-center space-x-2.5 p-2 rounded-xl border text-xs font-medium cursor-pointer transition-all ${
-                        isPrimary
-                          ? 'bg-[#dbe1ff] text-[#003da9] border-[#003da9]/20'
-                          : isChecked
-                          ? 'bg-white text-[#1c1b1b] border-[#c4c7c7] font-semibold'
-                          : 'bg-white/60 text-[#444747] border-[#c4c7c7]/30 hover:bg-white'
-                      }`}
+                      className={`flex items-center space-x-2.5 p-2 rounded-md border text-xs font-medium cursor-pointer transition-all ${
+ isPrimary
+ ? 'bg-accent-soft text-accent-soft-fg border-accent/20'
+ : isChecked
+ ? 'bg-glass-strong text-fg border-line font-semibold'
+ : 'bg-white/60 text-fg-secondary border-line-subtle hover:bg-surface-1 '
+ }`}
                     >
                       <input
                         type="checkbox"
                         checked={isChecked}
                         disabled={isPrimary}
                         onChange={() => handleToggleAdditionalClient(c.id)}
-                        className="rounded border-[#c4c7c7] text-[#000000] focus:ring-0 w-4 h-4 cursor-pointer accent-[#000000]"
+                        className="rounded border-line text-fg focus:ring-0 w-4 h-4 cursor-pointer accent-[#000000]"
                       />
                       <span className="truncate">
-                        {c.name} {isPrimary ? '👑 (Principal)' : ''}
+                        {c.name} {isPrimary ? (isEn ? '(Primary)' : '(Principal)') : ''}
                       </span>
                     </label>
                   );
@@ -341,13 +343,13 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
           )}
 
           {/* RBAC Assignment Section */}
-          <div className="bg-[#f7f3f2] border border-[#c4c7c7]/30 p-4 rounded-[18px] space-y-3">
+          <div className="bg-surface-2 border border-line-subtle p-4 rounded-lg space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-[#1c1b1b] flex items-center gap-1.5">
-                <Users className="w-4 h-4 text-[#0050d7]" />
-                Responsabilidade & Atribuição do Projeto
+              <span className="text-xs font-semibold text-fg flex items-center gap-1.5">
+                <Users className="w-4 h-4 text-accent-soft-fg " />
+                {isEn ? 'Project owner' : 'Responsável pelo projeto'}
               </span>
-              <span className="text-[11px] text-[#747878]">Quem executará este projeto?</span>
+              <span className="text-[11px] text-fg-muted ">{isEn ? 'Who will execute this project?' : 'Quem executará este projeto?'}</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -357,44 +359,44 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                   setAssignmentType('company');
                   setAssignedTo('');
                 }}
-                className={`p-2.5 rounded-xl border text-left flex items-center space-x-2.5 transition-all cursor-pointer ${
-                  assignmentType === 'company'
-                    ? 'border-[#000000] bg-white text-[#1c1b1b] shadow-xs'
-                    : 'border-[#c4c7c7]/40 bg-white/50 text-[#747878] hover:bg-white'
-                }`}
+                className={`p-2.5 rounded-md border text-left flex items-center space-x-2.5 transition-all cursor-pointer ${
+ assignmentType === 'company'
+ ? 'border-fg bg-glass-strong text-fg shadow-xs'
+ : 'border-line-subtle bg-white/50 text-fg-muted hover:bg-surface-1 '
+ }`}
               >
                 <div
                   className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-xs ${
-                    assignmentType === 'company' ? 'bg-[#000000] text-white' : 'bg-[#e5e2e1] text-[#747878]'
-                  }`}
+ assignmentType === 'company' ? 'bg-primary shadow-primary-3d text-primary-fg ' : 'bg-surface-3 text-fg-muted'
+ }`}
                 >
-                  🏢
+                  <Building2 className="w-3.5 h-3.5" />
                 </div>
                 <div>
-                  <div className="text-xs font-semibold">Empresa</div>
-                  <div className="text-[10px] text-[#747878]">Sem responsável direto</div>
+                  <div className="text-xs font-semibold">{isEn ? 'Company' : 'Empresa'}</div>
+                  <div className="text-[10px] text-fg-muted ">{isEn ? 'No direct assignee' : 'Sem responsável direto'}</div>
                 </div>
               </button>
 
               <button
                 type="button"
                 onClick={() => setAssignmentType('employee')}
-                className={`p-2.5 rounded-xl border text-left flex items-center space-x-2.5 transition-all cursor-pointer ${
-                  assignmentType === 'employee'
-                    ? 'border-[#000000] bg-white text-[#1c1b1b] shadow-xs'
-                    : 'border-[#c4c7c7]/40 bg-white/50 text-[#747878] hover:bg-white'
-                }`}
+                className={`p-2.5 rounded-md border text-left flex items-center space-x-2.5 transition-all cursor-pointer ${
+ assignmentType === 'employee'
+ ? 'border-fg bg-glass-strong text-fg shadow-xs'
+ : 'border-line-subtle bg-white/50 text-fg-muted hover:bg-surface-1 '
+ }`}
               >
                 <div
                   className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-xs ${
-                    assignmentType === 'employee' ? 'bg-[#0050d7] text-white' : 'bg-[#e5e2e1] text-[#747878]'
-                  }`}
+ assignmentType === 'employee' ? 'bg-accent text-white' : 'bg-surface-3 text-fg-muted'
+ }`}
                 >
                   <User className="w-3.5 h-3.5" />
                 </div>
                 <div>
-                  <div className="text-xs font-semibold">Funcionário</div>
-                  <div className="text-[10px] text-[#747878]">Atribuir a membro</div>
+                  <div className="text-xs font-semibold">{isEn ? 'Employee' : 'Funcionário'}</div>
+                  <div className="text-[10px] text-fg-muted ">{isEn ? 'Assign to member' : 'Atribuir a membro'}</div>
                 </div>
               </button>
 
@@ -404,22 +406,22 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                   setAssignmentType('available');
                   setAssignedTo('');
                 }}
-                className={`p-2.5 rounded-xl border text-left flex items-center space-x-2.5 transition-all cursor-pointer ${
-                  assignmentType === 'available'
-                    ? 'border-[#000000] bg-white text-[#1c1b1b] shadow-xs'
-                    : 'border-[#c4c7c7]/40 bg-white/50 text-[#747878] hover:bg-white'
-                }`}
+                className={`p-2.5 rounded-md border text-left flex items-center space-x-2.5 transition-all cursor-pointer ${
+ assignmentType === 'available'
+ ? 'border-fg bg-glass-strong text-fg shadow-xs'
+ : 'border-line-subtle bg-white/50 text-fg-muted hover:bg-surface-1 '
+ }`}
               >
                 <div
                   className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-xs ${
-                    assignmentType === 'available' ? 'bg-[#003da9] text-white' : 'bg-[#e5e2e1] text-[#747878]'
-                  }`}
+ assignmentType === 'available' ? 'bg-accent-hover text-white' : 'bg-surface-3 text-fg-muted'
+ }`}
                 >
                   <Globe className="w-3.5 h-3.5" />
                 </div>
                 <div>
-                  <div className="text-xs font-semibold">Disponível</div>
-                  <div className="text-[10px] text-[#747878]">Para equipa assumir</div>
+                  <div className="text-xs font-semibold">{isEn ? 'Available' : 'Disponível'}</div>
+                  <div className="text-[10px] text-fg-muted ">{isEn ? 'For team to take on' : 'Para equipa assumir'}</div>
                 </div>
               </button>
             </div>
@@ -427,18 +429,18 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
             {/* Employee selection dropdown if 'employee' is selected */}
             {assignmentType === 'employee' && (
               <div className="pt-2">
-                <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
-                  Selecionar Funcionário Responsável *
+                <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
+                  {isEn ? 'Select Assigned Employee *' : 'Selecionar Funcionário Responsável *'}
                 </label>
                 <select
                   value={assignedTo}
                   onChange={e => setAssignedTo(e.target.value)}
-                  className="w-full bg-white border border-[#c4c7c7]/40 rounded-xl px-3.5 py-2.5 text-sm text-[#1c1b1b] font-medium focus:outline-none focus:border-[#000000] transition-all"
+                  className="w-full bg-glass-strong border border-line-subtle rounded-md px-3.5 py-2.5 text-sm text-fg font-medium focus:outline-none focus:border-accent transition-all cursor-pointer"
                 >
-                  <option value="">Selecione o membro da equipa...</option>
+                  <option value="">{isEn ? 'Select team member...' : 'Selecione o membro da equipa...'}</option>
                   {employees.map(emp => (
                     <option key={emp.id} value={emp.id}>
-                      {emp.name} ({emp.role === 'admin' ? 'Admin' : 'Funcionário'}) - {emp.email}
+                      {emp.name} ({emp.role === 'admin' ? 'Admin' : (isEn ? 'Employee' : 'Funcionário')}) - {emp.email}
                     </option>
                   ))}
                 </select>
@@ -448,61 +450,60 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
-                Categoria
+              <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
+                {isEn ? 'Category' : 'Categoria'}
               </label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value as ProjectCategory)}
-                className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-sm text-[#1c1b1b] focus:outline-none focus:border-[#000000] focus:bg-white transition-all"
+                className="w-full bg-surface-2 border border-line-subtle rounded-md px-4 py-3 text-sm text-fg focus:outline-none focus:border-accent focus:bg-surface-1 focus:shadow-[0_0_0_4px_var(--accent-ring)] transition-all cursor-pointer font-medium"
               >
-                <option value="Website">Website</option>
-                <option value="Landing Page">Landing Page</option>
-                <option value="Loja Virtual">Loja Virtual</option>
-                <option value="Tráfego Pago">Tráfego Pago</option>
-                <option value="Automação">Automação</option>
-                <option value="Outro">Outro</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
-                Moeda
-              </label>
-              <select
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
-                className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-sm text-[#1c1b1b] focus:outline-none focus:border-[#000000] focus:bg-white transition-all"
-              >
-                {Object.values(CURRENCIES).map((c) => (
-                  <option key={c.code} value={c.code}>
-                    {c.flag} {c.code} ({c.symbol})
+                {availableProjectCategories.map((catName) => (
+                  <option key={catName} value={catName}>
+                    ● {catName}
                   </option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
-                Status
+              <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
+                {isEn ? 'Currency' : 'Moeda'}
+              </label>
+              <select
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
+                className="w-full bg-surface-2 border border-line-subtle rounded-md px-4 py-3 text-sm text-fg focus:outline-none focus:border-accent focus:bg-surface-1 focus:shadow-[0_0_0_4px_var(--accent-ring)] transition-all cursor-pointer"
+              >
+                {Object.values(CURRENCIES).map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.code} ({c.symbol}) - {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
+                {isEn ? 'Status' : 'Estado'}
               </label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as ProjectStatus)}
-                className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-sm text-[#1c1b1b] focus:outline-none focus:border-[#000000] focus:bg-white transition-all"
+                className="w-full bg-surface-2 border border-line-subtle rounded-md px-4 py-3 text-sm text-fg focus:outline-none focus:border-accent focus:bg-surface-1 focus:shadow-[0_0_0_4px_var(--accent-ring)] transition-all cursor-pointer"
               >
-                <option value="Em andamento">Em andamento</option>
-                <option value="Aguardando cliente">Aguardando cliente</option>
-                <option value="Concluído">Concluído</option>
-                <option value="Cancelado">Cancelado</option>
+                <option value="Em andamento">{getProjectStatusLabel('Em andamento', lang)}</option>
+                <option value="Aguardando cliente">{getProjectStatusLabel('Aguardando cliente', lang)}</option>
+                <option value="Concluído">{getProjectStatusLabel('Concluído', lang)}</option>
+                <option value="Cancelado">{getProjectStatusLabel('Cancelado', lang)}</option>
               </select>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-[#f7f3f2] border border-[#c4c7c7]/30 rounded-[16px]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-surface-2 border border-line-subtle rounded-lg">
             <div>
-              <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
-                Valor Total ({CURRENCIES[currency]?.symbol})
+              <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
+                {isEn ? 'Total amount' : 'Valor total'} ({CURRENCIES[currency]?.symbol})
               </label>
               <input
                 type="number"
@@ -511,13 +512,13 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                 required
                 value={totalAmount}
                 onChange={(e) => setTotalAmount(parseFloat(e.target.value) || 0)}
-                className="w-full bg-white border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-sm font-medium text-[#1c1b1b] focus:outline-none focus:border-[#000000]"
+                className="w-full bg-glass-strong border border-line-subtle rounded-md px-3.5 py-2.5 text-sm font-medium text-fg focus:outline-none focus:border-accent "
               />
             </div>
 
             <div>
-              <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
-                Já Pago ({CURRENCIES[currency]?.symbol})
+              <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
+                {isEn ? 'Amount paid' : 'Já pago'} ({CURRENCIES[currency]?.symbol})
               </label>
               <input
                 type="number"
@@ -525,13 +526,13 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                 step="any"
                 value={paidAmount}
                 onChange={(e) => setPaidAmount(parseFloat(e.target.value) || 0)}
-                className="w-full bg-white border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-sm font-medium text-[#1c1b1b] focus:outline-none focus:border-[#000000]"
+                className="w-full bg-glass-strong border border-line-subtle rounded-md px-3.5 py-2.5 text-sm font-medium text-fg focus:outline-none focus:border-accent "
               />
             </div>
 
-            <div className="sm:col-span-2 flex items-center justify-between border-t border-[#c4c7c7]/40 pt-3">
-              <span className="text-xs text-[#747878]">Saldo Restante:</span>
-              <span className="text-sm font-medium text-[#000000]">
+            <div className="sm:col-span-2 flex items-center justify-between border-t border-line-subtle pt-3">
+              <span className="text-xs text-fg-muted ">{isEn ? 'Remaining:' : 'Em falta:'}</span>
+              <span className="text-sm font-medium text-fg ">
                 {formatCurrency(remainingAmount, currency)}
               </span>
             </div>
@@ -539,53 +540,63 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
-                Início
+              <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
+                {isEn ? 'Start Date' : 'Início'}
               </label>
               <input
                 type="date"
                 required
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-sm text-[#1c1b1b] focus:outline-none focus:border-[#000000]"
+                className="w-full bg-surface-2 border border-line-subtle rounded-md px-4 py-3 text-sm text-fg focus:outline-none focus:border-accent "
               />
             </div>
 
             <div>
-              <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
-                Entrega
+              <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
+                {isEn ? 'Due Date' : 'Entrega'}
               </label>
               <input
                 type="date"
                 required
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-sm text-[#1c1b1b] focus:outline-none focus:border-[#000000]"
+                className="w-full bg-surface-2 border border-line-subtle rounded-md px-4 py-3 text-sm text-fg focus:outline-none focus:border-accent "
               />
             </div>
 
             <div>
-              <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
-                Próx. Pagamento
+              <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
+                {isEn ? 'Next Payment' : 'Próx. Pagamento'}
               </label>
               <input
                 type="date"
                 value={nextPaymentDate}
                 onChange={(e) => setNextPaymentDate(e.target.value)}
-                className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-sm text-[#1c1b1b] focus:outline-none focus:border-[#000000]"
+                className="w-full bg-surface-2 border border-line-subtle rounded-md px-4 py-3 text-sm text-fg focus:outline-none focus:border-accent "
               />
             </div>
           </div>
 
+          {/* Descrição rica do projeto */}
+          <RichTextField
+            id="project-notes"
+            label={isEn ? 'Project description' : 'Descrição do projeto'}
+            value={notes}
+            onChange={setNotes}
+            lang={isEn ? 'en' : 'pt'}
+            template="project"
+          />
+
           {/* Section: File Attachments / Anexos */}
-          <div className="p-4 bg-[#f7f3f2] border border-[#c4c7c7]/30 rounded-[16px] space-y-3">
+          <div className="p-4 bg-surface-2 border border-line-subtle rounded-lg space-y-3">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-[#1c1b1b] flex items-center gap-1.5">
-                <Paperclip className="w-4 h-4 text-[#0050d7]" /> Ficheiros &amp; Anexos do Projeto ({attachments.length})
+              <label className="text-xs font-semibold text-fg flex items-center gap-1.5">
+                <Paperclip className="w-4 h-4 text-accent-soft-fg " /> {isEn ? 'Project Files & Attachments' : 'Ficheiros & Anexos do Projeto'} ({attachments.length})
               </label>
-              <label className="px-3 py-1.5 bg-white hover:bg-[#f1edec] text-[#1c1b1b] border border-[#c4c7c7]/40 rounded-full text-xs font-medium flex items-center space-x-1 cursor-pointer transition-all">
+              <label className="px-3 py-1.5 bg-glass-strong hover:bg-sunken text-fg border border-line-subtle rounded-full text-xs font-medium flex items-center space-x-1 cursor-pointer transition-all">
                 <Upload className="w-3.5 h-3.5" />
-                <span>Anexar Ficheiro</span>
+                <span>{isEn ? 'Attach File' : 'Anexar Ficheiro'}</span>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -597,21 +608,21 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
             </div>
 
             {attachments.length === 0 ? (
-              <p className="text-xs text-[#747878] italic">
-                Nenhum ficheiro anexado. Adicione listas de inscritos, relatórios, PDFs ou documentos do projeto.
+              <p className="text-xs text-fg-muted italic">
+                {isEn ? 'No files attached. Add attendee lists, reports, PDFs, or project documents.' : 'Nenhum ficheiro anexado. Adicione listas de inscritos, relatórios, PDFs ou documentos do projeto.'}
               </p>
             ) : (
-              <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
+              <div className="space-y-2">
                 {attachments.map((att) => (
                   <div
                     key={att.id}
-                    className="flex items-center justify-between p-2.5 bg-white border border-[#c4c7c7]/30 rounded-xl text-xs"
+                    className="flex items-center justify-between p-2.5 bg-glass-strong border border-line-subtle rounded-md text-xs"
                   >
                     <div className="flex items-center space-x-2 min-w-0 flex-1">
-                      <FileText className="w-4 h-4 text-[#747878] shrink-0" />
-                      <span className="font-medium text-[#1c1b1b] truncate">{att.name}</span>
+                      <FileText className="w-4 h-4 text-fg-muted shrink-0" />
+                      <span className="font-medium text-fg truncate">{att.name}</span>
                       {att.size && (
-                        <span className="text-[10px] text-[#747878] shrink-0">
+                        <span className="text-[10px] text-fg-muted shrink-0">
                           ({(att.size / 1024).toFixed(0)} KB)
                         </span>
                       )}
@@ -623,16 +634,16 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                         download={att.name}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-1.5 text-[#0050d7] hover:bg-[#f1edec] rounded-full transition-colors"
-                        title="Baixar Ficheiro"
+                        className="p-1.5 text-accent-soft-fg hover:bg-sunken rounded-full transition-colors"
+                        title={isEn ? 'Download File' : 'Baixar Ficheiro'}
                       >
                         <Download className="w-3.5 h-3.5" />
                       </a>
                       <button
                         type="button"
                         onClick={() => handleRemoveAttachment(att.id)}
-                        className="p-1.5 text-[#ba1a1a] hover:bg-[#ffdad6] rounded-full transition-colors cursor-pointer"
-                        title="Remover Ficheiro"
+                        className="p-1.5 text-danger-fg hover:bg-danger-soft rounded-full transition-colors cursor-pointer"
+                        title={isEn ? 'Remove File' : 'Remover Ficheiro'}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -644,80 +655,74 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
           </div>
 
           {/* Section: Dados Padrão para Fatura Stripe */}
-          <div className="p-4 bg-[#f7f3f2] border border-[#c4c7c7]/30 rounded-[16px] space-y-3">
+          <div className="p-4 bg-surface-2 border border-line-subtle rounded-lg space-y-3">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-[#1c1b1b] flex items-center gap-1.5">
-                <FileText className="w-4 h-4 text-[#635bff]" /> Dados para Faturas Stripe (Opcional)
+              <label className="text-xs font-semibold text-fg flex items-center gap-1.5">
+                <FileText className="w-4 h-4 text-[#635bff] " /> {isEn ? 'Stripe Invoice Details (Optional)' : 'Dados para Faturas Stripe (Opcional)'}
               </label>
-              <span className="text-[11px] text-[#747878]">Preenchimento automático na fatura</span>
+              <span className="text-[11px] text-fg-muted ">{isEn ? 'Auto-prefilled on invoice' : 'Preenchimento automático na fatura'}</span>
             </div>
             <div>
-              <label className="text-[10px] font-semibold text-[#747878] uppercase tracking-wider block mb-1">
-                Descrição do Serviço (Item na fatura)
+              <label className="text-[13px] font-medium text-fg-secondary block mb-1">
+                {isEn ? 'Service Description (Invoice item)' : 'Descrição do Serviço (Item na fatura)'}
               </label>
               <input
                 type="text"
                 value={invoiceNotes}
                 onChange={(e) => setInvoiceNotes(e.target.value)}
-                placeholder="Ex: Gestão de Tráfego Pago - 1º Mês"
-                className="w-full bg-white border border-[#c4c7c7]/35 rounded-xl px-3 py-2 text-xs text-[#1c1b1b] focus:outline-none focus:border-[#635bff]/60 transition-all"
+                placeholder={isEn ? "e.g. Paid Traffic Management - Month 1" : "Ex: Gestão de Tráfego Pago - 1º Mês"}
+                className="w-full bg-glass-strong border border-line-subtle rounded-md px-3 py-2 text-xs text-fg focus:outline-none focus:border-[#635bff]/60 transition-all"
               />
             </div>
             <div>
-              <label className="text-[10px] font-semibold text-[#747878] uppercase tracking-wider block mb-1">
-                Rodapé Padrão da Fatura (PIX, CNPJ, dados bancários)
+              <label className="text-[13px] font-medium text-fg-secondary block mb-1">
+                {isEn ? 'Standard Invoice Footer (Bank details, Tax ID, notes)' : 'Rodapé Padrão da Fatura (PIX, CNPJ, dados bancários)'}
               </label>
               <textarea
                 value={invoiceFooter}
                 onChange={(e) => setInvoiceFooter(e.target.value)}
                 rows={2}
-                placeholder="Ex: Chave PIX: contato@empresa.com | CNPJ: 00.000.000/0001-00"
-                className="w-full bg-white border border-[#c4c7c7]/35 rounded-xl px-3 py-2 text-xs text-[#1c1b1b] focus:outline-none focus:border-[#635bff]/60 resize-none transition-all"
+                placeholder={isEn ? "e.g. Bank: Chase | IBAN/Tax ID: US123456789" : "Ex.: IBAN: XX00 0000 0000 0000 0000 0 | NIF: 000000000"}
+                className="w-full bg-glass-strong border border-line-subtle rounded-md px-3 py-2 text-xs text-fg focus:outline-none focus:border-[#635bff]/60 resize-none transition-all"
               />
             </div>
           </div>
 
-          <div className="p-4 bg-[#f7f3f2] border border-[#c4c7c7]/30 rounded-[16px] space-y-3">
+          <div className="p-4 bg-surface-2 border border-line-subtle rounded-lg space-y-3">
             <label className="flex items-center space-x-2 cursor-pointer">
               <input
                 type="checkbox"
                 checked={hasPartner}
                 onChange={(e) => setHasPartner(e.target.checked)}
-                className="w-4 h-4 text-[#000000] rounded border-[#c4c7c7] focus:ring-0 accent-[#000000]"
+                className="w-4 h-4 text-fg rounded border-line focus:ring-0 accent-[#000000]"
               />
-              <span className="text-xs font-medium text-[#1c1b1b]">Projeto com parceiro/comissão</span>
+              <span className="text-xs font-medium text-fg ">{isEn ? 'Project with partner/commission' : 'Projeto com parceiro/comissão'}</span>
             </label>
 
             {hasPartner && (
-              <div className="space-y-3 border-t border-[#c4c7c7]/40 pt-3">
+              <div className="space-y-3 border-t border-line-subtle pt-3">
                 <select
                   required
                   value={partnerId}
                   onChange={(e) => handlePartnerChange(e.target.value)}
-                  className="w-full bg-white border border-[#c4c7c7]/35 rounded-xl px-3 py-2 text-xs text-[#1c1b1b] focus:outline-none focus:border-[#000000]"
+                  className="w-full bg-glass-strong border border-line-subtle rounded-md px-3 py-2 text-xs text-fg focus:outline-none focus:border-accent cursor-pointer"
                 >
-                  <option value="">Selecione o parceiro...</option>
+                  <option value="">{isEn ? 'Select partner...' : 'Selecione o parceiro...'}</option>
                   {partners.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
                 <div className="grid grid-cols-2 gap-2">
-                  <input type="number" placeholder="Comissão" value={commissionValue} onChange={(e) => setCommissionValue(Number(e.target.value))} className="w-full bg-white border border-[#c4c7c7]/35 rounded-xl px-3 py-2 text-xs text-[#1c1b1b] focus:outline-none focus:border-[#000000]" />
-                  <select value={commissionType} onChange={(e) => setCommissionType(e.target.value as any)} className="w-full bg-white border border-[#c4c7c7]/35 rounded-xl px-3 py-2 text-xs text-[#1c1b1b] focus:outline-none focus:border-[#000000]">
+                  <input type="number" placeholder={isEn ? "Commission" : "Comissão"} value={commissionValue} onChange={(e) => setCommissionValue(Number(e.target.value))} className="w-full bg-glass-strong border border-line-subtle rounded-md px-3 py-2 text-xs text-fg focus:outline-none focus:border-accent " />
+                  <select value={commissionType} onChange={(e) => setCommissionType(e.target.value as any)} className="w-full bg-glass-strong border border-line-subtle rounded-md px-3 py-2 text-xs text-fg focus:outline-none focus:border-accent cursor-pointer">
                     <option value="percent">%</option>
-                    <option value="fixed">Fixo</option>
+                    <option value="fixed">{isEn ? 'Fixed' : 'Fixo'}</option>
                   </select>
                 </div>
               </div>
             )}
           </div>
 
-          <div className="flex items-center justify-end space-x-3 pt-4 border-t border-[#c4c7c7]/40">
-            <button type="button" onClick={onClose} className="px-4 py-2 rounded-[29px] bg-[#f1edec] text-sm font-medium text-[#1c1b1b] hover:bg-[#e5e2e1] cursor-pointer transition-colors">Cancelar</button>
-            <button type="submit" className="px-5 py-2 bg-[#000000] text-white text-sm font-medium rounded-[29px] hover:opacity-85 cursor-pointer active:scale-95 transition-all">
-              {projectToEdit ? 'Atualizar Projeto' : 'Criar Projeto'}
-            </button>
-          </div>
+          
         </form>
-      </div>
-    </div>
+    </EditorPage>
   );
 };

@@ -3,10 +3,36 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..800;1,14..32,300..800&family=Outfit:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="/logo.png" />
     <link rel="apple-touch-icon" href="/logo.png" />
-    <meta name="description" content="GestãoFO — Plataforma Financeira & Operacional para gestão de projetos, clientes e faturamento." />
-    <title>GestãoFO — Plataforma Financeira & Operacional</title>
+    <meta name="description" content="CodeEngine Gestão — gestão financeira e operacional interna da CodeEngine." />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>CodeEngine Gestão</title>
+    <script>
+      (function() {
+        try {
+          localStorage.removeItem('gestao_theme_mode');
+          localStorage.removeItem('gestao_theme_mode_v2');
+          localStorage.removeItem('gestao_theme_mode_v3');
+          localStorage.removeItem('gestao_theme_mode_v4');
+          localStorage.removeItem('gestao_theme_mode_v5');
+          var saved = localStorage.getItem('codeengine_theme_v2');
+          if (saved === 'dark') {
+            document.documentElement.classList.add('dark');
+            document.documentElement.style.colorScheme = 'dark';
+          } else {
+            document.documentElement.classList.remove('dark');
+            document.documentElement.style.colorScheme = 'light';
+          }
+        } catch(e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

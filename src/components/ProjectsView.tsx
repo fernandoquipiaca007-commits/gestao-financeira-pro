@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { confirmAction, toast } from '../lib/feedback';
 import {
   FolderKanban,
   Plus,
@@ -24,15 +25,19 @@ import {
   Loader2,
   CreditCard,
 } from 'lucide-react';
-import { Project, Client, ProjectStatus, CurrencyCode } from '../types';
+import { Project, Client, ProjectStatus, CurrencyCode, getProjectStatusLabel } from '../types';
 import { formatCurrency, formatDate, getDaysDiff } from '../lib/formatters';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
+import { markdownToPlain } from './editor/MarkdownView';
 
 interface ProjectsViewProps {
   projects: Project[];
   clients: Client[];
+  categories?: import('../types').CategoryItem[];
   currencyFilter: CurrencyCode | 'ALL';
   initialStatusFilter?: string;
+  initialCategoryFilter?: string;
   onOpenNewProjectModal: () => void;
   onEditProject: (project: Project) => void;
   onDuplicateProject?: (project: Project) => void;
@@ -47,8 +52,10 @@ interface ProjectsViewProps {
 export const ProjectsView: React.FC<ProjectsViewProps> = ({
   projects,
   clients,
+  categories = [],
   currencyFilter,
   initialStatusFilter,
+  initialCategoryFilter,
   onOpenNewProjectModal,
   onEditProject,
   onDuplicateProject,
@@ -60,17 +67,24 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   onOpenStripeInvoiceModal,
 }) => {
   const { isOwner, hasPermission, userProfile } = useAuth();
+  const { lang, isEn, t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
-  const [statusFilter, setStatusFilter] = useState<string>(initialStatusFilter || 'ALL');
+  const [categoryFilter, setCategoryFilter] = useState<string>(initialCategoryFilter || 'ALL');
+  // "project:<id>" vem do painel: mostra só esse projeto até o utilizador mudar de filtro ou pedir "Ver todos"
+  const focusFrom = (v?: string) => (v && v.startsWith('project:') ? v.slice('project:'.length) : null);
+  const [statusFilter, setStatusFilter] = useState<string>(initialStatusFilter && !focusFrom(initialStatusFilter) ? initialStatusFilter : 'ALL');
+  const [focusId, setFocusId] = useState<string | null>(focusFrom(initialStatusFilter));
   const [assumingProjectId, setAssumingProjectId] = useState<string | null>(null);
 
-  // Sync statusFilter whenever initialStatusFilter prop changes (e.g. clicking dashboard KPIs)
+  // Sync filters whenever initialStatusFilter prop changes (e.g. clicking dashboard KPIs)
   React.useEffect(() => {
-    if (initialStatusFilter) {
-      setStatusFilter(initialStatusFilter);
-    }
+    if (!initialStatusFilter) return;
+    const id = focusFrom(initialStatusFilter);
+    setFocusId(id);
+    setStatusFilter(id ? 'ALL' : initialStatusFilter);
   }, [initialStatusFilter]);
+
+  const pickStatus = (value: string) => { setFocusId(null); setStatusFilter(value); };
 
   const canCreate = isOwner || hasPermission('projects.create');
   const canEdit = isOwner || hasPermission('projects.edit');
@@ -78,9 +92,12 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const canAssume = hasPermission('projects.assume');
 
   const clientMap = new Map<string, Client>(clients.map((c) => [c.id, c]));
+  const focusProject = focusId ? projects.find((p) => p.id === focusId) : undefined;
 
   // Filter projects
   const filteredProjects = projects.filter((p) => {
+    if (focusProject) return p.id === focusProject.id;
+
     // Currency filter
     if (currencyFilter !== 'ALL' && p.currency !== currencyFilter) return false;
 
@@ -116,10 +133,10 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
     if (searchTerm.trim()) {
       const q = searchTerm.toLowerCase();
       const client = clientMap.get(p.clientId);
-      const clientName = client?.name.toLowerCase() || '';
-      const clientCompany = client?.company.toLowerCase() || '';
-      const projName = p.name.toLowerCase();
-      const cat = p.category.toLowerCase();
+      const clientName = client?.name?.toLowerCase() || '';
+      const clientCompany = client?.company?.toLowerCase() || '';
+      const projName = (p.name || '').toLowerCase();
+      const cat = (p.category || '').toLowerCase();
       return (
         projName.includes(q) ||
         clientName.includes(q) ||
@@ -137,7 +154,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
     try {
       const res = await onAssumeProject(projectId);
       if (!res.success) {
-        alert(res.error || 'Não foi possível assumir o projeto.');
+        toast({ tone: 'danger', title: res.error || (isEn ? 'Could not take on the project.' : 'Não foi possível assumir o projeto.') });
       }
     } finally {
       setAssumingProjectId(null);
@@ -148,26 +165,26 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
     switch (status) {
       case 'Em andamento':
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#dbe1ff] text-[#003da9] flex items-center gap-1">
-            <Clock className="w-3 h-3" /> Em andamento
+          <span className="px-3 py-1 rounded-full text-[11px] font-semibold bg-info-soft text-blue-800 border border-blue-200/60 flex items-center gap-1">
+            <Clock className="w-3 h-3" /> {getProjectStatusLabel('Em andamento', lang)}
           </span>
         );
       case 'Aguardando cliente':
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#fff3d6] text-[#7a5400] flex items-center gap-1">
-            <AlertCircle className="w-3 h-3" /> Aguardando cliente
+          <span className="px-3 py-1 rounded-full text-[11px] font-semibold bg-warning-soft text-warning-fg border border-amber-200/60 flex items-center gap-1">
+            <AlertCircle className="w-3 h-3" /> {getProjectStatusLabel('Aguardando cliente', lang)}
           </span>
         );
       case 'Concluído':
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#d4eddf] text-[#1a6b3a] flex items-center gap-1">
-            <CheckCircle2 className="w-3 h-3" /> Concluído
+          <span className="px-3 py-1 rounded-full text-[11px] font-semibold bg-success-soft text-emerald-800 border border-emerald-200/60 flex items-center gap-1">
+            <CheckCircle2 className="w-3 h-3" /> {getProjectStatusLabel('Concluído', lang)}
           </span>
         );
       case 'Cancelado':
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#ffdad6] text-[#93000a] flex items-center gap-1">
-            <XCircle className="w-3 h-3" /> Cancelado
+          <span className="px-3 py-1 rounded-full text-[11px] font-semibold bg-danger-soft text-rose-800 border border-rose-200/60 flex items-center gap-1">
+            <XCircle className="w-3 h-3" /> {getProjectStatusLabel('Cancelado', lang)}
           </span>
         );
     }
@@ -176,40 +193,50 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const availableCount = projects.filter(p => p.assignmentType === 'available').length;
   const myProjectsCount = projects.filter(p => p.assignedTo === userProfile?.id).length;
 
+  // Unique categories for filtering (dynamic + presets + project categories)
+  const defaultProjectPresets = ['Website', 'Landing Page', 'Loja Virtual', 'Tráfego Pago', 'Automação', 'Consultoria', 'Design'];
+  const allProjectCategories = Array.from(
+    new Set([
+      ...(categories || []).filter(c => c?.name && c.type !== 'expense').map(c => c.name),
+      ...defaultProjectPresets,
+      ...projects.map(p => p.category).filter(Boolean),
+    ])
+  );
+
   return (
     <div className="space-y-6">
       {/* Header section */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-[#1c1b1b] tracking-tight">Projetos & Operações</h1>
-          <p className="text-sm text-[#747878] mt-1">
-            Acompanhe o status, entregas, pagamentos e responsáveis de cada projeto
+          <h1 className="font-display font-normal text-[32px] sm:text-[38px] leading-tight tracking-[-0.03em] text-fg m-0">{t('projects.title')}</h1>
+          <p className="text-[15px] text-fg-secondary mt-1.5 mb-0">
+            {t('projects.subtitle')}
           </p>
         </div>
 
         {canCreate && (
           <button
             onClick={onOpenNewProjectModal}
-            className="inline-flex items-center space-x-2 bg-[#000000] hover:opacity-85 text-white px-5 py-2.5 rounded-[29px] text-sm font-medium transition-all cursor-pointer shadow-[0_2px_8px_rgba(0,0,0,0.08)] active:scale-95 shrink-0"
+            className="aura-btn aura-btn--primary inline-flex shrink-0"
           >
             <Plus className="w-4 h-4" />
-            <span>Novo Projeto</span>
+            <span>{t('projects.newProject')}</span>
           </button>
         )}
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white border border-[#c4c7c7]/40 rounded-[22px] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.02)] space-y-4">
+      <div className="bg-glass border border-line-subtle rounded-xl p-4 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
           {/* Search Box */}
           <div className="relative w-full sm:w-80">
-            <Search className="w-4 h-4 text-[#747878] absolute left-3.5 top-3" />
+            <Search className="w-4 h-4 text-fg-muted absolute left-3.5 top-3" />
             <input
               type="text"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar por projeto, cliente ou serviço..."
-              className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-full pl-10 pr-4 py-2 text-sm text-[#1c1b1b] placeholder-[#747878] focus:outline-none focus:border-[#000000] focus:bg-white transition-all"
+              onChange={(e) => { setFocusId(null); setSearchTerm(e.target.value); }}
+              placeholder={isEn ? "Search by project, client or service..." : "Pesquisar por projeto, cliente ou serviço..."}
+              className="w-full bg-surface-2 border border-line-subtle rounded-full pl-10 pr-4 py-2 text-sm text-fg placeholder:text-fg-muted focus:outline-none focus:border-accent focus:bg-surface-1 focus:shadow-[0_0_0_4px_var(--accent-ring)] transition-all"
             />
           </div>
 
@@ -217,16 +244,15 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
           <div className="flex items-center space-x-2 w-full sm:w-auto">
             <select
               value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="w-full sm:w-48 bg-[#f1edec] border border-[#c4c7c7]/35 rounded-full px-4 py-2 text-xs font-medium text-[#1c1b1b] focus:outline-none focus:border-[#000000] cursor-pointer"
+              onChange={(e) => { setFocusId(null); setCategoryFilter(e.target.value); }}
+              className="w-full sm:w-48 bg-surface-2 border border-line-subtle rounded-full px-4 py-2 text-xs font-medium text-fg focus:outline-none focus:border-accent cursor-pointer"
             >
-              <option value="ALL">Todas as Categorias</option>
-              <option value="Website">Website</option>
-              <option value="Landing Page">Landing Page</option>
-              <option value="Loja Virtual">Loja Virtual</option>
-              <option value="Tráfego Pago">Tráfego Pago</option>
-              <option value="Automação">Automação</option>
-              <option value="Outro">Outro</option>
+              <option value="ALL">{t('projects.allCategories')}</option>
+              {allProjectCategories.map(cat => (
+                <option key={cat} value={cat}>
+                  ● {cat}
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -234,129 +260,140 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
         {/* Status & Scope Filter Pills */}
         <div className="flex items-center space-x-2 overflow-x-auto pb-1 text-xs">
           <button
-            onClick={() => setStatusFilter('ALL')}
-            className={`px-4 py-1.5 rounded-full font-medium transition-all cursor-pointer shrink-0 ${
-              statusFilter === 'ALL'
-                ? 'bg-[#000000] text-white'
-                : 'text-[#444747] hover:bg-[#f1edec]'
-            }`}
+            onClick={() => pickStatus('ALL')}
+            className={`px-4 py-1.5 rounded-full font-semibold transition-all cursor-pointer shrink-0 ${
+ statusFilter === 'ALL' && !focusProject
+ ? 'bg-primary shadow-primary-3d text-primary-fg shadow-xs'
+ : 'text-fg-secondary hover:bg-sunken '
+ }`}
           >
-            Todos ({projects.length})
+            {isEn ? 'All' : 'Todos'} ({projects.length})
           </button>
 
           {myProjectsCount > 0 && (
             <button
-              onClick={() => setStatusFilter('MINE')}
-              className={`px-4 py-1.5 rounded-full font-medium transition-all cursor-pointer shrink-0 flex items-center gap-1.5 ${
-                statusFilter === 'MINE'
-                  ? 'bg-[#0050d7] text-white'
-                  : 'text-[#0050d7] hover:bg-[#dbe1ff]'
-              }`}
+              onClick={() => pickStatus('MINE')}
+              className={`px-4 py-1.5 rounded-full font-semibold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 ${
+ statusFilter === 'MINE'
+ ? 'bg-primary shadow-primary-3d text-primary-fg shadow-xs'
+ : 'text-fg-secondary hover:bg-sunken '
+ }`}
             >
               <User className="w-3.5 h-3.5" />
-              <span>Meus Projetos ({myProjectsCount})</span>
+              <span>{isEn ? 'My Projects' : 'Meus Projetos'} ({myProjectsCount})</span>
             </button>
           )}
 
           {availableCount > 0 && (
             <button
-              onClick={() => setStatusFilter('AVAILABLE')}
+              onClick={() => pickStatus('AVAILABLE')}
               className={`px-4 py-1.5 rounded-full font-semibold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 ${
-                statusFilter === 'AVAILABLE'
-                  ? 'bg-[#003da9] text-white'
-                  : 'bg-[#dbe1ff] text-[#003da9] hover:opacity-85'
-              }`}
+ statusFilter === 'AVAILABLE'
+ ? 'bg-primary shadow-primary-3d text-primary-fg shadow-xs'
+ : 'bg-info-soft text-blue-800 hover:opacity-85'
+ }`}
             >
               <Globe className="w-3.5 h-3.5" />
-              <span>Disponíveis para Assumir ({availableCount})</span>
+              <span>{isEn ? 'Available to Take On' : 'Disponíveis para Assumir'} ({availableCount})</span>
             </button>
           )}
 
           <button
-            onClick={() => setStatusFilter('ativos')}
-            className={`px-4 py-1.5 rounded-full font-medium transition-all cursor-pointer shrink-0 ${
-              statusFilter === 'ativos'
-                ? 'bg-[#000000] text-white'
-                : 'text-[#444747] hover:bg-[#f1edec]'
-            }`}
+            onClick={() => pickStatus('ativos')}
+            className={`px-4 py-1.5 rounded-full font-semibold transition-all cursor-pointer shrink-0 ${
+ statusFilter === 'ativos'
+ ? 'bg-primary shadow-primary-3d text-primary-fg shadow-xs'
+ : 'text-fg-secondary hover:bg-sunken '
+ }`}
           >
-            Ativos
+            {isEn ? 'Active' : 'Ativos'}
           </button>
 
           <button
-            onClick={() => setStatusFilter('a-receber')}
-            className={`px-4 py-1.5 rounded-full font-medium transition-all cursor-pointer shrink-0 ${
-              statusFilter === 'a-receber'
-                ? 'bg-[#000000] text-white'
-                : 'text-[#444747] hover:bg-[#f1edec]'
-            }`}
+            onClick={() => pickStatus('a-receber')}
+            className={`px-4 py-1.5 rounded-full font-semibold transition-all cursor-pointer shrink-0 ${
+ statusFilter === 'a-receber'
+ ? 'bg-primary shadow-primary-3d text-primary-fg shadow-xs'
+ : 'text-fg-secondary hover:bg-sunken '
+ }`}
           >
-            A Receber ({projects.filter((p) => p.totalAmount - p.paidAmount > 0).length})
+            {isEn ? 'Receivable' : 'A receber'} ({projects.filter((p) => p.totalAmount - p.paidAmount > 0).length})
           </button>
 
           <button
-            onClick={() => setStatusFilter('atencao')}
-            className={`px-4 py-1.5 rounded-full font-medium transition-all cursor-pointer shrink-0 ${
-              statusFilter === 'atencao'
-                ? 'bg-[#7a5400] text-white'
-                : 'text-[#7a5400] hover:bg-[#fff3d6]'
-            }`}
+            onClick={() => pickStatus('atencao')}
+            className={`px-4 py-1.5 rounded-full font-semibold transition-all cursor-pointer shrink-0 ${
+ statusFilter === 'atencao'
+ ? 'bg-primary shadow-primary-3d text-primary-fg shadow-xs'
+ : 'text-warning-fg hover:bg-warning-soft '
+ }`}
           >
-            Prazos &amp; Alertas
+            {isEn ? 'Deadlines and alerts' : 'Prazos e alertas'}
           </button>
 
           <button
-            onClick={() => setStatusFilter('Em andamento')}
-            className={`px-4 py-1.5 rounded-full font-medium transition-all cursor-pointer shrink-0 ${
-              statusFilter === 'Em andamento'
-                ? 'bg-[#000000] text-white'
-                : 'text-[#444747] hover:bg-[#f1edec]'
-            }`}
+            onClick={() => pickStatus('Em andamento')}
+            className={`px-4 py-1.5 rounded-full font-semibold transition-all cursor-pointer shrink-0 ${
+ statusFilter === 'Em andamento'
+ ? 'bg-primary shadow-primary-3d text-primary-fg shadow-xs'
+ : 'text-fg-secondary hover:bg-sunken '
+ }`}
           >
-            Em andamento
+            {getProjectStatusLabel('Em andamento', lang)}
           </button>
 
           <button
-            onClick={() => setStatusFilter('Aguardando cliente')}
-            className={`px-4 py-1.5 rounded-full font-medium transition-all cursor-pointer shrink-0 ${
-              statusFilter === 'Aguardando cliente'
-                ? 'bg-[#000000] text-white'
-                : 'text-[#444747] hover:bg-[#f1edec]'
-            }`}
+            onClick={() => pickStatus('Aguardando cliente')}
+            className={`px-4 py-1.5 rounded-full font-semibold transition-all cursor-pointer shrink-0 ${
+ statusFilter === 'Aguardando cliente'
+ ? 'bg-primary shadow-primary-3d text-primary-fg shadow-xs'
+ : 'text-fg-secondary hover:bg-sunken '
+ }`}
           >
-            Aguardando Cliente
+            {getProjectStatusLabel('Aguardando cliente', lang)}
           </button>
 
           <button
-            onClick={() => setStatusFilter('Concluído')}
-            className={`px-4 py-1.5 rounded-full font-medium transition-all cursor-pointer shrink-0 ${
-              statusFilter === 'Concluído'
-                ? 'bg-[#000000] text-white'
-                : 'text-[#444747] hover:bg-[#f1edec]'
-            }`}
+            onClick={() => pickStatus('Concluído')}
+            className={`px-4 py-1.5 rounded-full font-semibold transition-all cursor-pointer shrink-0 ${
+ statusFilter === 'Concluído'
+ ? 'bg-primary shadow-primary-3d text-primary-fg shadow-xs'
+ : 'text-fg-secondary hover:bg-sunken '
+ }`}
           >
-            Concluídos
+            {getProjectStatusLabel('Concluído', lang)}
           </button>
         </div>
       </div>
 
+      {focusProject && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line-subtle bg-glass px-4 py-3 shadow-sm">
+          <span className="text-sm text-fg-secondary">
+            {isEn ? 'Showing project' : 'A mostrar o projeto'} <strong className="font-semibold text-fg">{focusProject.name}</strong>
+          </span>
+          <button type="button" onClick={() => setFocusId(null)} className="aura-btn aura-btn--secondary aura-btn--sm">
+            {isEn ? 'Show all projects' : 'Ver todos os projetos'}
+          </button>
+        </div>
+      )}
+
       {/* Projects List Grid */}
       {filteredProjects.length === 0 ? (
-        <div className="bg-white border border-[#c4c7c7]/40 rounded-[22px] p-12 text-center shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-          <FolderKanban className="w-12 h-12 text-[#c4c7c7] mx-auto mb-3" strokeWidth={1.5} />
-          <h3 className="text-base font-semibold text-[#1c1b1b]">Nenhum projeto encontrado</h3>
-          <p className="text-xs text-[#747878] mt-1 max-w-sm mx-auto">
+        <div className="bg-glass border border-line-subtle rounded-xl p-12 text-center shadow-sm">
+          <FolderKanban className="w-12 h-12 text-fg-muted mx-auto mb-3" strokeWidth={1.5} />
+          <h3 className="text-base font-bold text-fg ">{t('projects.empty')}</h3>
+          <p className="text-xs text-fg-muted mt-1 max-w-sm mx-auto">
             {searchTerm || categoryFilter !== 'ALL' || statusFilter !== 'ALL'
-              ? 'Tente alterar os filtros ou termo de busca acima.'
-              : 'Comece adicionando seu primeiro projeto operacional.'}
+              ? (isEn ? 'Try changing the filters or search term above.' : 'Tente alterar os filtros ou termo de busca acima.')
+              : (isEn ? 'Start by adding your first operational project.' : 'Comece adicionando seu primeiro projeto operacional.')}
           </p>
           {canCreate && (
             <button
               onClick={onOpenNewProjectModal}
-              className="mt-4 inline-flex items-center space-x-2 bg-[#000000] text-white px-5 py-2.5 rounded-[29px] text-xs font-medium hover:opacity-85 transition-all cursor-pointer"
+              className="aura-btn aura-btn--primary aura-btn--sm mt-4 inline-flex"
             >
               <Plus className="w-4 h-4" />
-              <span>Criar Projeto</span>
+              <span>{isEn ? 'Create Project' : 'Criar Projeto'}</span>
             </button>
           )}
         </div>
@@ -377,21 +414,39 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             const isAssignedToMe = p.assignedTo === userProfile?.id;
             const isAvailable = p.assignmentType === 'available';
 
+            const catItem = (categories || []).find(c => c?.name && c.name.toLowerCase() === p.category?.toLowerCase());
+            const catColor = catItem?.color || '#0050d7';
+
             return (
               <div
                 key={p.id}
-                className={`bg-white border rounded-[22px] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.04)] transition-all flex flex-col justify-between group ${
-                  isAvailable
-                    ? 'border-[#0050d7]/40 ring-2 ring-[#0050d7]/10'
-                    : isUrgent
-                    ? 'border-[#ffdad6]'
-                    : 'border-[#c4c7c7]/40'
-                }`}
+                className={`bg-glass border rounded-xl p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between group ${
+ isAvailable
+ ? 'border-fg/40 ring-2 ring-black/10'
+ : isUrgent
+ ? 'border-rose-200 '
+ : 'border-line-subtle '
+ }`}
               >
                 <div>
                   {/* Top Bar: Category, Status, Responsible Badge */}
                   <div className="flex items-center justify-between gap-2 mb-3">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#f1edec] text-[#444747]">
+                    <span
+                      className="px-3 py-1 rounded-full text-[11px] font-semibold"
+                      style={
+                        catItem
+                          ? {
+                              backgroundColor: `${catColor}15`,
+                              color: catColor,
+                              border: `1px solid ${catColor}30`,
+                            }
+                          : {
+                              backgroundColor: '#f4f5f7',
+                              color: '#444747',
+                              border: '1px solid #e5e7eb',
+                            }
+                      }
+                    >
                       {p.category}
                     </span>
                     {getStatusBadge(p.status)}
@@ -400,63 +455,63 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                   {/* Responsible / Assignment Banner */}
                   <div className="mb-3">
                     {isAvailable ? (
-                      <div className="bg-[#dbe1ff] border border-[#003da9]/20 p-2.5 rounded-[14px] flex items-center justify-between gap-2">
-                        <span className="text-xs font-semibold text-[#003da9] flex items-center gap-1.5">
+                      <div className="bg-info-soft border border-blue-200/60 p-2.5 rounded-lg flex items-center justify-between gap-2">
+                        <span className="text-xs font-semibold text-blue-800 flex items-center gap-1.5">
                           <Globe className="w-3.5 h-3.5" />
-                          Projeto Disponível
+                          {isEn ? 'Available Project' : 'Projeto Disponível'}
                         </span>
                         {canAssume && (
                           <button
                             onClick={() => handleAssume(p.id)}
                             disabled={assumingProjectId === p.id}
-                            className="inline-flex items-center space-x-1 bg-[#0050d7] hover:opacity-90 disabled:opacity-50 text-white px-3 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer shadow-xs active:scale-95"
+                            className="aura-btn aura-btn--primary aura-btn--sm inline-flex disabled:opacity-50"
                           >
                             {assumingProjectId === p.id ? (
                               <Loader2 className="w-3 h-3 animate-spin" />
                             ) : (
                               <Hand className="w-3 h-3" />
                             )}
-                            <span>Assumir</span>
+                            <span>{isEn ? 'Take on' : 'Assumir'}</span>
                           </button>
                         )}
                       </div>
                     ) : p.assignmentType === 'employee' ? (
-                      <div className="inline-flex items-center space-x-1.5 text-xs text-[#444747] bg-[#f1edec] px-2.5 py-1 rounded-full font-medium">
-                        <User className="w-3.5 h-3.5 text-[#747878]" />
+                      <div className="inline-flex items-center space-x-1.5 text-xs text-fg-secondary bg-surface-2 border border-line-subtle px-2.5 py-1 rounded-full font-medium">
+                        <User className="w-3.5 h-3.5 text-fg-muted" />
                         <span>
-                          {p.assignedToName || 'Funcionário'} {isAssignedToMe && '(Tu)'}
+                          {p.assignedToName || (isEn ? 'Employee' : 'Funcionário')} {isAssignedToMe && (isEn ? '(You)' : '(Tu)')}
                         </span>
                       </div>
                     ) : (
-                      <div className="inline-flex items-center space-x-1.5 text-xs text-[#747878] bg-[#f7f3f2] px-2.5 py-1 rounded-full">
+                      <div className="inline-flex items-center space-x-1.5 text-xs text-fg-muted bg-surface-2 border border-line-subtle px-2.5 py-1 rounded-full">
                         <Users className="w-3.5 h-3.5" />
-                        <span>Empresa</span>
+                        <span>{isEn ? 'Company' : 'Empresa'}</span>
                       </div>
                     )}
                   </div>
 
-                  <h3 className="text-base font-semibold text-[#1c1b1b] tracking-tight leading-snug group-hover:text-[#0050d7] transition-colors">
+                  <h3 className="text-base font-semibold text-fg tracking-tight leading-snug group-hover:text-fg transition-colors">
                     {p.name}
                   </h3>
 
                   <div className="flex items-center justify-between mt-1.5 mb-3">
-                    <div className="flex items-start space-x-1.5 text-xs text-[#747878]">
-                      <Building2 className="w-3.5 h-3.5 text-[#747878] shrink-0 mt-0.5" />
+                    <div className="flex items-start space-x-1.5 text-xs text-fg-muted ">
+                      <Building2 className="w-3.5 h-3.5 text-fg-muted shrink-0 mt-0.5" />
                       <div>
                         {linkedClients.length > 1 ? (
                           <div className="flex flex-wrap items-center gap-1.5">
-                            <strong className="text-[#1c1b1b] font-medium">
-                              {linkedClients.map((c) => c.name).join(' & ')}
+                            <strong className="text-fg font-medium">
+                              {linkedClients.map((c) => c?.name || '').filter(Boolean).join(' & ')}
                             </strong>
-                            <span className="px-1.5 py-0.5 rounded-full bg-[#dbe1ff] text-[#003da9] text-[10px] font-semibold">
-                              {linkedClients.length} Clientes
+                            <span className="px-1.5 py-0.5 rounded-full bg-info-soft text-blue-800 text-[10px] font-semibold">
+                              {linkedClients.length} {isEn ? 'Clients' : 'Clientes'}
                             </span>
                           </div>
                         ) : (
                           <span>
-                            <strong className="text-[#1c1b1b] font-medium">{primaryClient ? primaryClient.name : 'Cliente não encontrado'}</strong>
+                            <strong className="text-fg font-medium">{primaryClient?.name || (isEn ? 'Client not found' : 'Cliente não encontrado')}</strong>
                             {primaryClient?.company && (
-                              <span className="text-[#747878] ml-1">({primaryClient.company})</span>
+                              <span className="text-fg-muted ml-1">({primaryClient.company})</span>
                             )}
                           </span>
                         )}
@@ -465,8 +520,8 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                   </div>
 
                   {/* Star Rating Bar */}
-                  <div className="flex items-center space-x-1 mb-4 bg-[#f1edec] px-2.5 py-1 rounded-full w-fit">
-                    <span className="text-[11px] text-[#747878] font-medium mr-1">Avaliação:</span>
+                  <div className="flex items-center space-x-1 mb-4 bg-surface-2 border border-line-subtle px-2.5 py-1 rounded-full w-fit">
+                    <span className="text-[11px] text-fg-muted font-medium mr-1">{isEn ? 'Rating:' : 'Avaliação:'}</span>
                     {[1, 2, 3, 4, 5].map((star) => (
                       <button
                         key={star}
@@ -476,14 +531,14 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                           onRateProject?.(p, p.rating === star ? 0 : star);
                         }}
                         className="p-0.5 transition-transform hover:scale-125 cursor-pointer"
-                        title={`Classificar como ${star} estrela(s)`}
+                        title={isEn ? `Rate as ${star} star(s)` : `Classificar como ${star} estrela(s)`}
                       >
                         <Star
                           className={`w-3.5 h-3.5 ${
-                            (p.rating || 0) >= star
-                              ? 'fill-[#000000] text-[#000000]'
-                              : 'text-[#c4c7c7] hover:text-[#000000]'
-                          }`}
+ (p.rating || 0) >= star
+ ? 'fill-[#000000] text-fg '
+ : 'text-gray-300 hover:text-fg '
+ }`}
                         />
                       </button>
                     ))}
@@ -491,77 +546,77 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
                   {/* Financial Breakdown Card (hidden for employee without financial view) */}
                   {(isOwner || hasPermission('financial.view')) && (
-                    <div className="bg-[#f7f3f2] p-4 rounded-[16px] border border-[#c4c7c7]/30 mb-4 space-y-2 text-xs">
+                    <div className="bg-surface-2 p-4 rounded-lg border border-line-subtle mb-4 space-y-2 text-xs">
                       <div className="flex items-center justify-between">
-                        <span className="text-[#747878]">Valor Total:</span>
-                        <strong className="text-[#000000] font-medium text-sm">
+                        <span className="text-fg-muted ">{isEn ? 'Total amount:' : 'Valor total:'}</span>
+                        <strong className="text-fg font-bold text-sm">
                           {formatCurrency(p.totalAmount, p.currency)}
                         </strong>
                       </div>
 
                       <div className="flex items-center justify-between">
-                        <span className="text-[#747878]">Valor Já Pago:</span>
-                        <strong className="text-[#1a6b3a] font-medium">
+                        <span className="text-fg-muted ">{isEn ? 'Paid:' : 'Já pago:'}</span>
+                        <strong className="text-success-fg font-semibold">
                           {formatCurrency(p.paidAmount, p.currency)}
                         </strong>
                       </div>
 
-                      <div className="flex items-center justify-between pt-1.5 border-t border-[#c4c7c7]/30">
-                        <span className="text-[#747878]">Valor Restante:</span>
-                        <strong className={`font-medium ${remaining > 0 ? 'text-[#7a5400]' : 'text-[#747878]'}`}>
+                      <div className="flex items-center justify-between pt-1.5 border-t border-line-subtle ">
+                        <span className="text-fg-muted ">{isEn ? 'Remaining:' : 'Em falta:'}</span>
+                        <strong className={`font-semibold ${remaining > 0 ? 'text-warning-fg ' : 'text-fg-muted '}`}>
                           {formatCurrency(remaining, p.currency)}
                         </strong>
                       </div>
 
                       <div className="pt-1.5">
-                        <div className="w-full bg-[#e5e2e1] h-1.5 rounded-full overflow-hidden">
+                        <div className="w-full bg-surface-3 h-1.5 rounded-full overflow-hidden">
                           <div
-                            className={`h-full rounded-full transition-all duration-500 ${isFullyPaid ? 'bg-[#1a6b3a]' : 'bg-[#000000]'}`}
+                            className={`h-full rounded-full transition-all duration-500 ${isFullyPaid ? 'bg-emerald-600' : 'bg-primary shadow-primary-3d '}`}
                             style={{ width: `${progressPct}%` }}
                           />
                         </div>
-                        <div className="text-[10px] text-[#747878] text-right mt-1">
-                          {progressPct}% liquidado
+                        <div className="text-[10px] text-fg-muted text-right mt-1 font-medium">
+                          {progressPct}% {isEn ? 'settled' : 'liquidado'}
                         </div>
                       </div>
                     </div>
                   )}
 
                   {/* Dates Details */}
-                  <div className="space-y-2 text-xs text-[#1c1b1b] mb-4">
+                  <div className="space-y-2 text-xs text-fg mb-4">
                     <div className="flex items-center justify-between">
-                      <span className="flex items-center gap-1.5 text-[#747878]">
-                        <Calendar className="w-3.5 h-3.5 text-[#747878]" /> Previsão Entrega:
+                      <span className="flex items-center gap-1.5 text-fg-muted ">
+                        <Calendar className="w-3.5 h-3.5 text-fg-muted " /> {isEn ? 'Expected delivery:' : 'Entrega prevista:'}
                       </span>
-                      <strong className={isUrgent ? 'text-[#ba1a1a] font-semibold' : 'text-[#1c1b1b] font-medium'}>
+                      <strong className={isUrgent ? 'text-danger-fg font-semibold' : 'text-fg font-medium'}>
                         {formatDate(p.dueDate)}
-                        {daysToDue >= 0 ? ` (em ${daysToDue}d)` : ` (atrasado ${Math.abs(daysToDue)}d)`}
+                        {p.status === 'Concluído' || p.status === 'Cancelado' ? '' : daysToDue >= 0 ? ` (${isEn ? `in ${daysToDue}d` : `em ${daysToDue}d`})` : ` (${isEn ? `overdue ${Math.abs(daysToDue)}d` : `atrasado ${Math.abs(daysToDue)}d`})`}
                       </strong>
                     </div>
 
                     {p.nextPaymentDate && (
                       <div className="flex items-center justify-between">
-                        <span className="flex items-center gap-1.5 text-[#747878]">
-                          <Clock className="w-3.5 h-3.5 text-[#747878]" /> Próx. Pagamento:
+                        <span className="flex items-center gap-1.5 text-fg-muted ">
+                          <Clock className="w-3.5 h-3.5 text-fg-muted " /> {isEn ? 'Next Payment:' : 'Próx. Pagamento:'}
                         </span>
-                        <strong className="text-[#1c1b1b] font-medium">{formatDate(p.nextPaymentDate)}</strong>
+                        <strong className="text-fg font-medium">{formatDate(p.nextPaymentDate)}</strong>
                       </div>
                     )}
 
                     {p.partnerName && (
-                      <div className="flex items-center justify-between pt-1 border-t border-[#c4c7c7]/20 text-[11px]">
-                        <span className="text-[#747878]">Parceiro Indicador:</span>
-                        <span className="text-[#1c1b1b] font-medium">{p.partnerName}</span>
+                      <div className="flex items-center justify-between pt-1 border-t border-line-subtle text-[11px]">
+                        <span className="text-fg-muted ">{isEn ? 'Referring Partner:' : 'Parceiro Indicador:'}</span>
+                        <span className="text-fg font-medium">{p.partnerName}</span>
                       </div>
                     )}
                   </div>
 
                   {/* File Attachments Pills */}
                   {p.attachments && p.attachments.length > 0 && (
-                    <div className="mb-4 pt-2 border-t border-[#c4c7c7]/30">
-                      <div className="flex items-center space-x-1.5 mb-2 text-[11px] font-semibold text-[#747878] uppercase tracking-widest">
-                        <Paperclip className="w-3.5 h-3.5 text-[#747878]" />
-                        <span>Ficheiros Anexados ({p.attachments.length})</span>
+                    <div className="mb-4 pt-2 border-t border-line-subtle ">
+                      <div className="flex items-center space-x-1.5 mb-2 text-[13px] font-medium text-fg-secondary ">
+                        <Paperclip className="w-3.5 h-3.5 text-fg-muted " />
+                        <span>{isEn ? 'Attached Files' : 'Ficheiros Anexados'} ({p.attachments.length})</span>
                       </div>
                       <div className="flex flex-wrap gap-1.5">
                         {p.attachments.map((att) => (
@@ -569,12 +624,12 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                             key={att.id}
                             href={att.url}
                             download={att.name}
-                            className="inline-flex items-center space-x-1.5 bg-[#f1edec] hover:bg-[#e5e2e1] text-[#1c1b1b] px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors cursor-pointer border border-[#c4c7c7]/30"
-                            title={`Descarregar ${att.name}`}
+                            className="aura-btn aura-btn--secondary aura-btn--sm inline-flex"
+                            title={`${isEn ? 'Download' : 'Descarregar'} ${att.name}`}
                           >
-                            <FileText className="w-3 h-3 text-[#0050d7]" />
+                            <FileText className="w-3 h-3 text-accent-soft-fg " />
                             <span className="truncate max-w-[120px]">{att.name}</span>
-                            <Download className="w-3 h-3 text-[#747878]" />
+                            <Download className="w-3 h-3 text-fg-muted " />
                           </a>
                         ))}
                       </div>
@@ -582,20 +637,20 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                   )}
 
                   {p.notes && (
-                    <div className="p-2.5 bg-[#f7f3f2] rounded-xl text-xs text-[#747878] italic mb-4">
-                      "{p.notes}"
+                    <div className="p-3 bg-surface-2 rounded-md border border-line-subtle text-[12.5px] leading-relaxed text-fg-secondary mb-4 line-clamp-3 whitespace-pre-line">
+                      {markdownToPlain(p.notes)}
                     </div>
                   )}
                 </div>
 
                 {/* Actions Footer */}
-                <div className="pt-3 border-t border-[#c4c7c7]/40 flex items-center justify-between gap-2">
+                <div className="pt-3 border-t border-line-subtle flex items-center justify-between gap-2">
                   <div className="flex items-center space-x-1">
                     {canEdit && (
                       <button
                         onClick={() => onEditProject(p)}
-                        className="p-1.5 text-[#747878] hover:text-[#1c1b1b] hover:bg-[#f1edec] rounded-full transition-colors cursor-pointer"
-                        title="Editar Projeto"
+                        className="p-1.5 text-fg-muted hover:text-fg hover:bg-sunken rounded-full transition-colors cursor-pointer"
+                        title={isEn ? 'Edit Project' : 'Editar Projeto'}
                       >
                         <Edit3 className="w-4 h-4" />
                       </button>
@@ -604,8 +659,8 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                     {canCreate && onDuplicateProject && (
                       <button
                         onClick={() => onDuplicateProject(p)}
-                        className="p-1.5 text-[#747878] hover:text-[#0050d7] hover:bg-[#f1edec] rounded-full transition-colors cursor-pointer"
-                        title="Replicar Projeto Recorrente (Novo Mês)"
+                        className="p-1.5 text-fg-muted hover:text-accent-soft-fg hover:bg-sunken rounded-full transition-colors cursor-pointer"
+                        title={isEn ? 'Duplicate Recurring Project (New Month)' : 'Replicar Projeto Recorrente (Novo Mês)'}
                       >
                         <Copy className="w-4 h-4" />
                       </button>
@@ -614,8 +669,8 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                     {canDelete && (
                       <button
                         onClick={() => onDeleteProject(p.id)}
-                        className="p-1.5 text-[#747878] hover:text-[#ba1a1a] hover:bg-[#ffdad6] rounded-full transition-colors cursor-pointer"
-                        title="Excluir Projeto"
+                        className="p-1.5 text-fg-muted hover:text-danger-fg hover:bg-danger-soft rounded-full transition-colors cursor-pointer"
+                        title={isEn ? 'Delete Project' : 'Eliminar Projeto'}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -626,35 +681,39 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                     {onOpenStripeInvoiceModal && remaining > 0 && (isOwner || hasPermission('financial.edit')) && (
                       <button
                         onClick={() => onOpenStripeInvoiceModal(p)}
-                        className="px-3 py-1.5 bg-[#f0efff] hover:bg-[#e4e2ff] text-[#635bff] border border-[#635bff]/20 rounded-full text-xs font-medium flex items-center space-x-1 transition-all cursor-pointer"
-                        title="Gerar fatura Stripe com link de pagamento automático"
+                        className="px-3 py-1.5 bg-surface-2 hover:bg-[#eceef2] text-[#635bff] border border-line-subtle rounded-full text-xs font-semibold flex items-center space-x-1 transition-all cursor-pointer shadow-2xs"
+                        title={isEn ? 'Generate Stripe invoice with automatic payment link' : 'Gerar fatura Stripe com link de pagamento automático'}
                       >
                         <CreditCard className="w-3.5 h-3.5" />
-                        <span>Fatura Stripe</span>
+                        <span>{isEn ? 'Stripe Invoice' : 'Fatura Stripe'}</span>
                       </button>
                     )}
 
                     {onMarkProjectAsPaid && remaining > 0 && (isOwner || hasPermission('financial.edit')) && (
                       <button
                         onClick={() => onMarkProjectAsPaid(p)}
-                        className="px-3 py-1.5 bg-[#d4eddf] hover:bg-[#b8e3c9] text-[#1a6b3a] rounded-full text-xs font-medium flex items-center space-x-1 transition-all cursor-pointer"
-                        title="Marcar projeto como 100% pago e liquidar receita"
+                        className="px-3 py-1.5 bg-success-soft hover:bg-emerald-100 text-emerald-800 border border-emerald-200/60 rounded-full text-xs font-semibold flex items-center space-x-1 transition-all cursor-pointer shadow-2xs"
+                        title={isEn ? 'Mark project as 100% paid and settle revenue' : 'Marcar projeto como 100% pago e liquidar receita'}
                       >
                         <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>Marcar como Pago</span>
+                        <span>{isEn ? 'Mark as Paid' : 'Marcar como Pago'}</span>
                       </button>
                     )}
 
                     {client?.whatsapp && remaining > 0 && (
                       <button
                         onClick={() => {
-                          const msg = `Olá, ${client.name}! Tudo bem? Gostaria de atualizar sobre o projeto "${p.name}". O valor restante pendente é de ${formatCurrency(remaining, p.currency)}. Próximo vencimento: ${p.nextPaymentDate ? formatDate(p.nextPaymentDate) : formatDate(p.dueDate)}. Obrigado!`;
+                          const clientName = client?.name || '';
+                          const projName = p?.name || '';
+                          const msg = isEn
+                            ? `Hello, ${clientName}! Quick update regarding project "${projName}". The outstanding balance is ${formatCurrency(remaining, p.currency)}. Due date: ${p.nextPaymentDate ? formatDate(p.nextPaymentDate) : formatDate(p.dueDate)}. Thank you!`
+                            : `Olá, ${clientName}! Tudo bem? Gostaria de atualizar sobre o projeto "${projName}". O valor restante pendente é de ${formatCurrency(remaining, p.currency)}. Próximo vencimento: ${p.nextPaymentDate ? formatDate(p.nextPaymentDate) : formatDate(p.dueDate)}. Obrigado!`;
                           onOpenWhatsAppCharge(client.whatsapp, msg);
                         }}
-                        className="px-3.5 py-1.5 bg-[#fff3d6] hover:opacity-85 text-[#7a5400] rounded-full text-xs font-semibold flex items-center space-x-1 transition-all cursor-pointer"
+                        className="px-3.5 py-1.5 bg-warning-soft hover:bg-amber-100 text-warning-fg border border-amber-200/60 rounded-full text-xs font-semibold flex items-center space-x-1 transition-all cursor-pointer shadow-2xs"
                       >
                         <MessageCircle className="w-3.5 h-3.5" />
-                        <span>Cobrar</span>
+                        <span>{isEn ? 'Charge' : 'Cobrar'}</span>
                       </button>
                     )}
                   </div>

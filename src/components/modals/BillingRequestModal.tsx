@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { EditorPage } from '../shell/EditorPage';
 import { X, FileText, CheckCircle2, XCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { Project, CurrencyCode, CURRENCIES } from '../../types';
-import { BillingRequest, BILLING_STATUS_COLORS } from '../../types/rbac';
+import { BillingRequest, BILLING_STATUS_COLORS, getBillingStatusLabel } from '../../types/rbac';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface BillingRequestModalProps {
   isOpen: boolean;
@@ -33,6 +35,8 @@ export function BillingRequestModal({
   defaultCurrency = 'BRL',
   canApprove = false,
 }: BillingRequestModalProps) {
+  const { lang } = useLanguage();
+  const isEn = lang === 'en';
   const isReviewMode = !!requestToReview;
 
   // Create Mode state
@@ -69,11 +73,11 @@ export function BillingRequestModal({
 
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount) || numAmount <= 0) {
-      setError('Informe um valor válido maior que zero.');
+      setError(isEn ? 'Enter a valid amount greater than zero.' : 'Informe um valor válido maior que zero.');
       return;
     }
     if (!description.trim()) {
-      setError('A descrição do faturamento é obrigatória.');
+      setError(isEn ? 'Billing description is required.' : 'A descrição do faturação é obrigatória.');
       return;
     }
 
@@ -87,7 +91,7 @@ export function BillingRequestModal({
       });
       onClose();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Erro ao submeter solicitação');
+      setError(err instanceof Error ? err.message : isEn ? 'Error submitting request' : 'Erro ao submeter solicitação');
     } finally {
       setLoading(false);
     }
@@ -98,7 +102,7 @@ export function BillingRequestModal({
     setError('');
 
     if (status === 'Rejeitada' && !reviewNotes.trim()) {
-      setError('Por favor, informe a justificativa da rejeição nas observações.');
+      setError(isEn ? 'Please provide the rejection justification in the notes.' : 'Por favor, informe a justificativa da rejeição nas observações.');
       return;
     }
 
@@ -111,7 +115,7 @@ export function BillingRequestModal({
       });
       onClose();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Erro ao processar solicitação');
+      setError(err instanceof Error ? err.message : isEn ? 'Error processing request' : 'Erro ao processar solicitação');
     } finally {
       setLoading(false);
     }
@@ -120,132 +124,126 @@ export function BillingRequestModal({
   const statusStyle = requestToReview?.status ? BILLING_STATUS_COLORS[requestToReview.status] : undefined;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-[24px] border border-[#c4c7c7]/30 shadow-[0_8px_40px_rgba(0,0,0,0.06)] w-full max-w-lg overflow-hidden">
-        {/* Header */}
-        <div className="bg-[#f7f3f2] p-5 border-b border-[#c4c7c7]/40 rounded-t-[24px] flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-9 h-9 rounded-full bg-[#0050d7] text-white flex items-center justify-center">
-              <FileText className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-[#1c1b1b] text-base">
-                {isReviewMode ? 'Análise de Solicitação de Faturamento' : 'Nova Solicitação de Faturamento'}
-              </h3>
-              <p className="text-xs text-[#747878]">
-                {isReviewMode ? 'Avalie o pedido e gere a receita automaticamente' : 'Submeta o pedido para aprovação do gestor'}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-full text-[#747878] hover:bg-[#f1edec] hover:text-[#1c1b1b] cursor-pointer transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+    <EditorPage
+      title={<>{isReviewMode
+                  ? (isEn ? 'Billing Request Review' : 'Análise de Solicitação de Faturação')
+                  : (isEn ? 'New Billing Request' : 'Nova Solicitação de Faturação')}</>}
+      trail={[isEn ? 'Billing' : 'Faturação']}
+      subtitle={<>{isReviewMode
+                  ? (isEn ? 'Review the request and generate income automatically' : 'Avalie o pedido e gere a receita automaticamente')
+                  : (isEn ? 'Submit request for manager approval' : 'Submeta o pedido para aprovação do gestor')}</>}
+      icon={<FileText className="w-5 h-5" />}
+      onClose={onClose}
+      
+    >
+      <div className="space-y-6 text-fg">
 
         {/* Content */}
         {isReviewMode ? (
           <div className="p-6 space-y-4">
             {error && (
-              <div className="p-3 bg-[#ffdad6] border border-[#ba1a1a]/20 rounded-xl text-[#93000a] text-xs flex items-center gap-2">
+              <div className="p-3 bg-danger-soft border border-danger/20 rounded-md text-danger-fg text-xs flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{error}</span>
               </div>
             )}
 
             {/* Request Summary Card */}
-            <div className="p-4 bg-[#f7f3f2] border border-[#c4c7c7]/30 rounded-2xl space-y-3">
+            <div className="p-4 bg-surface-2 border border-line-subtle rounded-lg space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-[#747878] uppercase tracking-wider">
-                  Solicitante: <strong className="text-[#1c1b1b]">{requestToReview.requestedByName || 'Funcionário'}</strong>
+                <span className="text-[13px] font-medium text-fg-secondary ">
+                  {isEn ? 'Requester: ' : 'Solicitante: '}<strong className="text-fg ">{requestToReview.requestedByName || (isEn ? 'Employee' : 'Funcionário')}</strong>
                 </span>
                 <span
                   className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold"
                   style={{ backgroundColor: statusStyle?.bg, color: statusStyle?.text }}
                 >
-                  {requestToReview.status}
+                  {getBillingStatusLabel(requestToReview.status, lang)}
                 </span>
               </div>
 
               <div className="pt-2">
-                <span className="text-[11px] font-semibold text-[#747878] uppercase tracking-wider block">Valor Solicitado</span>
-                <div className="text-2xl font-semibold text-[#0050d7] tracking-tight">
-                  {requestToReview.currency} {requestToReview.amount.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}
+                <span className="text-[13px] font-medium text-fg-secondary block">
+                  {isEn ? 'Requested Amount' : 'Valor Solicitado'}
+                </span>
+                <div className="text-2xl font-semibold text-accent-soft-fg tracking-tight">
+                  {requestToReview.currency} {requestToReview.amount.toLocaleString(isEn ? 'en-US' : 'pt-PT', { minimumFractionDigits: 2 })}
                 </div>
               </div>
 
               {requestToReview.projectName && (
                 <div>
-                  <span className="text-[11px] font-semibold text-[#747878] uppercase tracking-wider block">Projeto Vinculado</span>
-                  <span className="text-xs text-[#1c1b1b] font-medium">{requestToReview.projectName}</span>
+                  <span className="text-[13px] font-medium text-fg-secondary block">
+                    {isEn ? 'Linked Project' : 'Projeto Vinculado'}
+                  </span>
+                  <span className="text-xs text-fg font-medium">{requestToReview.projectName}</span>
                 </div>
               )}
 
               <div>
-                <span className="text-[11px] font-semibold text-[#747878] uppercase tracking-wider block">Descrição do Trabalho</span>
-                <p className="text-xs text-[#444747] mt-0.5 whitespace-pre-wrap">{requestToReview.description}</p>
+                <span className="text-[13px] font-medium text-fg-secondary block">
+                  {isEn ? 'Work Description' : 'Descrição do Trabalho'}
+                </span>
+                <p className="text-xs text-fg-secondary mt-0.5 whitespace-pre-wrap">{requestToReview.description}</p>
               </div>
             </div>
 
             {/* Review Notes */}
             {canApprove && (
               <div>
-                <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
-                  Observações / Justificativa
+                <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
+                  {isEn ? 'Notes / Justification' : 'Observações / Justificativa'}
                 </label>
                 <textarea
                   rows={3}
                   value={reviewNotes}
                   onChange={(e) => setReviewNotes(e.target.value)}
-                  placeholder="Ex: Aprovado conforme entrega da etapa 2. Receita gerada."
-                  className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-xs text-[#1c1b1b] placeholder-[#747878] focus:outline-none focus:border-[#000000] focus:bg-white transition-all"
+                  placeholder={isEn ? 'e.g. Approved per delivery of milestone 2. Revenue generated.' : 'Ex: Aprovado conforme entrega da etapa 2. Receita gerada.'}
+                  className="w-full bg-surface-2 border border-line-subtle rounded-md px-4 py-3 text-xs text-fg placeholder:text-fg-muted focus:outline-none focus:border-accent focus:bg-surface-1 focus:shadow-[0_0_0_4px_var(--accent-ring)] transition-all resize-none"
                 />
               </div>
             )}
 
             {/* Actions for Approver */}
             {canApprove && requestToReview.status !== 'Aprovada' && requestToReview.status !== 'Faturada' ? (
-              <div className="flex flex-wrap gap-2 pt-2 border-t border-[#c4c7c7]/40">
+              <div className="flex flex-wrap gap-2 pt-2 border-t border-line-subtle ">
                 <button
                   type="button"
                   disabled={loading}
                   onClick={() => handleReviewAction('Rejeitada')}
-                  className="flex-1 px-4 py-2.5 bg-[#ffdad6] hover:bg-[#ffb4ab] text-[#93000a] rounded-[29px] text-xs font-semibold flex items-center justify-center space-x-1.5 transition-all cursor-pointer"
+                  className="flex-1 px-4 py-2.5 bg-danger-soft hover:bg-[#ffb4ab] text-danger-fg rounded-full text-xs font-semibold flex items-center justify-center space-x-1.5 transition-all cursor-pointer"
                 >
                   <XCircle className="w-4 h-4" />
-                  <span>Rejeitar</span>
+                  <span>{isEn ? 'Reject' : 'Rejeitar'}</span>
                 </button>
 
                 <button
                   type="button"
                   disabled={loading}
                   onClick={() => handleReviewAction('Em análise')}
-                  className="px-4 py-2.5 bg-[#f1edec] hover:bg-[#e5e2e1] text-[#1c1b1b] rounded-[29px] text-xs font-medium transition-all cursor-pointer"
+                  className="aura-btn aura-btn--secondary aura-btn--sm"
                 >
-                  Marcar em Análise
+                  {isEn ? 'Mark Under Review' : 'Marcar em Análise'}
                 </button>
 
                 <button
                   type="button"
                   disabled={loading}
                   onClick={() => handleReviewAction('Aprovada')}
-                  className="flex-1 px-4 py-2.5 bg-[#000000] hover:opacity-85 text-white rounded-[29px] text-xs font-semibold flex items-center justify-center space-x-1.5 transition-all cursor-pointer active:scale-95"
+                  className="aura-btn aura-btn--primary aura-btn--sm flex-1 justify-center"
                 >
                   {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4 text-[#d4eddf]" />}
-                  <span>Aprovar &amp; Faturar</span>
+                  <span>{isEn ? 'Approve & Invoice' : 'Aprovar & Faturar'}</span>
                 </button>
               </div>
             ) : (
-              <div className="flex justify-end pt-2 border-t border-[#c4c7c7]/40">
+              <div className="flex justify-end pt-2 border-t border-line-subtle ">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-5 py-2 rounded-[29px] bg-[#f1edec] hover:bg-[#e5e2e1] text-[#1c1b1b] text-xs font-medium"
+                  className="aura-btn aura-btn--secondary aura-btn--sm"
                 >
-                  Fechar
+                  {isEn ? 'Close' : 'Fechar'}
                 </button>
               </div>
             )}
@@ -253,7 +251,7 @@ export function BillingRequestModal({
         ) : (
           <form onSubmit={handleSubmitCreate} className="p-6 space-y-4">
             {error && (
-              <div className="p-3 bg-[#ffdad6] border border-[#ba1a1a]/20 rounded-xl text-[#93000a] text-xs flex items-center gap-2">
+              <div className="p-3 bg-danger-soft border border-danger/20 rounded-md text-danger-fg text-xs flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{error}</span>
               </div>
@@ -261,17 +259,19 @@ export function BillingRequestModal({
 
             {/* Project Select */}
             <div>
-              <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
-                Projeto Vinculado (Opcional)
+              <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
+                {isEn ? 'Linked Project (Optional)' : 'Projeto Vinculado (Opcional)'}
               </label>
               <select
                 value={projectId}
                 onChange={(e) => setProjectId(e.target.value)}
-                className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-xs text-[#1c1b1b] focus:outline-none focus:border-[#000000] focus:bg-white transition-all cursor-pointer"
+                className="w-full bg-surface-2 border border-line-subtle rounded-md px-4 py-3 text-xs text-fg focus:outline-none focus:border-accent focus:bg-surface-1 focus:shadow-[0_0_0_4px_var(--accent-ring)] transition-all cursor-pointer"
               >
-                <option value="">Nenhum projeto específico</option>
+                <option value="" className="bg-glass-strong text-fg ">
+                  {isEn ? 'No specific project' : 'Nenhum projeto específico'}
+                </option>
                 {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
+                  <option key={p.id} value={p.id} className="bg-glass-strong text-fg ">
                     {p.name}
                   </option>
                 ))}
@@ -281,8 +281,8 @@ export function BillingRequestModal({
             {/* Amount and Currency */}
             <div className="grid grid-cols-3 gap-3">
               <div className="col-span-2">
-                <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
-                  Valor a Faturar
+                <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
+                  {isEn ? 'Amount to Bill' : 'Valor a Faturar'}
                 </label>
                 <input
                   type="number"
@@ -292,21 +292,21 @@ export function BillingRequestModal({
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   placeholder="0.00"
-                  className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-xs text-[#1c1b1b] focus:outline-none focus:border-[#000000] focus:bg-white transition-all font-mono"
+                  className="w-full bg-surface-2 border border-line-subtle rounded-md px-4 py-3 text-xs text-fg focus:outline-none focus:border-accent focus:bg-surface-1 focus:shadow-[0_0_0_4px_var(--accent-ring)] transition-all font-mono"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
-                  Moeda
+                <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
+                  {isEn ? 'Currency' : 'Moeda'}
                 </label>
                 <select
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
-                  className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-xs text-[#1c1b1b] focus:outline-none focus:border-[#000000] focus:bg-white transition-all cursor-pointer"
+                  className="w-full bg-surface-2 border border-line-subtle rounded-md px-4 py-3 text-xs text-fg focus:outline-none focus:border-accent focus:bg-surface-1 focus:shadow-[0_0_0_4px_var(--accent-ring)] transition-all cursor-pointer"
                 >
                   {(Object.keys(CURRENCIES) as CurrencyCode[]).map((code) => (
-                    <option key={code} value={code}>
+                    <option key={code} value={code} className="bg-glass-strong text-fg ">
                       {code} ({CURRENCIES[code].symbol})
                     </option>
                   ))}
@@ -316,40 +316,40 @@ export function BillingRequestModal({
 
             {/* Description */}
             <div>
-              <label className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1.5">
-                Descrição do Serviço / Entrega
+              <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
+                {isEn ? 'Service Description / Deliverable' : 'Descrição do Serviço / Entrega'}
               </label>
               <textarea
                 rows={3}
                 required
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Ex: Conclusão do design das telas de pagamento e validação com o cliente."
-                className="w-full bg-[#f1edec] border border-[#c4c7c7]/35 rounded-xl px-3.5 py-2.5 text-xs text-[#1c1b1b] placeholder-[#747878] focus:outline-none focus:border-[#000000] focus:bg-white transition-all"
+                placeholder={isEn ? 'e.g. Completed checkout design screens and client sign-off.' : 'Ex.: Design dos ecrãs de pagamento concluído e validado com o cliente.'}
+                className="w-full bg-surface-2 border border-line-subtle rounded-md px-4 py-3 text-xs text-fg placeholder:text-fg-muted focus:outline-none focus:border-accent focus:bg-surface-1 focus:shadow-[0_0_0_4px_var(--accent-ring)] transition-all resize-none"
               />
             </div>
 
             {/* Footer Buttons */}
-            <div className="flex space-x-3 pt-2 border-t border-[#c4c7c7]/40">
+            <div className="flex space-x-3 pt-2 border-t border-line-subtle ">
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 px-4 py-2.5 rounded-[29px] bg-[#f1edec] hover:bg-[#e5e2e1] text-[#1c1b1b] text-xs font-medium transition-all cursor-pointer"
+                className="aura-btn aura-btn--secondary aura-btn--sm flex-1"
               >
-                Cancelar
+                {isEn ? 'Cancel' : 'Cancelar'}
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 px-5 py-2.5 bg-[#000000] hover:opacity-85 disabled:opacity-40 text-white font-medium text-xs rounded-[29px] flex items-center justify-center space-x-2 transition-all cursor-pointer active:scale-95"
+                className="aura-btn aura-btn--primary aura-btn--sm flex-1 disabled:opacity-40 justify-center"
               >
                 {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                <span>{loading ? 'A enviar...' : 'Enviar Solicitação'}</span>
+                <span>{loading ? (isEn ? 'Submitting...' : 'A enviar...') : (isEn ? 'Submit Request' : 'Enviar Solicitação')}</span>
               </button>
             </div>
           </form>
         )}
       </div>
-    </div>
+    </EditorPage>
   );
 }

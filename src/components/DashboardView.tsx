@@ -42,8 +42,9 @@ import {
   formatDate,
   convertCurrency,
 } from '../lib/formatters';
-import { Quick10SecSummary } from './Quick10SecSummary';
+import { FinanceDashboard } from './dashboard/FinanceDashboard';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface DashboardViewProps {
   clients: Client[];
@@ -60,6 +61,7 @@ interface DashboardViewProps {
   onOpenNewIncomeModal: () => void;
   onOpenNewExpenseModal?: () => void;
   onAssumeProject?: (projectId: string) => Promise<{ success: boolean; error?: string }>;
+  onUpdateTaskStatus?: (taskId: string, status: import('../types/rbac').TaskStatus) => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -77,8 +79,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenNewIncomeModal,
   onOpenNewExpenseModal,
   onAssumeProject,
+  onUpdateTaskStatus,
 }) => {
   const { isOwner, hasPermission, userProfile } = useAuth();
+  const { lang, t } = useLanguage();
   const hasFinancialAccess = isOwner || hasPermission('dashboard.financial');
 
   const clientMap = new Map<string, Client>(clients.map((c) => [c.id, c]));
@@ -193,7 +197,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      const monthLabel = d.toLocaleString('pt-PT', { month: 'short' });
+      const monthLabel = d.toLocaleString(lang === 'en' ? 'en-US' : 'pt-PT', { month: 'short' });
 
       // Sum incomes
       const incSum = incomes
@@ -221,7 +225,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       });
     }
     return months;
-  }, [incomes, expenses, settings, now, hasFinancialAccess]);
+  }, [incomes, expenses, settings, now, hasFinancialAccess, lang]);
 
   // If user does NOT have financial access, show the Operational Employee Dashboard
   if (!hasFinancialAccess) {
@@ -230,11 +234,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Welcome Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold text-[#1c1b1b] tracking-tight">
-              Olá, {userProfile?.name || 'Membro da Equipa'} 👋
+            <h1 className="text-[30px] sm:text-[38px] font-normal text-fg tracking-[-0.03em] leading-tight">
+              {lang === 'en' ? `Hello, ${userProfile?.name || 'Team Member'}` : `Olá, ${userProfile?.name || 'Membro da Equipa'}`}
             </h1>
-            <p className="text-sm text-[#747878] mt-1">
-              Visão geral das tuas operações, entregas e tarefas
+            <p className="text-sm text-fg-muted mt-1">
+              {lang === 'en' ? 'Overview of your operations, deliverables, and tasks' : 'Visão geral das tuas operações, entregas e tarefas'}
             </p>
           </div>
         </div>
@@ -243,78 +247,86 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div
             onClick={() => onNavigateTab('projects', 'MINE')}
-            className="bg-white border border-[#c4c7c7]/40 rounded-[22px] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:border-[#000000] transition-all cursor-pointer"
+            className="bg-glass border border-line-subtle rounded-xl p-5 shadow-glass aura-glass--interactive cursor-pointer"
           >
-            <span className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1">
-              Meus Projetos
+            <span className="text-[13px] font-medium text-fg-secondary block mb-2">
+              {lang === 'en' ? 'My Projects' : 'Meus Projetos'}
             </span>
-            <div className="text-2xl font-medium tracking-[-0.04em] text-[#0050d7]">
+            <div className="font-display text-[28px] sm:text-[32px] font-normal tracking-[-0.03em] leading-none mt-1 text-accent-soft-fg ">
               {myProjects.length}
             </div>
-            <span className="text-[11px] text-[#747878] mt-1 block">em andamento</span>
+            <span className="text-[13px] font-normal text-fg-muted mt-1.5 block">
+              {lang === 'en' ? 'in progress' : 'em andamento'}
+            </span>
           </div>
 
           <div
             onClick={() => onNavigateTab('tasks', 'MINE')}
-            className="bg-white border border-[#c4c7c7]/40 rounded-[22px] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:border-[#000000] transition-all cursor-pointer"
+            className="bg-glass border border-line-subtle rounded-xl p-5 shadow-glass aura-glass--interactive cursor-pointer"
           >
-            <span className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1">
-              Minhas Tarefas
+            <span className="text-[13px] font-medium text-fg-secondary block mb-2">
+              {lang === 'en' ? 'My tasks' : 'Minhas tarefas'}
             </span>
-            <div className="text-2xl font-medium tracking-[-0.04em] text-[#1c1b1b]">
+            <div className="font-display text-[28px] sm:text-[32px] font-normal tracking-[-0.03em] leading-none mt-1 text-fg ">
               {myPendingTasks.length}
             </div>
-            <span className="text-[11px] text-[#747878] mt-1 block">pendentes</span>
+            <span className="text-[13px] font-normal text-fg-muted mt-1.5 block">
+              {lang === 'en' ? 'pending' : 'pendentes'}
+            </span>
           </div>
 
           <div
             onClick={() => onNavigateTab('projects', 'AVAILABLE')}
-            className="bg-white border border-[#c4c7c7]/40 rounded-[22px] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:border-[#000000] transition-all cursor-pointer"
+            className="bg-glass border border-line-subtle rounded-xl p-5 shadow-glass aura-glass--interactive cursor-pointer"
           >
-            <span className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1">
-              Projetos Disponíveis
+            <span className="text-[13px] font-medium text-fg-secondary block mb-2">
+              {lang === 'en' ? 'Available Projects' : 'Projetos Disponíveis'}
             </span>
-            <div className="text-2xl font-medium tracking-[-0.04em] text-[#003da9]">
+            <div className="font-display text-[28px] sm:text-[32px] font-normal tracking-[-0.03em] leading-none mt-1 text-accent-soft-fg ">
               {availableProjects.length}
             </div>
-            <span className="text-[11px] text-[#003da9] mt-1 block font-medium">para assumir</span>
+            <span className="text-[13px] font-normal text-accent-soft-fg mt-1.5 block font-medium">
+              {lang === 'en' ? 'to claim' : 'para assumir'}
+            </span>
           </div>
 
           <div
             onClick={() => onNavigateTab('clients')}
-            className="bg-white border border-[#c4c7c7]/40 rounded-[22px] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:border-[#000000] transition-all cursor-pointer"
+            className="bg-glass border border-line-subtle rounded-xl p-5 shadow-glass aura-glass--interactive cursor-pointer"
           >
-            <span className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1">
-              Meus Clientes
+            <span className="text-[13px] font-medium text-fg-secondary block mb-2">
+              {lang === 'en' ? 'My Clients' : 'Meus Clientes'}
             </span>
-            <div className="text-2xl font-medium tracking-[-0.04em] text-[#1a6b3a]">
+            <div className="font-display text-[28px] sm:text-[32px] font-normal tracking-[-0.03em] leading-none mt-1 text-success-fg ">
               {activeClientsCount}
             </div>
-            <span className="text-[11px] text-[#747878] mt-1 block">atribuídos</span>
+            <span className="text-[13px] font-normal text-fg-muted mt-1.5 block">
+              {lang === 'en' ? 'assigned' : 'atribuídos'}
+            </span>
           </div>
         </div>
 
         {/* Operational Action Panels */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* My Projects */}
-          <div className="bg-white border border-[#c4c7c7]/40 rounded-[22px] p-6 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+          <div className="bg-glass border border-line-subtle rounded-xl p-6 shadow-glass">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-[#1c1b1b] text-base flex items-center gap-2">
-                <FolderKanban className="w-4 h-4 text-[#0050d7]" />
-                Meus Projetos Atribuídos
+              <h3 className="font-semibold text-fg text-base flex items-center gap-2">
+                <FolderKanban className="w-4 h-4 text-accent-soft-fg " />
+                {lang === 'en' ? 'My Assigned Projects' : 'Meus Projetos Atribuídos'}
               </h3>
               <button
                 onClick={() => onNavigateTab('projects', 'MINE')}
-                className="text-xs text-[#0050d7] font-semibold hover:underline cursor-pointer"
+                className="text-xs text-accent-soft-fg font-semibold hover:underline cursor-pointer"
               >
-                Ver todos
+                {lang === 'en' ? 'View all' : 'Ver todos'}
               </button>
             </div>
 
             {myProjects.length === 0 ? (
-              <div className="py-8 text-center text-[#747878]">
-                <FolderKanban className="w-8 h-8 mx-auto mb-2 text-[#c4c7c7]" />
-                <p className="text-xs">Não tens projetos atribuídos no momento</p>
+              <div className="py-8 text-center text-fg-muted ">
+                <FolderKanban className="w-8 h-8 mx-auto mb-2 text-fg-disabled " />
+                <p className="text-xs">{lang === 'en' ? 'You have no assigned projects at the moment' : 'Não tens projetos atribuídos no momento'}</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -325,18 +337,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <div
                       key={p.id}
                       onClick={() => onNavigateTab('projects')}
-                      className="p-3 bg-[#f7f3f2] hover:bg-[#f1edec] rounded-[16px] border border-[#c4c7c7]/30 transition-all cursor-pointer flex items-center justify-between"
+                      className="p-3 bg-surface-2 hover:bg-sunken rounded-lg border border-line-subtle transition-all cursor-pointer flex items-center justify-between"
                     >
                       <div>
-                        <div className="font-medium text-sm text-[#1c1b1b]">{p.name}</div>
-                        <div className="text-xs text-[#747878] mt-0.5">
-                          {client?.name} • Entrega: {formatDate(p.dueDate)}
+                        <div className="font-medium text-sm text-fg ">{p.name}</div>
+                        <div className="text-xs text-fg-muted mt-0.5">
+                          {client?.name} • {lang === 'en' ? 'Delivery: ' : 'Entrega: '}{formatDate(p.dueDate)}
                         </div>
                       </div>
                       <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
-                        daysToDue <= 2 ? 'bg-[#ffdad6] text-[#ba1a1a]' : 'bg-[#dbe1ff] text-[#003da9]'
-                      }`}>
-                        {daysToDue >= 0 ? `em ${daysToDue}d` : `atrasado ${Math.abs(daysToDue)}d`}
+ daysToDue <= 2 ? 'bg-danger-soft text-danger-fg ' : 'bg-accent-soft text-accent-soft-fg '
+ }`}>
+                        {daysToDue >= 0 ? (lang === 'en' ? `in ${daysToDue}d` : `em ${daysToDue}d`) : (lang === 'en' ? `overdue ${Math.abs(daysToDue)}d` : `atrasado ${Math.abs(daysToDue)}d`)}
                       </span>
                     </div>
                   );
@@ -346,24 +358,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           {/* Available Projects */}
-          <div className="bg-white border border-[#c4c7c7]/40 rounded-[22px] p-6 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+          <div className="bg-glass border border-line-subtle rounded-xl p-6 shadow-glass">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-[#1c1b1b] text-base flex items-center gap-2">
-                <Globe className="w-4 h-4 text-[#003da9]" />
-                Projetos Disponíveis para Assumir
+              <h3 className="font-semibold text-fg text-base flex items-center gap-2">
+                <Globe className="w-4 h-4 text-accent-soft-fg " />
+                {lang === 'en' ? 'Projects Available to Claim' : 'Projetos Disponíveis para Assumir'}
               </h3>
               <button
                 onClick={() => onNavigateTab('projects', 'AVAILABLE')}
-                className="text-xs text-[#0050d7] font-semibold hover:underline cursor-pointer"
+                className="text-xs text-accent-soft-fg font-semibold hover:underline cursor-pointer"
               >
-                Ver todos
+                {lang === 'en' ? 'View all' : 'Ver todos'}
               </button>
             </div>
 
             {availableProjects.length === 0 ? (
-              <div className="py-8 text-center text-[#747878]">
-                <Globe className="w-8 h-8 mx-auto mb-2 text-[#c4c7c7]" />
-                <p className="text-xs">Nenhum projeto disponível no momento</p>
+              <div className="py-8 text-center text-fg-muted ">
+                <Globe className="w-8 h-8 mx-auto mb-2 text-fg-disabled " />
+                <p className="text-xs">{lang === 'en' ? 'No projects available at the moment' : 'Nenhum projeto disponível no momento'}</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -372,21 +384,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   return (
                     <div
                       key={p.id}
-                      className="p-3 bg-[#dbe1ff]/40 rounded-[16px] border border-[#003da9]/20 flex items-center justify-between"
+                      className="p-3 bg-accent-soft/40 rounded-lg border border-accent/20 flex items-center justify-between"
                     >
                       <div>
-                        <div className="font-semibold text-sm text-[#1c1b1b]">{p.name}</div>
-                        <div className="text-xs text-[#747878] mt-0.5">
+                        <div className="font-semibold text-sm text-fg ">{p.name}</div>
+                        <div className="text-xs text-fg-muted mt-0.5">
                           {client?.name} • {p.category}
                         </div>
                       </div>
                       {onAssumeProject && (
                         <button
                           onClick={() => onAssumeProject(p.id)}
-                          className="inline-flex items-center space-x-1 bg-[#0050d7] text-white px-3 py-1 rounded-full text-xs font-semibold hover:opacity-90 transition-all cursor-pointer shadow-xs active:scale-95 shrink-0"
+                          className="inline-flex items-center space-x-1 bg-accent text-white px-3 py-1 rounded-full text-xs font-semibold hover:opacity-90 transition-all cursor-pointer shadow-xs active:scale-95 shrink-0"
                         >
                           <Hand className="w-3 h-3" />
-                          <span>Assumir</span>
+                          <span>{lang === 'en' ? 'Claim' : 'Assumir'}</span>
                         </button>
                       )}
                     </div>
@@ -407,323 +419,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   // Full Financial Dashboard for Owner / Admin with financial access
   return (
-    <div className="space-y-8">
-      {/* Pending Billing Requests Alert Banner */}
-      {pendingBillingRequests.length > 0 && (
-        <div
-          onClick={() => onNavigateTab('billing', 'Solicitada')}
-          className="p-4 rounded-[22px] bg-[#fff3d6] border border-[#7a5400]/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer hover:bg-[#ffecc0] transition-all shadow-xs"
-        >
-          <div className="flex items-center space-x-3">
-            <div className="w-9 h-9 rounded-full bg-[#7a5400] text-white flex items-center justify-center shrink-0">
-              <FileText className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="font-semibold text-sm text-[#1c1b1b]">
-                {pendingBillingRequests.length} {pendingBillingRequests.length === 1 ? 'solicitação de faturamento pendente' : 'solicitações de faturamento pendentes'}
-              </div>
-              <div className="text-xs text-[#747878]">
-                Colaboradores enviaram pedidos de faturamento aguardando sua análise e aprovação.
-              </div>
-            </div>
-          </div>
-          <button className="px-4 py-2 bg-[#000000] text-white text-xs font-semibold rounded-full shrink-0 self-start sm:self-auto hover:opacity-85 transition-opacity">
-            Revisar Pedidos &rarr;
-          </button>
-        </div>
-      )}
-
-      {/* 10-Second Executive Summary */}
-      <Quick10SecSummary
-        clients={clients}
-        projects={projects}
-        incomes={incomes}
-        expenses={expenses}
-        settings={settings}
-        currencyFilter={currencyFilter}
-        onNavigateToTab={onNavigateTab}
-        onOpenWhatsAppCharge={onOpenWhatsAppCharge}
-        onOpenNewExpenseModal={onOpenNewExpenseModal}
-      />
-
-      {/* 8 Metric KPI Cards Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {/* Total a Receber */}
-        <div
-          onClick={() => onNavigateTab('projects', 'a-receber')}
-          className="bg-white border border-[#c4c7c7]/40 rounded-[22px] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:border-[#000000] transition-all cursor-pointer group"
-        >
-          <span className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1">
-            Total a Receber
-          </span>
-          <div className="text-2xl font-medium tracking-[-0.04em] text-[#000000]">
-            {totalToReceive.formatted}
-          </div>
-          <span className="text-xs text-[#747878] mt-1 block">
-            {pendingIncomeItems.length} faturas/saldos
-          </span>
-        </div>
-
-        {/* Faturamento do Mês */}
-        <div
-          onClick={() => onNavigateTab('financial', 'receitas-recebidas')}
-          className="bg-white border border-[#c4c7c7]/40 rounded-[22px] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:border-[#000000] transition-all cursor-pointer group"
-        >
-          <span className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1">
-            Recebido no Mês
-          </span>
-          <div className="text-2xl font-medium tracking-[-0.04em] text-[#1a6b3a]">
-            {totalReceivedThisMonth.formatted}
-          </div>
-          <span className="text-xs text-[#747878] mt-1 block">
-            {monthlyReceivedItems.length} entradas liquidadas
-          </span>
-        </div>
-
-        {/* Custos Operacionais */}
-        <div
-          onClick={() => onNavigateTab('financial', 'despesas')}
-          className="bg-white border border-[#c4c7c7]/40 rounded-[22px] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:border-[#000000] transition-all cursor-pointer group"
-        >
-          <span className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1">
-            Custos do Mês
-          </span>
-          <div className="text-2xl font-medium tracking-[-0.04em] text-[#93000a]">
-            {totalExpensesThisMonth.formatted}
-          </div>
-          <span className="text-xs text-[#747878] mt-1 block">
-            {monthlyExpenseItems.length} despesas
-          </span>
-        </div>
-
-        {/* Lucro Líquido */}
-        <div
-          onClick={() => onNavigateTab('reports')}
-          className="bg-white border border-[#c4c7c7]/40 rounded-[22px] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:border-[#000000] transition-all cursor-pointer group"
-        >
-          <span className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1">
-            Lucro Líquido
-          </span>
-          <div className="text-2xl font-medium tracking-[-0.04em] text-[#0050d7]">
-            {netProfitThisMonthFormatted}
-          </div>
-          <span className="text-xs text-[#747878] mt-1 block">saldo real do mês</span>
-        </div>
-
-        {/* Clientes Ativos */}
-        <div
-          onClick={() => onNavigateTab('clients')}
-          className="bg-white border border-[#c4c7c7]/40 rounded-[22px] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:border-[#000000] transition-all cursor-pointer group"
-        >
-          <span className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1">
-            Clientes Ativos
-          </span>
-          <div className="text-2xl font-medium tracking-[-0.04em] text-[#000000]">
-            {activeClientsCount}
-          </div>
-          <span className="text-xs text-[#747878] mt-1 block">na carteira</span>
-        </div>
-
-        {/* Projetos em Andamento */}
-        <div
-          onClick={() => onNavigateTab('projects', 'ativos')}
-          className="bg-white border border-[#c4c7c7]/40 rounded-[22px] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:border-[#000000] transition-all cursor-pointer group"
-        >
-          <span className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1">
-            Projetos Ativos
-          </span>
-          <div className="text-2xl font-medium tracking-[-0.04em] text-[#003da9]">
-            {inProgressProjects.length}
-          </div>
-          <span className="text-xs text-[#747878] mt-1 block">em produção</span>
-        </div>
-
-        {/* Projetos Concluídos */}
-        <div
-          onClick={() => onNavigateTab('projects', 'Concluído')}
-          className="bg-white border border-[#c4c7c7]/40 rounded-[22px] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:border-[#000000] transition-all cursor-pointer group"
-        >
-          <span className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1">
-            Entregas Feitas
-          </span>
-          <div className="text-2xl font-medium tracking-[-0.04em] text-[#1a6b3a]">
-            {completedProjects.length}
-          </div>
-          <span className="text-xs text-[#747878] mt-1 block">projetos concluídos</span>
-        </div>
-
-        {/* Cobranças Atrasadas */}
-        <div
-          onClick={() => onNavigateTab('financial', 'receitas-atrasadas')}
-          className="bg-white border border-[#c4c7c7]/40 rounded-[22px] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:border-[#000000] transition-all cursor-pointer group"
-        >
-          <span className="text-[11px] font-semibold text-[#747878] uppercase tracking-widest block mb-1">
-            Inadimplência
-          </span>
-          <div className="text-2xl font-medium tracking-[-0.04em] text-[#ba1a1a]">
-            {overdueIncomes.length}
-          </div>
-          <span className="text-xs text-[#747878] mt-1 block">faturas vencidas</span>
-        </div>
-      </div>
-
-      {/* Chart Section */}
-      <div className="bg-white border border-[#c4c7c7]/40 rounded-[22px] p-6 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h3 className="font-semibold text-[#1c1b1b] text-base">Evolução Financeira Semestral</h3>
-            <p className="text-xs text-[#747878] mt-0.5">
-              Receitas vs. Custos convertidos para a moeda base ({settings.defaultCurrency})
-            </p>
-          </div>
-        </div>
-
-        <div className="h-64 sm:h-72 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e2e1" />
-              <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fill: '#747878', fontSize: 12 }} />
-              <YAxis tickLine={false} axisLine={false} tick={{ fill: '#747878', fontSize: 12 }} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#ffffff',
-                  borderColor: '#c4c7c7',
-                  borderRadius: '16px',
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
-                  fontSize: '12px',
-                  color: '#1c1b1b',
-                }}
-              />
-              <Legend
-                verticalAlign="top"
-                align="right"
-                iconType="circle"
-                wrapperStyle={{ paddingBottom: '16px', fontSize: '12px' }}
-              />
-              <Bar dataKey="receitas" name="Receitas" fill="#000000" radius={[6, 6, 0, 0]} />
-              <Bar dataKey="despesas" name="Despesas" fill="#c4c7c7" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Pending Collections & Urgent Deliveries Side-by-Side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Pending Collections */}
-        <div className="bg-white border border-[#c4c7c7]/40 rounded-[22px] p-6 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-[#1c1b1b] text-base flex items-center gap-2">
-              <DollarSign className="w-4 h-4 text-[#ba1a1a]" />
-              Cobranças Pendentes & Atrasadas
-            </h3>
-            <button
-              onClick={() => onNavigateTab('financial', 'pendentes')}
-              className="text-xs text-[#0050d7] font-semibold hover:underline cursor-pointer"
-            >
-              Ver todas
-            </button>
-          </div>
-
-          {pendingIncomes.length === 0 ? (
-            <div className="py-8 text-center text-[#747878]">
-              <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-[#1a6b3a]" />
-              <p className="text-xs">Todas as faturas estão liquidadas em dia!</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {pendingIncomes.slice(0, 5).map((inc) => {
-                const client = clientMap.get(inc.clientId);
-                const daysDiff = getDaysDiff(inc.dueDate);
-                const isOverdue = daysDiff < 0;
-
-                return (
-                  <div
-                    key={inc.id}
-                    className="p-3 bg-[#f7f3f2] hover:bg-[#f1edec] rounded-[16px] border border-[#c4c7c7]/30 transition-all flex items-center justify-between gap-3"
-                  >
-                    <div>
-                      <div className="font-medium text-sm text-[#1c1b1b]">{inc.description}</div>
-                      <div className="text-xs text-[#747878] mt-0.5">
-                        {client?.name} • Vencimento: {formatDate(inc.dueDate)}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center space-x-2 shrink-0">
-                      <span className="font-medium text-sm text-[#1c1b1b]">
-                        {formatCurrency(inc.amount, inc.currency)}
-                      </span>
-                      {client?.whatsapp && (
-                        <button
-                          onClick={() => {
-                            const msg = `Olá, ${client.name}! Lembramos que a fatura de ${formatCurrency(inc.amount, inc.currency)} referente a "${inc.description}" venceu/vence em ${formatDate(inc.dueDate)}. Obrigado!`;
-                            onOpenWhatsAppCharge(client.whatsapp, msg);
-                          }}
-                          className="p-1.5 bg-[#d4eddf] text-[#1a6b3a] rounded-full hover:opacity-85 transition-colors cursor-pointer"
-                          title="Cobrar via WhatsApp"
-                        >
-                          <MessageCircle className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Upcoming Deliveries */}
-        <div className="bg-white border border-[#c4c7c7]/40 rounded-[22px] p-6 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-[#1c1b1b] text-base flex items-center gap-2">
-              <Clock className="w-4 h-4 text-[#0050d7]" />
-              Próximos Prazos de Entrega
-            </h3>
-            <button
-              onClick={() => onNavigateTab('projects', 'Em andamento')}
-              className="text-xs text-[#0050d7] font-semibold hover:underline cursor-pointer"
-            >
-              Ver todos
-            </button>
-          </div>
-
-          {inProgressProjects.length === 0 ? (
-            <div className="py-8 text-center text-[#747878]">
-              <FolderKanban className="w-8 h-8 mx-auto mb-2 text-[#c4c7c7]" />
-              <p className="text-xs">Nenhum projeto em andamento no momento</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {inProgressProjects.slice(0, 5).map((p) => {
-                const client = clientMap.get(p.clientId);
-                const daysToDue = getDaysDiff(p.dueDate);
-                return (
-                  <div
-                    key={p.id}
-                    onClick={() => onNavigateTab('projects')}
-                    className="p-3 bg-[#f7f3f2] hover:bg-[#f1edec] rounded-[16px] border border-[#c4c7c7]/30 transition-all cursor-pointer flex items-center justify-between gap-3"
-                  >
-                    <div>
-                      <div className="font-medium text-sm text-[#1c1b1b]">{p.name}</div>
-                      <div className="text-xs text-[#747878] mt-0.5">
-                        {client?.name} • Entrega: {formatDate(p.dueDate)}
-                      </div>
-                    </div>
-
-                    <span
-                      className={`text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${
-                        daysToDue <= 2 ? 'bg-[#ffdad6] text-[#ba1a1a]' : 'bg-[#dbe1ff] text-[#003da9]'
-                      }`}
-                    >
-                      {daysToDue >= 0 ? `em ${daysToDue}d` : `atrasado ${Math.abs(daysToDue)}d`}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+    <FinanceDashboard
+      userName={userProfile?.name || ''}
+      lang={lang === 'en' ? 'en' : 'pt'}
+      clients={clients}
+      projects={projects}
+      incomes={incomes}
+      expenses={expenses}
+      tasks={tasks}
+      billingRequests={billingRequests}
+      settings={settings}
+      currencyFilter={currencyFilter}
+      onNavigateTab={onNavigateTab}
+      onOpenWhatsAppCharge={onOpenWhatsAppCharge}
+      onOpenNewIncomeModal={onOpenNewIncomeModal}
+      onOpenNewExpenseModal={onOpenNewExpenseModal}
+      onUpdateTaskStatus={onUpdateTaskStatus}
+    />
   );
 };

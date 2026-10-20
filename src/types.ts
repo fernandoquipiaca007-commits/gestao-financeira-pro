@@ -11,21 +11,57 @@ export interface CurrencyConfig {
 }
 
 export const CURRENCIES: Record<CurrencyCode, CurrencyConfig> = {
-  BRL: { code: 'BRL', symbol: 'R$', name: 'Real (Brasil)', flag: '🇧🇷', defaultCountry: 'BR' },
-  AOA: { code: 'AOA', symbol: 'Kz', name: 'Kwanza (Angola)', flag: '🇦🇴', defaultCountry: 'AO' },
-  USD: { code: 'USD', symbol: 'US$', name: 'Dólar (EUA)', flag: '🇺🇸', defaultCountry: 'US' },
-  EUR: { code: 'EUR', symbol: '€', name: 'Euro (Portugal/UE)', flag: '🇵🇹', defaultCountry: 'PT' },
+  BRL: { code: 'BRL', symbol: 'R$', name: 'Real (Brasil)', flag: '', defaultCountry: 'BR' },
+  AOA: { code: 'AOA', symbol: 'Kz', name: 'Kwanza (Angola)', flag: '', defaultCountry: 'AO' },
+  USD: { code: 'USD', symbol: 'US$', name: 'Dólar (EUA)', flag: '', defaultCountry: 'US' },
+  EUR: { code: 'EUR', symbol: '€', name: 'Euro (Portugal/UE)', flag: '', defaultCountry: 'PT' },
 };
 
 export const COUNTRIES: Record<CountryCode, { name: string; flag: string; defaultCurrency: CurrencyCode }> = {
-  BR: { name: 'Brasil', flag: '🇧🇷', defaultCurrency: 'BRL' },
-  AO: { name: 'Angola', flag: '🇦🇴', defaultCurrency: 'AOA' },
-  PT: { name: 'Portugal', flag: '🇵🇹', defaultCurrency: 'EUR' },
-  US: { name: 'Estados Unidos', flag: '🇺🇸', defaultCurrency: 'USD' },
-  OTHER: { name: 'Outro País', flag: '🌐', defaultCurrency: 'BRL' },
+  BR: { name: 'Brasil', flag: '', defaultCurrency: 'BRL' },
+  AO: { name: 'Angola', flag: '', defaultCurrency: 'AOA' },
+  PT: { name: 'Portugal', flag: '', defaultCurrency: 'EUR' },
+  US: { name: 'Estados Unidos', flag: '', defaultCurrency: 'USD' },
+  OTHER: { name: 'Outro País', flag: '', defaultCurrency: 'BRL' },
 };
 
-export type ClientType = 'Tráfego Pago' | 'Desenvolvimento' | 'Consultoria' | 'Outro';
+export type ClientType =
+  | 'Tráfego Pago'
+  | 'Desenvolvimento'
+  | 'Consultoria'
+  | 'Design & Branding'
+  | 'Social Media'
+  | 'Advocacia & Jurídico'
+  | 'Contabilidade & Finanças'
+  | 'Arquitetura & Engenharia'
+  | 'Saúde & Clínicas'
+  | 'Imobiliária & Corretores'
+  | 'E-commerce & Varejo'
+  | 'Fotografia & Audiovisual'
+  | 'Educação & Cursos'
+  | 'Estética & Beleza'
+  | 'Prestação de Serviços'
+  | 'Outro'
+  | (string & {});
+
+export const DEFAULT_CLIENT_NICHES = [
+  'Tráfego Pago',
+  'Desenvolvimento',
+  'Consultoria',
+  'Design & Branding',
+  'Social Media',
+  'Advocacia & Jurídico',
+  'Contabilidade & Finanças',
+  'Arquitetura & Engenharia',
+  'Saúde & Clínicas',
+  'Imobiliária & Corretores',
+  'E-commerce & Varejo',
+  'Fotografia & Audiovisual',
+  'Educação & Cursos',
+  'Estética & Beleza',
+  'Prestação de Serviços',
+  'Outro',
+] as const;
 
 export interface Client {
   id: string;
@@ -38,6 +74,18 @@ export interface Client {
   currency: CurrencyCode;
   notes?: string;
   createdAt: string;
+  // Ficha completa (migração 014 — todos opcionais)
+  taxId?: string;
+  website?: string;
+  address?: string;
+  city?: string;
+  postalCode?: string;
+  contactName?: string;
+  contactRole?: string;
+  preferredChannel?: 'whatsapp' | 'email' | 'phone';
+  paymentTermsDays?: number;
+  tags?: string[];
+  source?: string;
 }
 
 // ----------------------------------------------------
@@ -53,7 +101,7 @@ export interface Partner {
   createdAt: string;
 }
 
-export type ProjectCategory = 'Tráfego Pago' | 'Website' | 'Landing Page' | 'Loja Virtual' | 'Automação' | 'Outro';
+export type ProjectCategory = 'Tráfego Pago' | 'Website' | 'Landing Page' | 'Loja Virtual' | 'Automação' | 'Outro' | (string & {});
 
 export type ProjectStatus = 'Em andamento' | 'Aguardando cliente' | 'Concluído' | 'Cancelado';
 
@@ -103,7 +151,41 @@ export interface Project {
 
 export type IncomeStatus = 'Pendente' | 'Recebido' | 'Atrasado';
 
+export const INCOME_STATUS_LABELS: Record<IncomeStatus, { pt: string; en: string }> = {
+  Pendente: { pt: 'Pendente', en: 'Pending' },
+  Recebido: { pt: 'Recebido', en: 'Received' },
+  Atrasado: { pt: 'Atrasado', en: 'Overdue' },
+};
+
+export function getIncomeStatusLabel(status: IncomeStatus, lang: 'pt' | 'en' = 'pt'): string {
+  return INCOME_STATUS_LABELS[status]?.[lang] || status;
+}
+
+export const PROJECT_STATUS_LABELS: Record<ProjectStatus, { pt: string; en: string }> = {
+  'Em andamento': { pt: 'Em andamento', en: 'In Progress' },
+  'Aguardando cliente': { pt: 'Aguardando cliente', en: 'Waiting for Client' },
+  'Concluído': { pt: 'Concluído', en: 'Completed' },
+  'Cancelado': { pt: 'Cancelado', en: 'Canceled' },
+};
+
+export function getProjectStatusLabel(status: ProjectStatus, lang: 'pt' | 'en' = 'pt'): string {
+  return PROJECT_STATUS_LABELS[status]?.[lang] || status;
+}
+
 export type PaymentMethod = 'PIX' | 'Transferência' | 'Cartão' | 'Boleto' | 'Dinheiro' | 'Outro';
+
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, { pt: string; en: string }> = {
+  PIX: { pt: 'PIX', en: 'PIX' },
+  'Transferência': { pt: 'Transferência Bancária', en: 'Bank Transfer' },
+  'Cartão': { pt: 'Cartão de Crédito/Débito', en: 'Credit/Debit Card' },
+  Boleto: { pt: 'Boleto Bancário', en: 'Bank Slip' },
+  Dinheiro: { pt: 'Dinheiro', en: 'Cash' },
+  Outro: { pt: 'Outro', en: 'Other' },
+};
+
+export function getPaymentMethodLabel(method: PaymentMethod, lang: 'pt' | 'en' = 'pt'): string {
+  return PAYMENT_METHOD_LABELS[method]?.[lang] || method;
+}
 
 export interface Income {
   id: string;
@@ -132,7 +214,23 @@ export interface Income {
   stripeStatus?: 'none' | 'draft' | 'open' | 'paid' | 'void' | 'uncollectible';
 }
 
-export type ExpenseCategory = 'Internet' | 'Hospedagem' | 'Domínio' | 'Publicidade' | 'Ferramentas' | 'Salário' | 'Retirada Própria' | 'Comissão Parceiro' | 'Outros';
+export type ExpenseCategory = 'Internet' | 'Hospedagem' | 'Domínio' | 'Publicidade' | 'Ferramentas' | 'Salário' | 'Retirada Própria' | 'Comissão Parceiro' | 'Outros' | (string & {});
+
+export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, { pt: string; en: string }> = {
+  Internet: { pt: 'Internet', en: 'Internet' },
+  Hospedagem: { pt: 'Hospedagem', en: 'Hosting' },
+  'Domínio': { pt: 'Domínio', en: 'Domain' },
+  Publicidade: { pt: 'Publicidade / Tráfego', en: 'Advertising / Ads' },
+  Ferramentas: { pt: 'Softwares & Ferramentas', en: 'Software & Tools' },
+  'Salário': { pt: 'Salário & Equipa', en: 'Salary & Team' },
+  'Retirada Própria': { pt: 'Retirada Própria / Pró-labore', en: 'Owner Withdrawal' },
+  'Comissão Parceiro': { pt: 'Comissão de Parceiro', en: 'Partner Commission' },
+  Outros: { pt: 'Outros Custos', en: 'Other Costs' },
+};
+
+export function getExpenseCategoryLabel(category: ExpenseCategory, lang: 'pt' | 'en' = 'pt'): string {
+  return EXPENSE_CATEGORY_LABELS[category]?.[lang] || category;
+}
 
 export interface Expense {
   id: string;
@@ -158,6 +256,19 @@ export interface CategoryItem {
 }
 
 export type AgendaEventType = 'cobranca' | 'pagamento' | 'entrega' | 'compromisso' | 'alarme' | 'comissao';
+
+export const AGENDA_EVENT_TYPE_LABELS: Record<AgendaEventType, { pt: string; en: string }> = {
+  cobranca: { pt: 'Cobrança', en: 'Collection' },
+  pagamento: { pt: 'Data de Pagamento', en: 'Payment Due' },
+  entrega: { pt: 'Data de Entrega', en: 'Delivery Date' },
+  compromisso: { pt: 'Compromisso', en: 'Meeting / Appointment' },
+  alarme: { pt: 'Alarme / Lembrete', en: 'Alarm / Reminder' },
+  comissao: { pt: 'Pagamento de Comissão', en: 'Commission Payment' },
+};
+
+export function getAgendaEventTypeLabel(type: AgendaEventType, lang: 'pt' | 'en' = 'pt'): string {
+  return AGENDA_EVENT_TYPE_LABELS[type]?.[lang] || type;
+}
 
 export interface AgendaEvent {
   id: string;
@@ -187,6 +298,7 @@ export interface AppSettings {
     EUR: number; // e.g. 0.16 EUR per 1 BRL
   };
   emailSettings?: ResendEmailSettings;
+  language?: 'pt' | 'en';
 }
 
 export interface NotificationItem {

@@ -6,8 +6,10 @@ export function computeNotifications(
   clients: Client[],
   projects: Project[],
   incomes: Income[],
-  expenses: Expense[]
+  expenses: Expense[],
+  lang: 'pt' | 'en' = 'pt'
 ): NotificationItem[] {
+  const isEn = lang === 'en';
   const list: NotificationItem[] = [];
 
   const clientMap = new Map<string, Client>();
@@ -28,17 +30,22 @@ export function computeNotifications(
 
     const diff = getDaysDiff(inc.dueDate);
     const client = clientMap.get(inc.clientId);
-    const clientName = client?.name || 'Cliente';
+    const clientName = client?.name || (isEn ? 'Client' : 'Cliente');
     const clientPhone = client?.whatsapp || '';
     const formattedAmount = formatCurrency(inc.amount, inc.currency);
 
     if (diff === 0 || isToday(inc.dueDate)) {
-      const text = `Olá, ${clientName}! Tudo bem? Gostaria de lembrar que o pagamento referentes a "${inc.description}" no valor de ${formattedAmount} vence hoje (${formatDate(inc.dueDate)}). Seguem os dados para pagamento. Qualquer dúvida estou à disposição!`;
+      const text = isEn
+        ? `Hello, ${clientName}! Hope you are doing well. Friendly reminder that the payment for "${inc.description}" in the amount of ${formattedAmount} is due today (${formatDate(inc.dueDate)}). Please find payment details attached. Let us know if you have any questions!`
+        : `Olá, ${clientName}! Tudo bem? Gostaria de lembrar que o pagamento referentes a "${inc.description}" no valor de ${formattedAmount} vence hoje (${formatDate(inc.dueDate)}). Seguem os dados para pagamento. Qualquer dúvida estou à disposição!`;
+
       list.push({
         id: `inc-due-${inc.id}`,
         type: 'due_today',
-        title: `Vencimento Hoje`,
-        message: `🔔 Hoje vence o pagamento de ${clientName} (${formattedAmount}).`,
+        title: isEn ? 'Payment Due Today' : 'Vencimento Hoje',
+        message: isEn
+          ? `Today payment from ${clientName} (${formattedAmount}) is due.`
+          : `Hoje vence o pagamento de ${clientName} (${formattedAmount}).`,
         date: inc.dueDate,
         clientId: inc.clientId,
         projectId: inc.projectId,
@@ -49,12 +56,17 @@ export function computeNotifications(
       });
     } else if (diff < 0) {
       const daysOverdue = Math.abs(diff);
-      const text = `Olá, ${clientName}! Espero que esteja bem. Notei que a cobrança referentes a "${inc.description}" no valor de ${formattedAmount} está pendente há ${daysOverdue} dia(s) (venceu em ${formatDate(inc.dueDate)}). Poderia nos enviar o comprovante assim que possível? Obrigado!`;
+      const text = isEn
+        ? `Hello, ${clientName}! Hope you are doing well. We noticed that invoice "${inc.description}" in the amount of ${formattedAmount} is overdue by ${daysOverdue} day(s) (due on ${formatDate(inc.dueDate)}). Could you please send us the payment confirmation at your earliest convenience? Thank you!`
+        : `Olá, ${clientName}! Espero que esteja bem. Notei que a cobrança referentes a "${inc.description}" no valor de ${formattedAmount} está pendente há ${daysOverdue} dia(s) (venceu em ${formatDate(inc.dueDate)}). Poderia nos enviar o comprovante assim que possível? Obrigado!`;
+
       list.push({
         id: `inc-overdue-${inc.id}`,
         type: 'overdue',
-        title: `Pagamento Atrasado`,
-        message: `🔔 Cliente ${clientName} está com pagamento atrasado há ${daysOverdue} dia(s) (${formattedAmount}).`,
+        title: isEn ? 'Overdue Payment' : 'Pagamento Atrasado',
+        message: isEn
+          ? `Client ${clientName} has an overdue payment of ${formattedAmount} (${daysOverdue} day(s) overdue).`
+          : `Cliente ${clientName} está com pagamento atrasado há ${daysOverdue} dia(s) (${formattedAmount}).`,
         date: inc.dueDate,
         clientId: inc.clientId,
         projectId: inc.projectId,
@@ -72,14 +84,17 @@ export function computeNotifications(
 
     const diff = getDaysDiff(proj.dueDate);
     const client = clientMap.get(proj.clientId);
-    const clientName = client ? (client.company || client.name) : 'Cliente';
+    const clientName = client ? (client.company || client.name || (isEn ? 'Client' : 'Cliente')) : (isEn ? 'Client' : 'Cliente');
+    const projName = proj.name || 'Projeto';
 
     if (diff === 1) {
       list.push({
         id: `proj-due-tomorrow-${proj.id}`,
         type: 'project_due',
-        title: `Entrega Amanhã`,
-        message: `🔔 Amanhã entregar ${proj.category} (${proj.name}) da ${clientName}.`,
+        title: isEn ? 'Delivery Tomorrow' : 'Entrega Amanhã',
+        message: isEn
+          ? `Tomorrow: deliver ${proj.category || ''} (${projName}) for ${clientName}.`
+          : `Amanhã entregar ${proj.category || ''} (${projName}) da ${clientName}.`,
         date: proj.dueDate,
         clientId: proj.clientId,
         projectId: proj.id,
@@ -89,8 +104,10 @@ export function computeNotifications(
       list.push({
         id: `proj-due-today-${proj.id}`,
         type: 'project_due',
-        title: `Entrega Hoje`,
-        message: `🔔 Hoje é o prazo de entrega do projeto "${proj.name}" (${clientName}).`,
+        title: isEn ? 'Delivery Today' : 'Entrega Hoje',
+        message: isEn
+          ? `Today is the delivery deadline for project "${projName}" (${clientName}).`
+          : `Hoje é o prazo de entrega do projeto "${projName}" (${clientName}).`,
         date: proj.dueDate,
         clientId: proj.clientId,
         projectId: proj.id,
@@ -100,8 +117,10 @@ export function computeNotifications(
       list.push({
         id: `proj-due-soon-${proj.id}`,
         type: 'project_due',
-        title: `Entrega Próxima`,
-        message: `🔔 Faltam ${diff} dia(s) para a entrega de ${proj.name} (${clientName}).`,
+        title: isEn ? 'Upcoming Delivery' : 'Entrega Próxima',
+        message: isEn
+          ? `${diff} day(s) remaining for delivery of ${projName} (${clientName}).`
+          : `Faltam ${diff} dia(s) para a entrega de ${projName} (${clientName}).`,
         date: proj.dueDate,
         clientId: proj.clientId,
         projectId: proj.id,
@@ -118,12 +137,19 @@ export function computeNotifications(
     const formattedAmount = formatCurrency(exp.amount, exp.currency);
 
     if (diff >= 0 && diff <= 7) {
-      const whenText = diff === 0 ? 'hoje' : diff === 1 ? 'amanhã' : `em ${diff} dias`;
+      const whenText = diff === 0
+        ? (isEn ? 'today' : 'hoje')
+        : diff === 1
+        ? (isEn ? 'tomorrow' : 'amanhã')
+        : (isEn ? `in ${diff} days` : `em ${diff} dias`);
+
       list.push({
         id: `exp-due-${exp.id}`,
         type: 'expense_due',
-        title: `Despesa Próxima`,
-        message: `🔔 ${exp.description} (${formattedAmount}) vence ${whenText}.`,
+        title: isEn ? 'Upcoming Expense' : 'Despesa Próxima',
+        message: isEn
+          ? `${exp.description} (${formattedAmount}) is due ${whenText}.`
+          : `${exp.description} (${formattedAmount}) vence ${whenText}.`,
         date: exp.date,
         expenseId: exp.id,
         severity: diff <= 1 ? 'high' : 'medium',
@@ -132,8 +158,10 @@ export function computeNotifications(
       list.push({
         id: `exp-overdue-${exp.id}`,
         type: 'expense_due',
-        title: `Despesa Vencida`,
-        message: `⚠️ Despesa vencida: ${exp.description} (${formattedAmount}) em ${formatDate(exp.date)}.`,
+        title: isEn ? 'Overdue Expense' : 'Despesa Vencida',
+        message: isEn
+          ? `Overdue expense: ${exp.description} (${formattedAmount}) on ${formatDate(exp.date)}.`
+          : `Despesa vencida: ${exp.description} (${formattedAmount}) em ${formatDate(exp.date)}.`,
         date: exp.date,
         expenseId: exp.id,
         severity: 'high',
