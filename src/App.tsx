@@ -881,7 +881,7 @@ export default function App() {
           description: `Saldo Restante - ${newProject.name}`,
           amount: remainingAmount,
           currency: newProject.currency,
-          dueDate: newProject.nextPaymentDate || newProject.dueDate,
+          dueDate: newProject.nextPaymentDate || newProject.dueDate || newProject.startDate || getTodayIso(),
           status: 'Pendente',
           paymentMethod: 'Transferência',
           createdAt: getTodayIso(),
@@ -2189,6 +2189,7 @@ export default function App() {
               expenses={expenses}
               settings={settings}
               currencyFilter={currencyFilter}
+              reserves={cashReserves}
             />
           )}
 

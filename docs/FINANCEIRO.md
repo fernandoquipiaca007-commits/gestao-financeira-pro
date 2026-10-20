@@ -31,6 +31,22 @@ O saldo divide-se em três partes (Financeiro → Caixa e sócios):
 - "Marcar como Pago" passa as receitas pendentes a "Recebido" e regista a diferença em falta.
 - Um projeto, cliente ou parceiro com histórico financeiro **não pode ser apagado**: encerra-se como "Concluído" ou "Cancelado".
 
+- **Entrega sem data:** no projeto, marcar "Data indefinida" quando ainda não se sabe quando termina (ex.: funis). Estes projetos não geram alertas de prazo.
+- **Próximo pagamento:** só aparece enquanto falta receber; num projeto pago a 100% o campo desaparece.
+
+## Relatório Excel
+
+Em Relatórios, escolher o ano e o mês e carregar em **Exportar Excel**. O ficheiro tem quatro folhas, todas prontas a imprimir (A4, ajustadas à largura, cabeçalho repetido, páginas numeradas):
+
+| Folha | Conteúdo |
+|---|---|
+| **Resumo** | Recebido, custos, comissões, lucro, margem, retiradas/sócios, saldo no início e no fim do período, onde está o caixa hoje e a tabela mês a mês com totais. Cada número tem uma explicação simples ao lado. |
+| **Movimentos** | Cada entrada e saída do período, com cliente, projeto, reserva e o saldo acumulado linha a linha. Tem filtros nas colunas. |
+| **Projetos** | Valor total, pago, em falta e % pago de cada projeto, com o estado a cores. |
+| **Caixa e sócios** | Reservas (reservado, gasto, disponível) e distribuições aos sócios (enviado / por enviar). |
+
+O CSV continua disponível para quem quiser os dados em bruto.
+
 ## Distribuição aos sócios
 
 Percentagens em Definições → Sócios (têm de somar 100%):
