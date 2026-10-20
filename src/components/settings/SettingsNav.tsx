@@ -10,6 +10,7 @@ export function SettingsNav({ canEdit, isOwner, lang }: { canEdit: boolean; isOw
     { id: 'seguranca', label: en ? 'Security' : 'Segurança' },
     ...(canEdit ? [
       { id: 'empresa', label: en ? 'Company & currencies' : 'Empresa e moedas' },
+      ...(isOwner ? [{ id: 'socios', label: en ? 'Partners' : 'Sócios' }] : []),
       { id: 'email', label: 'Email' },
     ] : []),
     ...(isOwner ? [{ id: 'dados', label: en ? 'Data & backup' : 'Dados e cópias' }] : []),

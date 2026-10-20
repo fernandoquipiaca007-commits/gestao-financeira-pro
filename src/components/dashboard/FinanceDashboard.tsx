@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import type { AppSettings, Client, CurrencyCode, Expense, Income, Project } from '../../types';
+import type { AppSettings, Client, CurrencyCode, Expense, Income, Project, CashReserve } from '../../types';
 import type { BillingRequest, Task, TaskStatus } from '../../types/rbac';
 import { convertCurrency, formatCurrency } from '../../lib/formatters';
 import { useFinanceMetrics, Period } from '../../lib/finance/useFinanceMetrics';
@@ -23,6 +23,7 @@ interface Props {
   tasks: Task[];
   billingRequests: BillingRequest[];
   settings: AppSettings;
+  reserves?: CashReserve[];
   currencyFilter: CurrencyCode | 'ALL';
   onNavigateTab: (tab: string, filter?: string) => void;
   onOpenWhatsAppCharge: (phone: string, text: string) => void;
@@ -79,7 +80,9 @@ export function FinanceDashboard(p: Props) {
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-[1.25fr_1fr_1fr]">
         <HeroBalance value={m.cashBalance} currency={m.currency} locale={locale} lang={p.lang}
           net={m.fmt(m.netPeriod)} netLabel={pl.net}
-          onIncome={p.onOpenNewIncomeModal} onExpense={p.onOpenNewExpenseModal} />
+          onIncome={p.onOpenNewIncomeModal} onExpense={p.onOpenNewExpenseModal}
+          breakdown={{ free: m.fmt(m.cashFree), reserved: m.fmt(m.cashReserved), owed: m.fmt(m.cashOwedToPartners), hasReserved: m.cashReserved > 0, hasOwed: m.cashOwedToPartners > 0 }}
+          onOpenReserves={() => p.onNavigateTab('financial', 'reservas')} />
         <KpiAccent label={pl.received} value={m.receivedPeriod} currency={m.currency} locale={locale}
           delta={m.receivedDelta} deltaSuffix={pl.vs} spark={m.series.map((s) => s.receitas)}
           onClick={() => p.onNavigateTab('financial', 'receitas-recebidas')} />

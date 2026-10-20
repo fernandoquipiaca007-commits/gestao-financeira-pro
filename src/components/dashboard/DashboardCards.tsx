@@ -52,8 +52,11 @@ export function DeltaPill({ value, upIsGood = true, onColor, suffix }: { value: 
 const currencyFormat = (currency: string) => ({ style: 'currency' as const, currency, maximumFractionDigits: 2 });
 
 /** Card herói: o número que lidera o ecrã (1 por vista). Flutua subtilmente. */
-export function HeroBalance({ value, currency, locale, lang, net, netLabel, onIncome, onExpense }: {
+export function HeroBalance({ value, currency, locale, lang, net, netLabel, onIncome, onExpense, breakdown, onOpenReserves }: {
   value: number; currency: string; locale: string; lang: 'pt' | 'en'; net: string; netLabel: string; onIncome?: () => void; onExpense?: () => void;
+  /** Onde está o caixa: livre, reservado (com destino) e por enviar aos sócios. */
+  breakdown?: { free: string; reserved: string; owed: string; hasReserved: boolean; hasOwed: boolean };
+  onOpenReserves?: () => void;
 }) {
   const en = lang === 'en';
   return (
@@ -67,6 +70,13 @@ export function HeroBalance({ value, currency, locale, lang, net, netLabel, onIn
           <NumberFlow value={value} locales={locale} format={currencyFormat(currency)} />
         </div>
         <p className="mt-2.5 mb-0 text-[13px] text-fg-muted">{netLabel} <strong className="text-fg font-medium">{net}</strong></p>
+        {breakdown && (breakdown.hasReserved || breakdown.hasOwed) && (
+          <button type="button" onClick={onOpenReserves} className="mt-3 w-full grid grid-cols-3 gap-2 text-left rounded-xl border border-line-subtle bg-surface-2/60 p-2.5 cursor-pointer hover:bg-surface-2 transition-colors">
+            <span className="min-w-0"><span className="block text-[11px] text-fg-muted">{en ? 'Free' : 'Livre'}</span><strong className="block text-[13px] font-medium text-fg truncate">{breakdown.free}</strong></span>
+            <span className="min-w-0"><span className="block text-[11px] text-fg-muted">{en ? 'Reserved' : 'Reservado'}</span><strong className="block text-[13px] font-medium text-fg truncate">{breakdown.reserved}</strong></span>
+            <span className="min-w-0"><span className="block text-[11px] text-fg-muted">{en ? 'Owed to partners' : 'Por enviar a sócios'}</span><strong className="block text-[13px] font-medium text-warning-fg truncate">{breakdown.owed}</strong></span>
+          </button>
+        )}
       </div>
       {(onIncome || onExpense) && (
         <div className="grid grid-cols-2 gap-2">

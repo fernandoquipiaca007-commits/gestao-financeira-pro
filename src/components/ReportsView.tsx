@@ -28,6 +28,7 @@ import {
 import { Client, Project, Income, Expense, CurrencyCode, AppSettings, getProjectStatusLabel } from '../types';
 import { formatCurrency, convertCurrency } from '../lib/formatters';
 import { paidCommissions } from '../lib/finance/projectPayments';
+import { isProfitDistribution } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface ReportsViewProps {
@@ -155,7 +156,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   }, [expenses, currencyFilter, selectedCategory, selectedClient, selectedYear, selectedMonth]);
 
   // Retiradas do sócio saem do caixa mas não são custo do negócio.
-  const isWithdrawal = (e: Expense) => e.category === 'Retirada Própria';
+  const isWithdrawal = (e: Expense) => isProfitDistribution(e);
   const filteredExpenses = paidExpensesInPeriod.filter((e) => !isWithdrawal(e));
   const periodWithdrawals = paidExpensesInPeriod.filter(isWithdrawal);
 
@@ -593,7 +594,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
         {/* Retiradas e caixa do período */}
         <div className="bg-glass border border-line-subtle p-5 rounded-xl shadow-glass">
           <div className="flex items-center justify-between text-[13px] text-fg-secondary font-medium ">
-            <span>{isEn ? 'Owner withdrawals' : 'Retiradas'}</span>
+            <span>{isEn ? 'Withdrawals & partner payouts' : 'Retiradas e sócios'}</span>
             <div className="p-1.5 rounded-full bg-surface-2 text-fg-secondary ">
               <Receipt className="w-4 h-4 stroke-[2]" />
             </div>

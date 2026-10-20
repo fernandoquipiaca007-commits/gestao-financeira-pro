@@ -2,6 +2,9 @@ import { useMemo } from 'react';
 import type { AppSettings, Client, CurrencyCode, Expense, Income, Project } from '../../types';
 import { convertCurrency, formatCurrency, getDaysDiff } from '../formatters';
 import { paidCommissions } from './projectPayments';
+import { cashBreakdown, owedToPartners, reserveStatuses } from './cashPosition';
+import { isProfitDistribution } from '../../types';
+import type { CashReserve } from '../../types';
 
 /**
  * Métricas financeiras do painel num só sítio (antes duplicadas em Quick10SecSummary e DashboardView).
@@ -24,10 +27,11 @@ interface Input {
   currencyFilter: CurrencyCode | 'ALL';
   period: Period;
   lang: 'pt' | 'en';
+  reserves?: CashReserve[];
 }
 
 
-export function useFinanceMetrics({ clients, projects, incomes, expenses, settings, currencyFilter, period, lang }: Input) {
+export function useFinanceMetrics({ clients, projects, incomes, expenses, settings, currencyFilter, period, lang, reserves = [] }: Input) {
   return useMemo(() => {
     const currency: CurrencyCode = currencyFilter !== 'ALL' ? currencyFilter : settings.defaultCurrency;
     const conv = (amount: number, from: CurrencyCode) => convertCurrency(amount || 0, from, currency, settings.exchangeRates);
@@ -57,12 +61,16 @@ export function useFinanceMetrics({ clients, projects, incomes, expenses, settin
     const totalPaidExpenses = exp.filter((e) => e.paid).reduce((s, e) => s + conv(e.amount, e.currency), 0);
     const totalPaidCommissions = proj.filter((p) => p.commissionPaid && (p.commissionAmount || 0) > 0).reduce((s, p) => s + conv(p.commissionAmount || 0, p.currency), 0);
     const cashBalance = totalReceived - totalPaidExpenses - totalPaidCommissions;
+    // Onde está o caixa: reservado (com destino), por enviar aos sócios, ou livre.
+    const reserveList = reserveStatuses(currencyFilter === 'ALL' ? reserves : reserves.filter((r) => r.currency === currencyFilter), exp, conv);
+    const owed = owedToPartners(exp, conv);
+    const breakdown = cashBreakdown(cashBalance, reserveList, owed);
 
     // --- Período vs período anterior (recebido = data de recebimento; despesa = data da despesa paga)
     const recDate = (i: Income) => (i.receivedDate || i.dueDate || '').slice(0, 10);
     const receivedIn = (from: string, to: string) => received.filter((i) => between(recDate(i), from, to)).reduce((s, i) => s + conv(i.amount, i.currency), 0);
-    // Retiradas do sócio saem do caixa, mas não são custo do negócio: ficam fora do resultado.
-    const isWithdrawal = (e: Expense) => e.category === 'Retirada Própria';
+    // Retiradas e distribuições a sócios saem do caixa, mas não são custo do negócio: ficam fora do resultado.
+    const isWithdrawal = (e: Expense) => isProfitDistribution(e);
     const paidIn = (from: string, to: string, pick: (e: Expense) => boolean) =>
       exp.filter((e) => e.paid && pick(e) && between((e.date || '').slice(0, 10), from, to)).reduce((s, e) => s + conv(e.amount, e.currency), 0);
     const spentIn = (from: string, to: string) => paidIn(from, to, (e) => !isWithdrawal(e));
@@ -170,6 +178,7 @@ export function useFinanceMetrics({ clients, projects, incomes, expenses, settin
     return {
       currency, fmt, period,
       cashBalance, receivedPeriod, receivedPrev, spentPeriod, withdrawalsPeriod, withdrawalsTotal, commissionsPeriod,
+      reserves: reserveList, cashReserved: breakdown.reserved, cashOwedToPartners: breakdown.owed, cashFree: breakdown.free,
       receivedDelta: pct(receivedPeriod, receivedPrev),
       netPeriod,
       toReceive, aging, overdue, dueToday,
@@ -196,5 +205,5 @@ export function useFinanceMetrics({ clients, projects, incomes, expenses, settin
         clientsCount: clientsInScope.length, newClientsPeriod,
       },
     };
-  }, [clients, projects, incomes, expenses, settings, currencyFilter, period, lang]);
+  }, [clients, projects, incomes, expenses, settings, currencyFilter, period, lang, reserves]);
 }
