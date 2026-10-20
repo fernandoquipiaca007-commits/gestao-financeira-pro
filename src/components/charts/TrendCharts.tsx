@@ -70,7 +70,9 @@ export function BarCompare({ data, series, height = 260, format, lang = 'pt', la
           {vertical ? (
             <>
               <XAxis type="number" tick={axis} axisLine={false} tickLine={false} tickFormatter={(v) => compactNumber(v, lang)} />
-              <YAxis type="category" dataKey="label" tick={{ ...axis, fill: 'var(--text-secondary)' }} axisLine={false} tickLine={false} width={110} />
+              {/* uma linha por nome; os longos são cortados com … (o nome completo aparece no tooltip) */}
+              <YAxis type="category" dataKey="label" tick={{ ...axis, fill: 'var(--text-secondary)' }} axisLine={false} tickLine={false} width={128} interval={0}
+                tickFormatter={(v: string) => (String(v).length > 18 ? String(v).slice(0, 17).trimEnd() + '…' : String(v))} />
             </>
           ) : (
             <>
