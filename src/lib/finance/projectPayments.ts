@@ -73,3 +73,23 @@ export function paymentDeltaIncome(previous: Project | undefined, next: Project,
     createdAt: today,
   };
 }
+
+/**
+ * Data em que a comissão de um parceiro conta como saída: a do último recebimento do projeto
+ * (o repasse acompanha o pagamento do cliente). Sem recebimentos, a data de início do projeto.
+ */
+export function commissionDate(project: Project, allIncomes: Income[]): string {
+  const dates = allIncomes
+    .filter((i) => i.projectId === project.id && i.status === 'Recebido')
+    .map((i) => (i.receivedDate || i.dueDate || '').slice(0, 10))
+    .filter(Boolean)
+    .sort();
+  return dates[dates.length - 1] || (project.startDate || project.createdAt || '').slice(0, 10);
+}
+
+/** Comissões já pagas a parceiros, cada uma com a data em que conta. */
+export function paidCommissions(projects: Project[], allIncomes: Income[]): { project: Project; amount: number; date: string }[] {
+  return projects
+    .filter((p) => p.commissionPaid && (p.commissionAmount || 0) > 0)
+    .map((p) => ({ project: p, amount: p.commissionAmount || 0, date: commissionDate(p, allIncomes) }));
+}

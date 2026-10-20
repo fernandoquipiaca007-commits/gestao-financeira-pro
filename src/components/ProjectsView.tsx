@@ -197,7 +197,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const defaultProjectPresets = ['Website', 'Landing Page', 'Loja Virtual', 'Tráfego Pago', 'Automação', 'Consultoria', 'Design'];
   const allProjectCategories = Array.from(
     new Set([
-      ...(categories || []).filter(c => c?.name).map(c => c.name),
+      ...(categories || []).filter(c => c?.name && c.type !== 'expense').map(c => c.name),
       ...defaultProjectPresets,
       ...projects.map(p => p.category).filter(Boolean),
     ])

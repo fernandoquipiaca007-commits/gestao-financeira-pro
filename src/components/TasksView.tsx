@@ -151,7 +151,7 @@ export function TasksView({
   // Distinct categories available in tasks or configured in system
   const allCategoryNames = Array.from(
     new Set([
-      ...(categories || []).filter(c => c?.name).map(c => c.name),
+      ...(categories || []).filter(c => c?.name && c.type !== 'expense').map(c => c.name),
       ...tasks.map(t => getTaskCategory(t)).filter(c => c !== 'Sem Categoria' && c !== 'Uncategorized'),
     ])
   );

@@ -39,20 +39,22 @@ describe('useFinanceMetrics with the real books', () => {
     expect(metrics('12m').cashBalance).toBe(7700 - 3375 - 525); // 3800
   });
 
-  it('keeps owner withdrawals out of costs and result, and reports them apart', () => {
+  it('keeps owner withdrawals out of costs and result, counts paid commissions as a cost', () => {
     const m = metrics('12m');
     expect(m.spentPeriod).toBe(1800);
     expect(m.withdrawalsPeriod).toBe(1575);
     expect(m.withdrawalsTotal).toBe(1575);
-    expect(m.netPeriod).toBe(7700 - 1800);
+    expect(m.commissionsPeriod).toBe(525);
+    expect(m.netPeriod).toBe(7700 - 1800 - 525);
   });
 
-  it('the cash-flow chart still shows every real outflow', () => {
+  it('the cash-flow chart shows every real outflow and adds up to the cash balance', () => {
     const m = metrics('12m');
     const out = m.series.reduce((s, p) => s + p.despesas, 0);
     const inn = m.series.reduce((s, p) => s + p.receitas, 0);
-    expect(out).toBe(3375);
+    expect(out).toBe(3375 + 525);
     expect(inn).toBe(7700);
+    expect(inn - out).toBe(m.cashBalance);
   });
 
   it('months are counted by the date the money arrived', () => {

@@ -27,6 +27,7 @@ import {
 } from 'recharts';
 import { Client, Project, Income, Expense, CurrencyCode, AppSettings, getProjectStatusLabel } from '../types';
 import { formatCurrency, convertCurrency } from '../lib/formatters';
+import { paidCommissions } from '../lib/finance/projectPayments';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface ReportsViewProps {
@@ -175,8 +176,20 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   // 2. Despesas
   const totalExpenses = sumAmount(filteredExpenses);
 
+  // Comissões pagas a parceiros: custo do negócio, no mês em que o cliente pagou o projeto.
+  const periodCommissions = paidCommissions(projects, incomes).filter(({ project: p, date }) => {
+    if (currencyFilter !== 'ALL' && p.currency !== currencyFilter) return false;
+    if (selectedClient !== 'ALL' && p.clientId !== selectedClient && !p.clientIds?.includes(selectedClient)) return false;
+    if (selectedCategory !== 'ALL' && p.category !== selectedCategory) return false;
+    const [y, m] = date.split('-');
+    if (selectedYear !== 'ALL' && y !== selectedYear) return false;
+    if (selectedMonth !== 'ALL' && m !== selectedMonth) return false;
+    return true;
+  });
+  const totalCommissions = sumAmount(periodCommissions.map((c) => ({ amount: c.amount, currency: c.project.currency })));
+
   // 3. Lucro Líquido (sem retiradas) e o que ficou em caixa no período (com retiradas)
-  const netProfit = totalRevenue - totalExpenses;
+  const netProfit = totalRevenue - totalExpenses - totalCommissions;
   const totalWithdrawals = sumAmount(periodWithdrawals);
   const cashLeft = netProfit - totalWithdrawals;
   const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : null;
@@ -554,8 +567,8 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           </div>
           <p className="text-xs text-fg-muted mt-1">
             {isEn
-              ? `${filteredExpenses.length} paid costs, withdrawals excluded`
-              : `${filteredExpenses.length} custos pagos, sem retiradas`}
+              ? `${filteredExpenses.length} paid costs, withdrawals excluded${totalCommissions > 0 ? ` · + ${formatCurrency(totalCommissions, mainCurrency)} commissions` : ''}`
+              : `${filteredExpenses.length} custos pagos, sem retiradas${totalCommissions > 0 ? ` · + ${formatCurrency(totalCommissions, mainCurrency)} em comissões` : ''}`}
           </p>
         </div>
 

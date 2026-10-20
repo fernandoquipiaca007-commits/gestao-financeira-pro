@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import type { AppSettings, Client, CurrencyCode, Expense, Income, Project } from '../../types';
 import { convertCurrency, formatCurrency, getDaysDiff } from '../formatters';
+import { paidCommissions } from './projectPayments';
 
 /**
  * Métricas financeiras do painel num só sítio (antes duplicadas em Quick10SecSummary e DashboardView).
@@ -66,12 +67,17 @@ export function useFinanceMetrics({ clients, projects, incomes, expenses, settin
       exp.filter((e) => e.paid && pick(e) && between((e.date || '').slice(0, 10), from, to)).reduce((s, e) => s + conv(e.amount, e.currency), 0);
     const spentIn = (from: string, to: string) => paidIn(from, to, (e) => !isWithdrawal(e));
     const withdrawnIn = (from: string, to: string) => paidIn(from, to, isWithdrawal);
-    const cashOutIn = (from: string, to: string) => paidIn(from, to, () => true);
+    // Comissões pagas contam no mês em que o cliente pagou o projeto.
+    const commissions = paidCommissions(proj, inc);
+    const commissionsIn = (from: string, to: string) =>
+      commissions.filter((c) => between(c.date, from, to)).reduce((s, c) => s + conv(c.amount, c.project.currency), 0);
+    const cashOutIn = (from: string, to: string) => paidIn(from, to, () => true) + commissionsIn(from, to);
     const receivedPeriod = receivedIn(winFrom, winTo);
     const receivedPrev = receivedIn(prevFrom, prevTo);
     const spentPeriod = spentIn(winFrom, winTo);
     const spentPrev = spentIn(prevFrom, prevTo);
     const withdrawalsPeriod = withdrawnIn(winFrom, winTo);
+    const commissionsPeriod = commissionsIn(winFrom, winTo);
     const withdrawalsTotal = exp.filter((e) => e.paid && isWithdrawal(e)).reduce((s, e) => s + conv(e.amount, e.currency), 0);
     const pct = (a: number, b: number) => (b > 0 ? ((a - b) / b) * 100 : null);
 
@@ -159,11 +165,11 @@ export function useFinanceMetrics({ clients, projects, incomes, expenses, settin
     const dueTodayAmount = dueToday.reduce((s, i) => s + conv(i.amount, i.currency), 0);
     const clientsInScope = currencyFilter === 'ALL' ? clients : clients.filter((c) => c.currency === currencyFilter);
     const newClientsPeriod = clientsInScope.filter((c) => between((c.createdAt || '').slice(0, 10), winFrom, winTo)).length;
-    const netPeriod = receivedPeriod - spentPeriod;
+    const netPeriod = receivedPeriod - spentPeriod - commissionsPeriod;
 
     return {
       currency, fmt, period,
-      cashBalance, receivedPeriod, receivedPrev, spentPeriod, withdrawalsPeriod, withdrawalsTotal,
+      cashBalance, receivedPeriod, receivedPrev, spentPeriod, withdrawalsPeriod, withdrawalsTotal, commissionsPeriod,
       receivedDelta: pct(receivedPeriod, receivedPrev),
       netPeriod,
       toReceive, aging, overdue, dueToday,
@@ -173,7 +179,7 @@ export function useFinanceMetrics({ clients, projects, incomes, expenses, settin
         { name: lang === 'en' ? 'Received' : 'Recebido', value: Math.max(0, receivedPeriod) },
         { name: lang === 'en' ? 'To receive' : 'A receber', value: Math.max(0, toReceive) },
         { name: lang === 'en' ? 'Expenses' : 'Despesas', value: Math.max(0, spentPeriod) },
-        { name: lang === 'en' ? 'Commissions' : 'Comissões', value: Math.max(0, totalPaidCommissions) },
+        { name: lang === 'en' ? 'Commissions' : 'Comissões', value: Math.max(0, commissionsPeriod) },
         { name: lang === 'en' ? 'Withdrawals' : 'Retiradas', value: Math.max(0, withdrawalsPeriod) },
       ].filter((s) => s.value > 0),
       activeProjects, projectsDueSoon,

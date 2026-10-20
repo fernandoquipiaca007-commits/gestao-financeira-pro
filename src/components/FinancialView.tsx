@@ -29,7 +29,7 @@ import {
   CurrencyCode,
   getIncomeStatusLabel,
   getPaymentMethodLabel,
-  getExpenseCategoryLabel,
+  getExpenseCategoryLabel, EXPENSE_CATEGORY_LABELS,
 } from '../types';
 import {
   formatCurrency,
@@ -655,13 +655,10 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
               className="px-4 py-2 bg-surface-2 border border-line-subtle rounded-full text-fg text-sm font-medium focus:outline-none cursor-pointer"
             >
               <option value="ALL">{t('financial.allCategories', 'Todas as categorias')}</option>
-              <option value="Internet">{getExpenseCategoryLabel('Internet', lang)}</option>
-              <option value="Hospedagem">{getExpenseCategoryLabel('Hospedagem', lang)}</option>
-              <option value="Domínio">{getExpenseCategoryLabel('Domínio', lang)}</option>
-              <option value="Publicidade">{getExpenseCategoryLabel('Publicidade', lang)}</option>
-              <option value="Ferramentas">{getExpenseCategoryLabel('Ferramentas', lang)}</option>
-              <option value="Salário">{getExpenseCategoryLabel('Salário', lang)}</option>
-              <option value="Outros">{getExpenseCategoryLabel('Outros', lang)}</option>
+              {/* Todas as categorias conhecidas e as que já existem nas despesas (incl. retiradas e comissões) */}
+              {Array.from(new Set([...Object.keys(EXPENSE_CATEGORY_LABELS), ...expenses.map((e) => e.category)])).map((cat) => (
+                <option key={cat} value={cat}>{getExpenseCategoryLabel(cat, lang)}</option>
+              ))}
             </select>
           </div>
 
