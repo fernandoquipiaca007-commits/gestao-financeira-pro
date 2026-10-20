@@ -157,7 +157,9 @@ export function useFinanceMetrics({ clients, projects, incomes, expenses, settin
     received
       .filter((i) => between(recDate(i), winFrom, winTo))
       .forEach((i) => byClient.set(i.clientId, (byClient.get(i.clientId) || 0) + conv(i.amount, i.currency)));
-    const clientName = new Map(clients.map((c) => [c.id, c.company || c.name]));
+    // Nome curto e legível: o nome do cliente, sem descrições entre parênteses.
+    const shortName = (s: string) => s.replace(/\s*\(.*\)\s*$/, '').replace(/\s+/g, ' ').trim();
+    const clientName = new Map(clients.map((c) => [c.id, shortName(c.name || c.company || '')]));
     const topClients: ClientTotal[] = [...byClient.entries()]
       .map(([id, value]) => ({ id, name: clientName.get(id) || '—', value }))
       .sort((a, b) => b.value - a.value)
