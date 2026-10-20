@@ -327,6 +327,8 @@ export async function fetchProjectsFromDb(companyId?: string): Promise<Project[]
         commissionPaid: item.commission_paid || false,
         invoiceFooter: item.invoice_footer || undefined,
         invoiceNotes: item.invoice_notes || undefined,
+        archived: Boolean(item.archived),
+        archivedAt: item.archived_at || undefined,
         createdAt: item.created_at ? item.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
       };
     });
@@ -367,6 +369,8 @@ export async function upsertProjectToDb(project: Project, companyId: string): Pr
       commission_paid: Boolean(project.commissionPaid),
       invoice_footer: project.invoiceFooter || null,
       invoice_notes: project.invoiceNotes || null,
+      archived: Boolean(project.archived),
+      archived_at: project.archived ? project.archivedAt || new Date().toISOString() : null,
     };
 
     const { error } = await supabase.from('projects').upsert(payload);

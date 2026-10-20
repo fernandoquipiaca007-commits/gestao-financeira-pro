@@ -107,6 +107,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   // Filtered Projects (fully responsive to all filters)
   const filteredProjects = useMemo(() => {
     return projects.filter((p) => {
+      if (p.archived) return false;
       if (currencyFilter !== 'ALL' && p.currency !== currencyFilter) return false;
       if (selectedClient !== 'ALL' && p.clientId !== selectedClient && !p.clientIds?.includes(selectedClient)) return false;
       if (selectedCategory !== 'ALL' && p.category !== selectedCategory) return false;

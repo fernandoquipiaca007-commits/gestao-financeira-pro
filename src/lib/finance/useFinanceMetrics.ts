@@ -40,7 +40,11 @@ export function useFinanceMetrics({ clients, projects, incomes, expenses, settin
 
     const inc = inScope(incomes);
     const exp = inScope(expenses);
-    const proj = inScope(projects);
+    // Projetos arquivados ficam fora do que está por receber, dos ativos e dos alertas;
+    // o dinheiro que já entrou ou saiu deles continua a contar no caixa.
+    const allProj = inScope(projects);
+    const proj = allProj.filter((p) => !p.archived);
+    const archivedIds = new Set(allProj.filter((p) => p.archived).map((p) => p.id));
     const now = new Date();
     const locale = lang === 'en' ? 'en-US' : 'pt-PT';
 
@@ -59,7 +63,7 @@ export function useFinanceMetrics({ clients, projects, incomes, expenses, settin
     const received = inc.filter((i) => i.status === 'Recebido');
     const totalReceived = received.reduce((s, i) => s + conv(i.amount, i.currency), 0);
     const totalPaidExpenses = exp.filter((e) => e.paid).reduce((s, e) => s + conv(e.amount, e.currency), 0);
-    const totalPaidCommissions = proj.filter((p) => p.commissionPaid && (p.commissionAmount || 0) > 0).reduce((s, p) => s + conv(p.commissionAmount || 0, p.currency), 0);
+    const totalPaidCommissions = allProj.filter((p) => p.commissionPaid && (p.commissionAmount || 0) > 0).reduce((s, p) => s + conv(p.commissionAmount || 0, p.currency), 0);
     const cashBalance = totalReceived - totalPaidExpenses - totalPaidCommissions;
     // Onde está o caixa: reservado (com destino), por enviar aos sócios, ou livre.
     const reserveList = reserveStatuses(currencyFilter === 'ALL' ? reserves : reserves.filter((r) => r.currency === currencyFilter), exp, conv);
@@ -76,7 +80,7 @@ export function useFinanceMetrics({ clients, projects, incomes, expenses, settin
     const spentIn = (from: string, to: string) => paidIn(from, to, (e) => !isWithdrawal(e));
     const withdrawnIn = (from: string, to: string) => paidIn(from, to, isWithdrawal);
     // Comissões pagas contam no mês em que o cliente pagou o projeto.
-    const commissions = paidCommissions(proj, inc);
+    const commissions = paidCommissions(allProj, inc);
     const commissionsIn = (from: string, to: string) =>
       commissions.filter((c) => between(c.date, from, to)).reduce((s, c) => s + conv(c.amount, c.project.currency), 0);
     const cashOutIn = (from: string, to: string) => paidIn(from, to, () => true) + commissionsIn(from, to);
@@ -90,7 +94,7 @@ export function useFinanceMetrics({ clients, projects, incomes, expenses, settin
     const pct = (a: number, b: number) => (b > 0 ? ((a - b) / b) * 100 : null);
 
     // --- A receber (receitas por receber + saldo de projetos sem fatura) e antiguidade
-    const pending = inc.filter((i) => i.status !== 'Recebido');
+    const pending = inc.filter((i) => i.status !== 'Recebido' && !(i.projectId && archivedIds.has(i.projectId)));
     const unbilled = proj
       .filter((p) => p.totalAmount - p.paidAmount > 0 && !pending.some((i) => i.projectId === p.id))
       .map((p) => conv(p.totalAmount - p.paidAmount, p.currency));

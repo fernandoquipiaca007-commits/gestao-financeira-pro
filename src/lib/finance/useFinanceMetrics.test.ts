@@ -73,3 +73,24 @@ describe('useFinanceMetrics with the real books', () => {
     expect(m.withdrawalsPeriod).toBe(0);
   });
 });
+
+describe('archived projects', () => {
+  const waiting = (id: string, total: number, archived: boolean): Project => ({
+    id, name: id, clientId: 'c', category: 'Outro', totalAmount: total, paidAmount: 0, currency: 'BRL',
+    startDate: '2026-08-01', dueDate: '2026-08-15', status: 'Aguardando cliente', createdAt: '2026-08-01', archived,
+  });
+  const run = (archived: boolean) =>
+    useFinanceMetrics({ clients: [], projects: [...projects, waiting('brennda', 800, archived), waiting('benefico', 1500, archived)], incomes, expenses, settings, currencyFilter: 'ALL', period: '12m', lang: 'pt' });
+
+  it('leave the amount to receive, active projects and contracted revenue', () => {
+    const before = run(false);
+    const after = run(true);
+    expect(before.toReceive - after.toReceive).toBe(2300);
+    expect(before.indicators.activeCount - after.indicators.activeCount).toBe(2);
+    expect(before.indicators.contracted - after.indicators.contracted).toBe(2300);
+  });
+
+  it('do not change the cash balance', () => {
+    expect(run(true).cashBalance).toBe(run(false).cashBalance);
+  });
+});
