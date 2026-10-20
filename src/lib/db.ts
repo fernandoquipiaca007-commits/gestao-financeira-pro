@@ -11,6 +11,7 @@ import {
   NotificationItem,
   Partner,
   CurrencyCode,
+  CashReserve,
 } from '../types';
 import {
   UserProfile,
@@ -140,6 +141,7 @@ export async function fetchSettingsFromDb(companyId: string): Promise<AppSetting
       businessName: data.business_name,
       exchangeRates: data.exchange_rates || { BRL: 1, AOA: 165, USD: 0.18, EUR: 0.16 },
       emailSettings: data.email_settings || undefined,
+      profitSplit: Array.isArray(data.profit_split) ? data.profit_split : [],
     } as AppSettings;
   } catch {
     return null;
@@ -154,6 +156,7 @@ export async function upsertSettingsToDb(settings: AppSettings, companyId: strin
       user_name: settings.userName,
       business_name: settings.businessName,
       exchange_rates: settings.exchangeRates || {},
+      profit_split: settings.profitSplit || [],
       email_settings: (settings as any).emailSettings || {},
       updated_at: new Date().toISOString(),
     }, {
@@ -508,6 +511,7 @@ export async function fetchExpensesFromDb(companyId?: string): Promise<Expense[]
       partnerId: item.partner_id || undefined,
       partnerName: item.partner_name || undefined,
       receiptUrl: item.receipt_url || undefined,
+      reserveId: item.reserve_id || undefined,
       createdAt: item.created_at ? item.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
     }));
     saveExpenses(formatted);
@@ -533,6 +537,7 @@ export async function upsertExpenseToDb(expense: Expense, companyId: string): Pr
       partner_id: expense.partnerId || null,
       partner_name: expense.partnerName || null,
       receipt_url: expense.receiptUrl || null,
+      reserve_id: expense.reserveId || null,
     });
     if (error) {
       console.error('[DB] upsertExpenseToDb:', error.message);
@@ -565,6 +570,53 @@ export async function deleteExpenseFromDb(expenseId: string): Promise<{ success:
 // ----------------------------------------------------
 // PARTNER DB OPERATIONS
 // ----------------------------------------------------
+
+// ----------------------------------------------------
+// RESERVAS DE CAIXA
+// ----------------------------------------------------
+
+export async function fetchCashReservesFromDb(companyId: string): Promise<CashReserve[] | null> {
+  const { data, error } = await supabase
+    .from('cash_reserves')
+    .select('*')
+    .eq('company_id', companyId)
+    .order('date', { ascending: true });
+  if (error) {
+    console.warn('[DB] fetchCashReservesFromDb:', error.message);
+    return null;
+  }
+  return (data || []).map((r) => ({
+    id: r.id,
+    name: r.name,
+    amount: Number(r.amount) || 0,
+    currency: r.currency || 'BRL',
+    date: r.date,
+    notes: r.notes || undefined,
+    closed: Boolean(r.closed),
+    createdAt: r.created_at,
+  }));
+}
+
+export async function upsertCashReserveToDb(reserve: CashReserve, companyId: string): Promise<{ success: boolean; error?: string }> {
+  const { error } = await supabase.from('cash_reserves').upsert({
+    id: reserve.id,
+    company_id: companyId,
+    name: reserve.name,
+    amount: Number(reserve.amount) || 0,
+    currency: reserve.currency,
+    date: reserve.date,
+    notes: reserve.notes || null,
+    closed: reserve.closed,
+  });
+  if (error) return { success: false, error: describeDbError(error) };
+  return { success: true };
+}
+
+export async function deleteCashReserveFromDb(reserveId: string): Promise<{ success: boolean; error?: string }> {
+  const { error } = await supabase.from('cash_reserves').delete().eq('id', reserveId);
+  if (error) return { success: false, error: describeDbError(error) };
+  return { success: true };
+}
 
 export async function fetchPartnersFromDb(companyId?: string): Promise<Partner[]> {
   try {

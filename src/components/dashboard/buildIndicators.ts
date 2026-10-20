@@ -44,7 +44,7 @@ export function buildIndicators(i: Ind, fmt: (v: number) => string, en: boolean,
       note: i.margin == null ? (en ? 'No income yet' : 'Ainda sem receitas') : `${en ? 'Margin' : 'Margem'} ${i.margin.toFixed(0)}%`,
     },
     {
-      id: 'withdrawals', label: period === '1m' ? (en ? 'Owner withdrawals this month' : 'Retiradas do mês') : (en ? 'Owner withdrawals' : 'Retiradas') + inPeriod, value: fmt(i.withdrawalsPeriod),
+      id: 'withdrawals', label: period === '1m' ? (en ? 'Withdrawals & partners this month' : 'Retiradas e sócios do mês') : (en ? 'Withdrawals & partners' : 'Retiradas e sócios') + inPeriod, value: fmt(i.withdrawalsPeriod),
       icon: INDICATOR_ICONS.Receipt, onClick: () => go('financial', 'despesas'),
       note: en ? 'Leave the cash, not a business cost' : 'Saem do caixa, não contam como custo',
     },

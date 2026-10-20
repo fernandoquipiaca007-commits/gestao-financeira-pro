@@ -214,7 +214,7 @@ export interface Income {
   stripeStatus?: 'none' | 'draft' | 'open' | 'paid' | 'void' | 'uncollectible';
 }
 
-export type ExpenseCategory = 'Internet' | 'Hospedagem' | 'Domínio' | 'Publicidade' | 'Ferramentas' | 'Salário' | 'Retirada Própria' | 'Comissão Parceiro' | 'Outros' | (string & {});
+export type ExpenseCategory = 'Internet' | 'Hospedagem' | 'Domínio' | 'Publicidade' | 'Ferramentas' | 'Salário' | 'Edição de vídeo' | 'Taxas de pagamento' | 'Retirada Própria' | 'Distribuição a sócios' | 'Comissão Parceiro' | 'Outros' | (string & {});
 
 export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, { pt: string; en: string }> = {
   Internet: { pt: 'Internet', en: 'Internet' },
@@ -223,10 +223,17 @@ export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, { pt: string; en: 
   Publicidade: { pt: 'Publicidade / Tráfego', en: 'Advertising / Ads' },
   Ferramentas: { pt: 'Softwares & Ferramentas', en: 'Software & Tools' },
   'Salário': { pt: 'Salário & Equipa', en: 'Salary & Team' },
+  'Edição de vídeo': { pt: 'Edição de vídeo', en: 'Video editing' },
+  'Taxas de pagamento': { pt: 'Taxas de pagamento (Stripe/PayPal)', en: 'Payment fees (Stripe/PayPal)' },
   'Retirada Própria': { pt: 'Retirada Própria / Pró-labore', en: 'Owner Withdrawal' },
+  'Distribuição a sócios': { pt: 'Distribuição a sócios', en: 'Partner distribution' },
   'Comissão Parceiro': { pt: 'Comissão de Parceiro', en: 'Partner Commission' },
   Outros: { pt: 'Outros Custos', en: 'Other Costs' },
 };
+
+/** Saídas que repartem o resultado pelos donos: saem do caixa, mas não são custo do negócio. */
+export const PROFIT_DISTRIBUTION_CATEGORIES: ExpenseCategory[] = ['Retirada Própria', 'Distribuição a sócios'];
+export const isProfitDistribution = (e: { category: ExpenseCategory }) => PROFIT_DISTRIBUTION_CATEGORIES.includes(e.category);
 
 export function getExpenseCategoryLabel(category: ExpenseCategory, lang: 'pt' | 'en' = 'pt'): string {
   return EXPENSE_CATEGORY_LABELS[category]?.[lang] || category;
@@ -243,7 +250,27 @@ export interface Expense {
   partnerId?: string;
   partnerName?: string;
   receiptUrl?: string;
+  /** Reserva de caixa de onde saiu o dinheiro (ex.: "Ferramentas"). */
+  reserveId?: string;
   createdAt: string;
+}
+
+/** Dinheiro que continua em caixa mas já tem destino. O valor é escrito à mão. */
+export interface CashReserve {
+  id: string;
+  name: string;
+  amount: number;
+  currency: CurrencyCode;
+  date: string;
+  notes?: string;
+  closed: boolean;
+  createdAt: string;
+}
+
+/** Percentagem de cada sócio na divisão do resultado. */
+export interface PartnerShare {
+  name: string;
+  percent: number;
 }
 
 export interface CategoryItem {
@@ -299,6 +326,8 @@ export interface AppSettings {
   };
   emailSettings?: ResendEmailSettings;
   language?: 'pt' | 'en';
+  /** Divisão do resultado entre sócios (soma 100%). */
+  profitSplit?: PartnerShare[];
 }
 
 export interface NotificationItem {
