@@ -6,7 +6,7 @@ Registo das movimentações e do raciocínio por trás de cada fecho. As entrada
 
 ## 2026-10-21 — Acerto do Jorge e do PayPal
 
-Respostas do Fernando à análise de consistência ().
+Respostas do Fernando à análise de consistência (`supabase/data/2026-10-21-acerto-jorge-paypal.sql`).
 
 **Jorge.** A cliente Nayara transferiu os R$ 2.325 do projeto diretamente para o Jorge (19/10), porque ainda se estava a resolver como enviar.
 
