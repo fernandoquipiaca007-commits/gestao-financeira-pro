@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { AppSettings, CashReserve, Expense, Income, PartnerShare } from '../../types';
-import { buildPartnerDistribution, cashBreakdown, owedToPartners, reserveStatuses, splitTotal } from './cashPosition';
+import { buildPartnerDistribution, cashBreakdown, offsetAdvance, owedToPartners, partnerAdvances, reserveStatuses, splitTotal } from './cashPosition';
 
 vi.mock('react', async (importOriginal) => ({ ...(await importOriginal<typeof import('react')>()), useMemo: (fn: () => unknown) => fn() }));
 const { useFinanceMetrics } = await import('./useFinanceMetrics');
@@ -83,5 +83,31 @@ describe('September 2026 batch, as reported to the partners', () => {
     const m = useFinanceMetrics({ clients: [], projects: [], incomes, expenses, settings, currencyFilter: 'ALL', period: '12m', lang: 'pt', reserves });
     expect(m.spentPeriod).toBe(3375 + 100 + 800 + 600);
     expect(m.withdrawalsPeriod).toBe(1500); // Fernando + Valdimiro already sent
+  });
+});
+
+describe('partner advances (Jorge received R$ 2.325 directly from a client)', () => {
+  const advance = expense({ id: 'adv', category: 'Adiantamento a sócio', amount: 1325, partnerName: 'Jorge', date: '2026-10-19' });
+
+  it('he owes the company R$ 1.325', () => {
+    expect(partnerAdvances([advance, expense({ category: 'Distribuição a sócios', amount: 1000, partnerName: 'Jorge' })], conv)).toEqual({ Jorge: 1325 });
+  });
+
+  it('a R$ 1.000 share is deducted from what he owes, leaving R$ 325', () => {
+    const { updated, remainder } = offsetAdvance([advance], 1000);
+    expect(updated[0].amount).toBe(325);
+    expect(remainder).toBe(0);
+  });
+
+  it('deducting a share does not move the cash (distribution out = advance reduced)', () => {
+    const share = expense({ category: 'Distribuição a sócios', amount: 1000, partnerName: 'Jorge' });
+    const before = [advance];
+    const after = [share, ...offsetAdvance([advance], 1000).updated];
+    const out = (list: Expense[]) => list.filter((e) => e.paid).reduce((s, e) => s + e.amount, 0);
+    expect(out(after)).toBe(out(before));
+  });
+
+  it('a share larger than the debt deducts only what he owes', () => {
+    expect(offsetAdvance([advance], 2000)).toMatchObject({ remainder: 675 });
   });
 });

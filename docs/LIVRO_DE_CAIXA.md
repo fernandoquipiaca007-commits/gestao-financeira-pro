@@ -4,6 +4,40 @@ Registo das movimentações e do raciocínio por trás de cada fecho. As entrada
 
 ---
 
+## 2026-10-21 — Acerto do Jorge e do PayPal
+
+Respostas do Fernando à análise de consistência ().
+
+**Jorge.** A cliente Nayara transferiu os R$ 2.325 do projeto diretamente para o Jorge (19/10), porque ainda se estava a resolver como enviar.
+
+| | Valor |
+|---|---|
+| Parte do Jorge do lote de setembro (40%) — passa a **paga** a 19/10 | R$ 1.000,00 |
+| Entregue a mais — **o Jorge deve à empresa** ("Adiantamento a sócio", não é custo) | R$ 1.325,00 |
+| Total recebido pelo Jorge | R$ 2.325,00 |
+
+Os R$ 1.325 são descontados nas próximas distribuições: em Financeiro → Caixa e sócios, a opção "Descontar no adiantamento" vem marcada para o Jorge.
+
+**PayPal.** Os R$ 600 de 31/07 continuam congelados (não se perderam). Deixaram de ser despesa e passaram a reserva **"Retido na PayPal"**. Quando forem libertados, fecha-se a reserva.
+
+**"Fernando" R$ 300 (06/08):** confirmado como salário/despesa — fica como está.
+
+### Caixa depois do acerto
+
+| | Valor |
+|---|---|
+| **Saldo em caixa** | **R$ 4.700,00** |
+| Reservado: Meta dos 30 mil | R$ 1.000,00 |
+| Reservado: Ferramentas futuras | R$ 600,00 |
+| Reservado: Retido na PayPal | R$ 600,00 |
+| Por enviar a sócios | R$ 0,00 |
+| Livre | R$ 2.500,00 |
+| O Jorge deve à empresa | R$ 1.325,00 |
+
+Por confirmar: "Já está em angola" (R$ 900, 11/08) está como salário.
+
+---
+
 ## 2026-10-21 — Novos registos feitos no sistema e situação do caixa
 
 Registos feitos diretamente na app desde o fecho de setembro (conferidos no relatório Excel gerado com os dados reais):

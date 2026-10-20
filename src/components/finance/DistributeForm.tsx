@@ -11,17 +11,21 @@ interface DistributeFormProps {
   suggested: number;
   fmt: (v: number) => string;
   lang: 'pt' | 'en';
-  onDistribute: (params: { amount: number; date: string; reference: string; sent: Record<string, boolean> }) => Promise<boolean>;
+  /** Quanto cada sócio deve à empresa (adiantamentos). */
+  advances?: Record<string, number>;
+  onDistribute: (params: { amount: number; date: string; reference: string; sent: Record<string, boolean>; offset: Record<string, boolean> }) => Promise<boolean>;
 }
 
 // Divide um valor pelos sócios segundo as percentagens das Definições. Cada parte fica
 // "enviada" (sai do caixa) ou "por enviar" (continua no caixa até ser marcada como paga).
-export function DistributeForm({ split, currency, suggested, fmt, lang, onDistribute }: DistributeFormProps) {
+export function DistributeForm({ split, currency, suggested, fmt, lang, advances = {}, onDistribute }: DistributeFormProps) {
   const en = lang === 'en';
   const [amount, setAmount] = useState(suggested > 0 ? String(suggested) : '');
   const [date, setDate] = useState(getTodayIso());
   const [reference, setReference] = useState('');
   const [sent, setSent] = useState<Record<string, boolean>>({});
+  // Sócios com adiantamento: por defeito a parte deles é descontada no que devem, não enviada.
+  const [offset, setOffset] = useState<Record<string, boolean>>(() => Object.fromEntries(Object.keys(advances).map((k) => [k, true])));
   const [saving, setSaving] = useState(false);
 
   const value = Number(amount.replace(',', '.')) || 0;
@@ -39,7 +43,7 @@ export function DistributeForm({ split, currency, suggested, fmt, lang, onDistri
     e.preventDefault();
     if (!(value > 0) || total !== 100 || !reference.trim()) return;
     setSaving(true);
-    const ok = await onDistribute({ amount: value, date, reference: reference.trim(), sent });
+    const ok = await onDistribute({ amount: value, date, reference: reference.trim(), sent, offset });
     setSaving(false);
     if (ok) { setAmount(''); setReference(''); setSent({}); }
   };
@@ -68,10 +72,18 @@ export function DistributeForm({ split, currency, suggested, fmt, lang, onDistri
             <span className="text-[14px] text-fg">{share.description.split(' - ')[0]}</span>
             <span className="flex items-center gap-4">
               <strong className="text-[14px] font-medium text-fg">{fmt(share.amount)}</strong>
-              <label className="flex items-center gap-2 text-[12px] text-fg-secondary cursor-pointer">
-                <input type="checkbox" checked={Boolean(sent[share.partnerName || ''])} onChange={(e) => setSent((s) => ({ ...s, [share.partnerName || '']: e.target.checked }))} />
-                {en ? 'Already sent' : 'Já enviado'}
-              </label>
+              {advances[share.partnerName || ''] > 0 && (
+                <label className="flex items-center gap-2 text-[12px] text-warning-fg cursor-pointer" title={en ? 'Owes the company from an advance' : 'Deve à empresa por adiantamento'}>
+                  <input type="checkbox" checked={Boolean(offset[share.partnerName || ''])} onChange={(e) => setOffset((s) => ({ ...s, [share.partnerName || '']: e.target.checked }))} />
+                  {en ? `Deduct from advance (owes ${fmt(advances[share.partnerName || ''])})` : `Descontar no adiantamento (deve ${fmt(advances[share.partnerName || ''])})`}
+                </label>
+              )}
+              {!offset[share.partnerName || ''] && (
+                <label className="flex items-center gap-2 text-[12px] text-fg-secondary cursor-pointer">
+                  <input type="checkbox" checked={Boolean(sent[share.partnerName || ''])} onChange={(e) => setSent((s) => ({ ...s, [share.partnerName || '']: e.target.checked }))} />
+                  {en ? 'Already sent' : 'Já enviado'}
+                </label>
+              )}
             </span>
           </li>
         ))}

@@ -4,6 +4,7 @@ import type { AppSettings, CashReserve, CurrencyCode, Expense, Income, Project }
 import { useFinanceMetrics } from '../../lib/finance/useFinanceMetrics';
 import { getTodayIso } from '../../lib/storage';
 import { DistributeForm } from './DistributeForm';
+import { partnerAdvances } from '../../lib/finance/cashPosition';
 
 interface CashPanelProps {
   incomes: Income[];
@@ -15,7 +16,7 @@ interface CashPanelProps {
   lang: 'pt' | 'en';
   canEdit: boolean;
   onSaveReserve: (reserve: Omit<CashReserve, 'id' | 'createdAt'> & { id?: string }) => Promise<boolean>;
-  onDistribute: (params: { amount: number; date: string; reference: string; sent: Record<string, boolean> }) => Promise<boolean>;
+  onDistribute: (params: { amount: number; date: string; reference: string; sent: Record<string, boolean>; offset: Record<string, boolean> }) => Promise<boolean>;
 }
 
 // Onde está o dinheiro do caixa e o que já tem destino. As reservas são escritas à mão.
@@ -46,6 +47,7 @@ export function CashPanel(p: CashPanelProps) {
     { label: en ? 'Free to use' : 'Livre', value: m.fmt(m.cashFree), tone: m.cashFree < 0 ? 'text-danger-fg' : 'text-success-fg' },
   ];
   const owedItems = p.expenses.filter((e) => !e.paid && e.category === 'Distribuição a sócios');
+  const advances = partnerAdvances(p.expenses, (n) => n);
 
   return (
     <div className="grid gap-5">
@@ -125,8 +127,15 @@ export function CashPanel(p: CashPanelProps) {
             ))}
           </ul>
         )}
+        {Object.keys(advances).length > 0 && (
+          <ul className="m-0 p-0 list-none grid gap-1 text-[13px]">
+            {Object.entries(advances).map(([name, value]) => (
+              <li key={name} className="flex justify-between gap-3 text-fg-secondary"><span>{name} {en ? 'owes the company (advance)' : 'deve à empresa (adiantamento)'}</span><strong className="text-warning-fg font-medium">{m.fmt(value)}</strong></li>
+            ))}
+          </ul>
+        )}
         {p.canEdit ? (
-          <DistributeForm split={p.settings.profitSplit || []} currency={m.currency} suggested={Math.max(0, m.cashFree)} fmt={m.fmt} lang={p.lang} onDistribute={p.onDistribute} />
+          <DistributeForm advances={advances} split={p.settings.profitSplit || []} currency={m.currency} suggested={Math.max(0, m.cashFree)} fmt={m.fmt} lang={p.lang} onDistribute={p.onDistribute} />
         ) : (
           <p className="m-0 text-[13px] text-fg-muted">{en ? 'Only the owner can distribute.' : 'Só o owner pode distribuir.'}</p>
         )}

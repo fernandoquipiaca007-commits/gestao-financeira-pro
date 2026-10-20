@@ -43,10 +43,14 @@ export function buildFinancialReport(input: {
   settings: AppSettings;
   currency: CurrencyCode;
   period: ReportPeriod;
+  /** Intervalo de dias escolhido nos Relatórios (tem prioridade sobre ano/mês). */
+  range?: { from: string; to: string; label: string };
 }) {
   const { incomes, expenses, projects, clients, reserves, settings, currency, period } = input;
   const conv = (amount: number, from: CurrencyCode) => round2(convertCurrency(amount || 0, from, currency, settings.exchangeRates));
-  const range = periodRange(period);
+  const range = input.range
+    ? { from: input.range.from || '0000-01-01', to: input.range.to || '9999-12-31', label: input.range.label }
+    : periodRange(period);
   const inRange = (d: string) => d >= range.from && d <= range.to;
   const clientName = (id?: string) => {
     const c = clients.find((x) => x.id === id);
@@ -109,7 +113,7 @@ export function buildFinancialReport(input: {
   // Arquivados ficam fora da folha de projetos (não contam no que falta receber).
   const projectRows = projects
     .filter((p) => !p.archived)
-    .filter((p) => period.year === 'ALL' || inRange((p.startDate || p.createdAt || '').slice(0, 10)) || p.status === 'Em andamento' || p.status === 'Aguardando cliente')
+    .filter((p) => (period.year === 'ALL' && !input.range) || inRange((p.startDate || p.createdAt || '').slice(0, 10)) || p.status === 'Em andamento' || p.status === 'Aguardando cliente')
     .map((p) => ({
       name: p.name,
       client: clientName(p.clientId),

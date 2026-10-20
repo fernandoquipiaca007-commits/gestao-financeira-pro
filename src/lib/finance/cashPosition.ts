@@ -74,3 +74,31 @@ export function buildPartnerDistribution(params: {
 export function splitTotal(split: PartnerShare[]): number {
   return round2(split.reduce((s, p) => s + (Number(p.percent) || 0), 0));
 }
+
+/** Quanto cada sócio deve à empresa por adiantamentos (dinheiro entregue a mais). */
+export function partnerAdvances(expenses: Expense[], conv: Convert): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const e of expenses) {
+    if (!e.paid || e.category !== 'Adiantamento a sócio' || !e.partnerName) continue;
+    out[e.partnerName] = round2((out[e.partnerName] || 0) + conv(e.amount, e.currency));
+  }
+  for (const k of Object.keys(out)) if (out[k] <= 0) delete out[k];
+  return out;
+}
+
+/**
+ * Descontar uma parte da distribuição no adiantamento do sócio: em vez de enviar dinheiro,
+ * reduz-se o adiantamento (do mais antigo para o mais recente). Devolve os adiantamentos
+ * alterados e quanto ficou por descontar.
+ */
+export function offsetAdvance(advances: Expense[], amount: number): { updated: Expense[]; remainder: number } {
+  let left = round2(amount);
+  const updated: Expense[] = [];
+  for (const a of [...advances].sort((x, y) => x.date.localeCompare(y.date))) {
+    if (left <= 0) break;
+    const take = Math.min(left, a.amount);
+    updated.push({ ...a, amount: round2(a.amount - take) });
+    left = round2(left - take);
+  }
+  return { updated, remainder: left };
+}

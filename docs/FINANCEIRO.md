@@ -37,7 +37,7 @@ O saldo divide-se em três partes (Financeiro → Caixa e sócios):
 
 ## Relatório Excel
 
-Em Relatórios, escolher o ano e o mês e carregar em **Exportar Excel**. O ficheiro tem quatro folhas, todas prontas a imprimir (A4, ajustadas à largura, cabeçalho repetido, páginas numeradas):
+Em Relatórios, escolher o **período** (atalhos como "Mês passado", "Últimos 30 dias", "Este ano", ou as datas "de … até …" no calendário) e carregar em **Exportar Excel**. O ficheiro tem quatro folhas, todas prontas a imprimir (A4, ajustadas à largura, cabeçalho repetido, páginas numeradas):
 
 | Folha | Conteúdo |
 |---|---|
@@ -65,6 +65,7 @@ Procedimento de cada lote:
 3. Criar as reservas à mão, se houver (o valor depende de cada lote).
 4. Em Financeiro → Caixa e sócios → **Registar distribuição**: escrever o valor a dividir e marcar quem já recebeu. Cada sócio fica como despesa "Distribuição a sócios"; os que ainda não receberam ficam "por enviar".
 5. Quando um sócio receber, marcar a despesa dele como paga.
+6. **Adiantamento a sócio:** se um sócio receber mais do que lhe cabe (ex.: um cliente paga diretamente ao sócio), regista-se a parte dele como paga e o resto como "Adiantamento a sócio" — ele deve esse valor à empresa. Na distribuição seguinte, "Descontar no adiantamento" abate a parte dele nessa dívida sem sair dinheiro do caixa.
 
 ## Segurança dos dados
 

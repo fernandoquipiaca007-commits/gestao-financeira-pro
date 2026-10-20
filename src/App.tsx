@@ -132,7 +132,7 @@ import { logAction } from './lib/audit';
 import { checkFinancialIntegrity } from './lib/integrity';
 import { formatCurrency } from './lib/formatters';
 import { reconcileProjectWithIncomes, buildSettlementIncomes, paymentDeltaIncome } from './lib/finance/projectPayments';
-import { buildPartnerDistribution } from './lib/finance/cashPosition';
+import { buildPartnerDistribution, offsetAdvance } from './lib/finance/cashPosition';
 import { useAuth } from './contexts/AuthContext';
 import { useTheme } from './contexts/ThemeContext';
 import { EmailAttachment } from './types/email';
@@ -1702,35 +1702,55 @@ export default function App() {
 
   // Divide um valor pelos sócios (percentagens das Definições). Cada parte é uma despesa
   // "Distribuição a sócios": enviada sai do caixa; por enviar fica no caixa até ser paga.
-  const handleDistribute = async (params: { amount: number; date: string; reference: string; sent: Record<string, boolean> }): Promise<boolean> => {
+  // Divide um valor pelos sócios (percentagens das Definições). Cada parte é uma despesa
+  // "Distribuição a sócios": enviada sai do caixa; por enviar fica no caixa até ser paga.
+  // Se o sócio deve à empresa (adiantamento) e a opção estiver marcada, a parte dele é
+  // descontada nesse adiantamento: nada sai do caixa e a dívida diminui.
+  const handleDistribute = async (params: { amount: number; date: string; reference: string; sent: Record<string, boolean>; offset: Record<string, boolean> }): Promise<boolean> => {
     if (!userProfile?.companyId) return false;
-    const shares = buildPartnerDistribution({
+    const companyId = userProfile.companyId;
+    const base = buildPartnerDistribution({
       ...params,
       currency: settings.defaultCurrency,
       split: settings.profitSplit || [],
       idPrefix: `dist-${Date.now()}`,
     });
-    const saved: Expense[] = [];
-    for (const share of shares) {
-      const result = await upsertExpenseToDb(share, userProfile.companyId);
-      if (!result.success) {
-        toast({ tone: 'danger', title: `Não foi possível registar a parte de ${share.partnerName}`, description: `${result.error || ''} As restantes partes foram registadas; verifique em Despesas.`.trim() });
-        break;
+
+    const records: Expense[] = [];
+    const advanceUpdates: Expense[] = [];
+    for (const share of base) {
+      const name = share.partnerName || '';
+      const advances = expenses.filter((e) => e.paid && e.category === 'Adiantamento a sócio' && e.partnerName === name && e.amount > 0);
+      const owed = advances.reduce((s, e) => s + e.amount, 0);
+      if (!params.offset[name] || owed <= 0) {
+        records.push(share);
+        continue;
       }
-      saved.push(share);
+      const covered = Math.min(owed, share.amount);
+      advanceUpdates.push(...offsetAdvance(advances, covered).updated);
+      records.push({ ...share, id: `${share.id}-desc`, amount: covered, paid: true, description: `${share.description} (descontado no adiantamento)` });
+      const rest = Math.round((share.amount - covered) * 100) / 100;
+      if (rest > 0) records.push({ ...share, amount: rest, paid: Boolean(params.sent[name]) });
     }
-    if (saved.length > 0) {
-      setExpenses((prev) => {
-        const next = [...saved, ...prev];
-        saveExpenses(next);
-        return next;
-      });
+
+    const saved: Expense[] = [];
+    for (const rec of [...records, ...advanceUpdates]) {
+      const result = await upsertExpenseToDb(rec, companyId);
+      if (!result.success) {
+        toast({ tone: 'danger', title: `Não foi possível registar "${rec.description}"`, description: `${result.error || ''} Verifique em Despesas.`.trim() });
+        await loadDbData();
+        return false;
+      }
+      saved.push(rec);
     }
-    if (saved.length === shares.length) {
-      toast({ tone: 'success', title: 'Distribuição registada', description: `${formatCurrency(params.amount, settings.defaultCurrency)} · ${params.reference}` });
-      return true;
-    }
-    return false;
+    setExpenses((prev) => {
+      const byId = new Map(saved.map((e) => [e.id, e]));
+      const next = [...saved.filter((e) => !prev.some((p) => p.id === e.id)), ...prev.map((p) => byId.get(p.id) || p)];
+      saveExpenses(next);
+      return next;
+    });
+    toast({ tone: 'success', title: 'Distribuição registada', description: `${formatCurrency(params.amount, settings.defaultCurrency)} · ${params.reference}` });
+    return true;
   };
 
   const handleSavePartner = async (partnerData: Omit<Partner, 'id' | 'createdAt'> & { id?: string }) => {
