@@ -120,7 +120,7 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
  <p>${greeting}</p>
  <div style="background-color: #f7f3f2; padding: 16px; border-radius: 12px; font-size: 14px; line-height: 1.6; white-space: pre-wrap; color: #1c1b1b; margin: 16px 0;">${message}</div>
  ${attachments.length > 0 ? `<p style="font-size: 12px; color: #747878;"><strong>${attachmentText}</strong></p>` : ''}
-          <p style="font-size: 12px; color: #747878; margin-top: 24px;">${signOff}<br><strong>${settings.businessName || 'CodeEngine Manager'}</strong></p>
+          <p style="font-size: 12px; color: #747878; margin-top: 24px;">${signOff}<br><strong>${settings.businessName || 'CodeEngine'}</strong></p>
         </div>
       `;
 

@@ -33,7 +33,7 @@ export const SYSTEM_TRANSLATIONS: Record<string, Record<Lang, string>> = {
   'nav.expandMenu': { pt: 'Expandir Menu Principal', en: 'Expand Main Menu' },
   'nav.collapseMenu': { pt: 'Encolher Menu Principal', en: 'Collapse Main Menu' },
   'common.loadingWorkspace': { pt: 'A preparar o seu espaço de trabalho...', en: 'Preparing your workspace...' },
-  'common.configuringWorkspace': { pt: 'Estamos a configurar a sua empresa e período de trial.', en: 'We are setting up your company and trial period.' },
+  'common.configuringWorkspace': { pt: 'A carregar os dados da empresa…', en: 'Loading company data…' },
 
   // Header
   'header.searchPlaceholder': { pt: 'Pesquisar clientes, projetos, faturas...', en: 'Search clients, projects, invoices...' },

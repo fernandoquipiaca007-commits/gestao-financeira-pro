@@ -44,7 +44,7 @@ export async function sendResendEmail(
     }
 
     // Remetente padrão: usar onboarding@resend.dev para evitar bloqueio por domínio não verificado
-    let fromAddress = options.fromEmail || settings?.fromEmail || 'CodeEngine Manager <onboarding@resend.dev>';
+    let fromAddress = options.fromEmail || settings?.fromEmail || 'CodeEngine <onboarding@resend.dev>';
     if (fromAddress.includes('notificacoes@resend.dev')) {
       fromAddress = fromAddress.replace('notificacoes@resend.dev', 'onboarding@resend.dev');
     }

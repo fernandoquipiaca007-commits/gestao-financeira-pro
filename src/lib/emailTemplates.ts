@@ -7,7 +7,7 @@ import { CurrencyCode } from '../types';
 /**
  * Base HTML email template layout
  */
-function wrapEmailHtml(contentHtml: string, title: string, businessName: string = 'CodeEngine Manager'): string {
+function wrapEmailHtml(contentHtml: string, title: string, businessName: string = 'CodeEngine'): string {
   return `
 <!DOCTYPE html>
 <html lang="pt">
@@ -103,7 +103,7 @@ export async function sendClientPaymentReminderEmail(params: {
     ${params.notes ? `<p style="font-style: italic; color: #747878; font-size: 12px; background: #f7f3f2; padding: 10px; border-radius: 8px;">"${params.notes}"</p>` : ''}
 
     <p>Qualquer dúvida ou caso necessite dos dados de pagamento novamente, por favor responda a este e-mail.</p>
-    <p>Atenciosamente,<br><strong>${settings.businessName || 'Equipa CodeEngine Manager'}</strong></p>
+    <p>Atenciosamente,<br><strong>${settings.businessName || 'Equipa CodeEngine'}</strong></p>
   `, 'Aviso de Pagamento Pendente', settings.businessName);
 
   return sendResendEmail({
@@ -162,7 +162,7 @@ export async function sendClientReceiptEmail(params: {
     </div>
 
     <p>O comprovativo foi emitido. Se desejar guardar uma cópia ou tiver dúvidas, conte conosco.</p>
-    <p>Atenciosamente,<br><strong>${settings.businessName || 'Equipa CodeEngine Manager'}</strong></p>
+    <p>Atenciosamente,<br><strong>${settings.businessName || 'Equipa CodeEngine'}</strong></p>
   `, 'Comprovativo de Pagamento', settings.businessName);
 
   return sendResendEmail({
@@ -463,7 +463,7 @@ export async function sendTestEmail(
       </div>
       <div class="card-row">
         <span class="label">Remetente:</span>
-        <span class="value">${effectiveSettings?.fromEmail || 'CodeEngine Manager <onboarding@resend.dev>'}</span>
+        <span class="value">${effectiveSettings?.fromEmail || 'CodeEngine <onboarding@resend.dev>'}</span>
       </div>
       <div class="card-row">
         <span class="label">Data de Teste:</span>

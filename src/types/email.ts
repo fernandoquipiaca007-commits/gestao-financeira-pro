@@ -15,8 +15,8 @@ export interface EmailNotificationToggles {
 
 export interface ResendEmailSettings {
   apiKey: string;
-  fromEmail: string;        // e.g. "CodeEngine Manager <notificacoes@seudominio.com>"
-  fromName?: string;        // e.g. "CodeEngine Manager"
+  fromEmail: string;        // e.g. "CodeEngine <notificacoes@seudominio.com>"
+  fromName?: string;        // e.g. "CodeEngine"
   replyTo?: string;         // e.g. "suporte@seudominio.com"
   enabled: boolean;         // Ativar/Desativar globalmente o envio de e-mails
   toggles: EmailNotificationToggles;

@@ -32,8 +32,8 @@ import { ResendEmailSettings } from '../types/email';
 
 export const DEFAULT_EMAIL_SETTINGS: ResendEmailSettings = {
   apiKey: '',
-  fromEmail: 'CodeEngine Manager <onboarding@resend.dev>',
-  fromName: 'CodeEngine Manager',
+  fromEmail: 'CodeEngine <onboarding@resend.dev>',
+  fromName: 'CodeEngine',
   replyTo: '',
   enabled: true,
   toggles: {

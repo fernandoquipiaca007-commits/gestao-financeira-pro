@@ -135,9 +135,10 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
     });
   }, [incomes, currencyFilter, selectedClient, selectedCategory, selectedYear, selectedMonth, projects]);
 
-  // Filter Expenses (fully responsive to all filters)
-  const filteredExpenses = useMemo(() => {
+  // Filter Expenses (fully responsive to all filters). Only money that actually left counts.
+  const paidExpensesInPeriod = useMemo(() => {
     return expenses.filter((exp) => {
+      if (!exp.paid) return false;
       if (currencyFilter !== 'ALL' && exp.currency !== currencyFilter) return false;
       if (selectedCategory !== 'ALL' && exp.category !== selectedCategory) return false;
 
@@ -151,6 +152,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       return true;
     });
   }, [expenses, currencyFilter, selectedCategory, selectedClient, selectedYear, selectedMonth]);
+
+  // Retiradas do sócio saem do caixa mas não são custo do negócio.
+  const isWithdrawal = (e: Expense) => e.category === 'Retirada Própria';
+  const filteredExpenses = paidExpensesInPeriod.filter((e) => !isWithdrawal(e));
+  const periodWithdrawals = paidExpensesInPeriod.filter(isWithdrawal);
 
   // Calculation Helper
   const sumAmount = (items: { amount: number; currency: CurrencyCode }[]) => {
@@ -169,8 +175,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   // 2. Despesas
   const totalExpenses = sumAmount(filteredExpenses);
 
-  // 3. Lucro Líquido
+  // 3. Lucro Líquido (sem retiradas) e o que ficou em caixa no período (com retiradas)
   const netProfit = totalRevenue - totalExpenses;
+  const totalWithdrawals = sumAmount(periodWithdrawals);
+  const cashLeft = netProfit - totalWithdrawals;
+  const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : null;
 
   // 4. Quantidade de Clientes (Reativo a filtros)
   const totalClientsCount = useMemo(() => {
@@ -282,6 +291,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
         });
 
         const monthExpenses = expenses.filter((e) => {
+          if (!e.paid || isWithdrawal(e)) return false;
           if (currencyFilter !== 'ALL' && e.currency !== currencyFilter) return false;
           if (selectedCategory !== 'ALL' && e.category !== selectedCategory) return false;
           if (selectedClient !== 'ALL') return false;
@@ -383,7 +393,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       ]);
     });
 
-    filteredExpenses.forEach((exp) => {
+    paidExpensesInPeriod.forEach((exp) => {
       rows.push([
         isEn ? 'Expense' : 'Despesa',
         exp.category,
@@ -544,8 +554,8 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           </div>
           <p className="text-xs text-fg-muted mt-1">
             {isEn
-              ? `${filteredExpenses.length} computed costs`
-              : `${filteredExpenses.length} custos computados`}
+              ? `${filteredExpenses.length} paid costs, withdrawals excluded`
+              : `${filteredExpenses.length} custos pagos, sem retiradas`}
           </p>
         </div>
 
@@ -561,7 +571,25 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             {formatCurrency(netProfit, mainCurrency)}
           </div>
           <p className="text-xs text-fg-muted mt-1">
-            {isEn ? 'Calculated profit margin' : 'Margem de lucro calculada'}
+            {profitMargin == null
+              ? (isEn ? 'No income in period' : 'Sem receitas no período')
+              : (isEn ? `Margin ${profitMargin.toFixed(0)}% · withdrawals excluded` : `Margem ${profitMargin.toFixed(0)}% · sem retiradas`)}
+          </p>
+        </div>
+
+        {/* Retiradas e caixa do período */}
+        <div className="bg-glass border border-line-subtle p-5 rounded-xl shadow-glass">
+          <div className="flex items-center justify-between text-[13px] text-fg-secondary font-medium ">
+            <span>{isEn ? 'Owner withdrawals' : 'Retiradas'}</span>
+            <div className="p-1.5 rounded-full bg-surface-2 text-fg-secondary ">
+              <Receipt className="w-4 h-4 stroke-[2]" />
+            </div>
+          </div>
+          <div className="text-2xl font-medium text-fg mt-2 tracking-[-0.04em]" style={{ letterSpacing: '-0.055em' }}>
+            {formatCurrency(totalWithdrawals, mainCurrency)}
+          </div>
+          <p className="text-xs text-fg-muted mt-1">
+            {isEn ? `Left in cash after withdrawals: ${formatCurrency(cashLeft, mainCurrency)}` : `Ficou em caixa depois das retiradas: ${formatCurrency(cashLeft, mainCurrency)}`}
           </p>
         </div>
 

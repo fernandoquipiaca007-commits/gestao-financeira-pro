@@ -194,6 +194,7 @@ const saveStoredDismissedNotifs = (ids: string[]) => {
 };
 import { GlobalSearchModal } from './components/GlobalSearchModal';
 import { SendEmailModal } from './components/modals/SendEmailModal';
+import { StripeInvoiceModal } from './components/modals/StripeInvoiceModal';
 
 import { ClientModal } from './components/modals/ClientModal';
 import { ProjectModal } from './components/modals/ProjectModal';
@@ -385,6 +386,15 @@ export default function App() {
   // ------------------------------------------------------------------
   // Initial Data Fetch & Synchronization
   // ------------------------------------------------------------------
+  // Faturas Stripe para clientes (só no sistema interno)
+  const [isStripeInvoiceModalOpen, setIsStripeInvoiceModalOpen] = useState(false);
+  const [projectForStripeInvoice, setProjectForStripeInvoice] = useState<Project | null>(null);
+
+  const handleOpenStripeInvoiceModal = (p: Project) => {
+    setProjectForStripeInvoice(p);
+    setIsStripeInvoiceModalOpen(true);
+  };
+
   const loadDbData = useCallback(async () => {
     setIsDataSyncing(true);
     try {
@@ -499,6 +509,20 @@ export default function App() {
       loadDbData();
     }
   }, [userSession, userProfile?.companyId, loadDbData]);
+
+  const handleStripeInvoiceCreated = (
+    incomeId: string,
+    stripeData: {
+      stripeInvoiceId: string;
+      stripeInvoiceUrl: string;
+      stripeInvoicePdf: string;
+      stripeCustomerId: string;
+      stripeStatus: Income['stripeStatus'];
+    }
+  ) => {
+    setIncomes((prev) => prev.map((inc) => (inc.id === incomeId ? { ...inc, ...stripeData } : inc)));
+    loadDbData();
+  };
 
   // Re-run integrity check when language changes so warnings match selected language
   useEffect(() => {
@@ -1843,7 +1867,7 @@ export default function App() {
         <div className="text-center space-y-4">
           <div className="w-10 h-10 border-2 border-fg border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-fg font-medium text-base">{t('common.loadingWorkspace', 'A preparar o seu espaço de trabalho...')}</p>
-          <p className="text-fg-muted text-sm font-normal">{t('common.configuringWorkspace', 'Estamos a configurar a sua empresa e período de trial.')}</p>
+          <p className="text-fg-muted text-sm font-normal">{t('common.configuringWorkspace', 'A carregar os dados da empresa…')}</p>
         </div>
       </div>
     );
@@ -2042,6 +2066,7 @@ export default function App() {
               onRateProject={handleRateProject}
               onDeleteProject={handleDeleteProject}
               onMarkProjectAsPaid={handleMarkProjectAsPaid}
+              onOpenStripeInvoiceModal={handleOpenStripeInvoiceModal}
               onAssumeProject={handleAssumeProject}
               onOpenWhatsAppCharge={handleOpenWhatsAppCharge}
             />
@@ -2316,6 +2341,19 @@ export default function App() {
         defaultMessage={emailModalProps.message}
         defaultAttachments={emailModalProps.attachments}
       />
+
+      {projectForStripeInvoice && isStripeInvoiceModalOpen && (
+        <StripeInvoiceModal
+          project={projectForStripeInvoice}
+          client={clients.find((c) => c.id === projectForStripeInvoice.clientId)}
+          incomes={incomes}
+          onClose={() => {
+            setIsStripeInvoiceModalOpen(false);
+            setProjectForStripeInvoice(null);
+          }}
+          onInvoiceCreated={handleStripeInvoiceCreated}
+        />
+      )}
 
       </div>
   </>

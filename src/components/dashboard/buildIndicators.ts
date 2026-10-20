@@ -7,6 +7,7 @@ interface Ind {
   dueTodayAmount: number; dueTodayCount: number;
   spentPeriod: number; spentDelta: number | null;
   netPeriod: number; margin: number | null;
+  withdrawalsPeriod: number;
   contracted: number; contractedCount: number;
   pendingCommissions: number;
   activeCount: number; issuesCount: number; completedCount: number;
@@ -41,6 +42,11 @@ export function buildIndicators(i: Ind, fmt: (v: number) => string, en: boolean,
       id: 'net', label: period === '1m' ? (en ? 'Net result this month' : 'Resultado do mês') : (en ? 'Net result' : 'Resultado') + inPeriod, value: fmt(i.netPeriod),
       tone: i.netPeriod >= 0 ? 'success' : 'danger', icon: INDICATOR_ICONS.TrendingUp, onClick: () => go('reports'),
       note: i.margin == null ? (en ? 'No income yet' : 'Ainda sem receitas') : `${en ? 'Margin' : 'Margem'} ${i.margin.toFixed(0)}%`,
+    },
+    {
+      id: 'withdrawals', label: period === '1m' ? (en ? 'Owner withdrawals this month' : 'Retiradas do mês') : (en ? 'Owner withdrawals' : 'Retiradas') + inPeriod, value: fmt(i.withdrawalsPeriod),
+      icon: INDICATOR_ICONS.Receipt, onClick: () => go('financial', 'despesas'),
+      note: en ? 'Leave the cash, not a business cost' : 'Saem do caixa, não contam como custo',
     },
     {
       id: 'contracted', label: en ? 'Contracted revenue' : 'Receita contratada', value: fmt(i.contracted),

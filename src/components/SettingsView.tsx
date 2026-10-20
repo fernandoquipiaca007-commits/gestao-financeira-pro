@@ -79,8 +79,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   // Resend Email Settings State
   const initialEmail = settings.emailSettings || DEFAULT_EMAIL_SETTINGS;
   const sanitizedInitialFrom = initialEmail.fromEmail?.includes('notificacoes@resend.dev')
-    ? 'CodeEngine Manager <onboarding@resend.dev>'
-    : initialEmail.fromEmail || 'CodeEngine Manager <onboarding@resend.dev>';
+    ? 'CodeEngine <onboarding@resend.dev>'
+    : initialEmail.fromEmail || 'CodeEngine <onboarding@resend.dev>';
 
   const [resendApiKey, setResendApiKey] = useState(initialEmail.apiKey || '');
   const [resendFromEmail, setResendFromEmail] = useState(sanitizedInitialFrom);
@@ -108,7 +108,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       },
       emailSettings: {
         apiKey: resendApiKey.trim(),
-        fromEmail: resendFromEmail.trim() || 'CodeEngine Manager <onboarding@resend.dev>',
+        fromEmail: resendFromEmail.trim() || 'CodeEngine <onboarding@resend.dev>',
         replyTo: resendReplyTo.trim(),
         enabled: resendEnabled,
         toggles: emailToggles,
@@ -133,7 +133,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       },
       emailSettings: {
         apiKey: resendApiKey.trim(),
-        fromEmail: resendFromEmail.trim() || 'CodeEngine Manager <onboarding@resend.dev>',
+        fromEmail: resendFromEmail.trim() || 'CodeEngine <onboarding@resend.dev>',
         replyTo: resendReplyTo.trim(),
         enabled: resendEnabled,
         toggles: emailToggles,
@@ -165,7 +165,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       const adminEmail = userProfile?.email || 'admin@gestaofo.com';
       const result = await sendTestEmail(adminEmail, {
         apiKey: resendApiKey.trim(),
-        fromEmail: resendFromEmail.trim() || 'CodeEngine Manager <onboarding@resend.dev>',
+        fromEmail: resendFromEmail.trim() || 'CodeEngine <onboarding@resend.dev>',
         replyTo: resendReplyTo.trim(),
         enabled: resendEnabled,
         toggles: emailToggles,
@@ -663,8 +663,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <div className="mt-1 pl-4 space-y-1 text-[11px] text-fg-muted ">
                     <p>
                       {lang === 'en'
-                        ? <>• <strong>New account without custom domain:</strong> Leave it as <code className="bg-glass-strong px-1 py-0.5 rounded font-mono text-fg border border-line-subtle ">CodeEngine Manager &lt;onboarding@resend.dev&gt;</code>. Resend will deliver emails directly to your registered account address.</>
-                        : <>• <strong>Conta nova sem domínio próprio:</strong> Deixe como <code className="bg-glass-strong px-1 py-0.5 rounded font-mono text-fg border border-line-subtle ">CodeEngine Manager &lt;onboarding@resend.dev&gt;</code>. O Resend envia os emails para o endereço da sua conta Resend.</>}
+                        ? <>• <strong>New account without custom domain:</strong> Leave it as <code className="bg-glass-strong px-1 py-0.5 rounded font-mono text-fg border border-line-subtle ">CodeEngine &lt;onboarding@resend.dev&gt;</code>. Resend will deliver emails directly to your registered account address.</>
+                        : <>• <strong>Conta nova sem domínio próprio:</strong> Deixe como <code className="bg-glass-strong px-1 py-0.5 rounded font-mono text-fg border border-line-subtle ">CodeEngine &lt;onboarding@resend.dev&gt;</code>. O Resend envia os emails para o endereço da sua conta Resend.</>}
                     </p>
                     <p>
                       {lang === 'en'
@@ -729,14 +729,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   type="text"
                   value={resendFromEmail}
                   onChange={(e) => setResendFromEmail(e.target.value)}
-                  placeholder="CodeEngine Manager <onboarding@resend.dev>"
+                  placeholder="CodeEngine <onboarding@resend.dev>"
                   className="w-full px-4 py-3 bg-surface-2 border border-line-subtle rounded-md text-fg text-sm focus:outline-none focus:border-accent focus:bg-surface-1 focus:shadow-[0_0_0_4px_var(--accent-ring)] transition-all font-medium"
                 />
                 <p className="text-[10px] text-fg-muted mt-1">
                   {lang === 'en' ? (
-                    <>Testing account? Use <code className="text-accent-soft-fg font-mono">CodeEngine Manager &lt;onboarding@resend.dev&gt;</code>. For custom domain, verify it in Resend.</>
+                    <>Testing account? Use <code className="text-accent-soft-fg font-mono">CodeEngine &lt;onboarding@resend.dev&gt;</code>. For custom domain, verify it in Resend.</>
                   ) : (
-                    <>Conta em teste? Use <code className="text-accent-soft-fg font-mono">CodeEngine Manager &lt;onboarding@resend.dev&gt;</code>. Para domínio próprio, verifique-o no Resend.</>
+                    <>Conta em teste? Use <code className="text-accent-soft-fg font-mono">CodeEngine &lt;onboarding@resend.dev&gt;</code>. Para domínio próprio, verifique-o no Resend.</>
                   )}
                 </p>
               </div>

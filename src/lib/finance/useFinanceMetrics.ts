@@ -60,11 +60,19 @@ export function useFinanceMetrics({ clients, projects, incomes, expenses, settin
     // --- Período vs período anterior (recebido = data de recebimento; despesa = data da despesa paga)
     const recDate = (i: Income) => (i.receivedDate || i.dueDate || '').slice(0, 10);
     const receivedIn = (from: string, to: string) => received.filter((i) => between(recDate(i), from, to)).reduce((s, i) => s + conv(i.amount, i.currency), 0);
-    const spentIn = (from: string, to: string) => exp.filter((e) => e.paid && between((e.date || '').slice(0, 10), from, to)).reduce((s, e) => s + conv(e.amount, e.currency), 0);
+    // Retiradas do sócio saem do caixa, mas não são custo do negócio: ficam fora do resultado.
+    const isWithdrawal = (e: Expense) => e.category === 'Retirada Própria';
+    const paidIn = (from: string, to: string, pick: (e: Expense) => boolean) =>
+      exp.filter((e) => e.paid && pick(e) && between((e.date || '').slice(0, 10), from, to)).reduce((s, e) => s + conv(e.amount, e.currency), 0);
+    const spentIn = (from: string, to: string) => paidIn(from, to, (e) => !isWithdrawal(e));
+    const withdrawnIn = (from: string, to: string) => paidIn(from, to, isWithdrawal);
+    const cashOutIn = (from: string, to: string) => paidIn(from, to, () => true);
     const receivedPeriod = receivedIn(winFrom, winTo);
     const receivedPrev = receivedIn(prevFrom, prevTo);
     const spentPeriod = spentIn(winFrom, winTo);
     const spentPrev = spentIn(prevFrom, prevTo);
+    const withdrawalsPeriod = withdrawnIn(winFrom, winTo);
+    const withdrawalsTotal = exp.filter((e) => e.paid && isWithdrawal(e)).reduce((s, e) => s + conv(e.amount, e.currency), 0);
     const pct = (a: number, b: number) => (b > 0 ? ((a - b) / b) * 100 : null);
 
     // --- A receber (receitas por receber + saldo de projetos sem fatura) e antiguidade
@@ -94,7 +102,7 @@ export function useFinanceMetrics({ clients, projects, incomes, expenses, settin
     const addPoint = (from: Date, to: Date, label: string) => {
       const f = iso(from);
       const r = receivedIn(f, iso(to));
-      const e = spentIn(f, iso(to));
+      const e = cashOutIn(f, iso(to));
       series.push({ key: f, label, receitas: r, despesas: e, saldo: r - e });
     };
     const short = (d: Date, withDay: boolean) =>
@@ -155,7 +163,7 @@ export function useFinanceMetrics({ clients, projects, incomes, expenses, settin
 
     return {
       currency, fmt, period,
-      cashBalance, receivedPeriod, receivedPrev, spentPeriod,
+      cashBalance, receivedPeriod, receivedPrev, spentPeriod, withdrawalsPeriod, withdrawalsTotal,
       receivedDelta: pct(receivedPeriod, receivedPrev),
       netPeriod,
       toReceive, aging, overdue, dueToday,
@@ -166,6 +174,7 @@ export function useFinanceMetrics({ clients, projects, incomes, expenses, settin
         { name: lang === 'en' ? 'To receive' : 'A receber', value: Math.max(0, toReceive) },
         { name: lang === 'en' ? 'Expenses' : 'Despesas', value: Math.max(0, spentPeriod) },
         { name: lang === 'en' ? 'Commissions' : 'Comissões', value: Math.max(0, totalPaidCommissions) },
+        { name: lang === 'en' ? 'Withdrawals' : 'Retiradas', value: Math.max(0, withdrawalsPeriod) },
       ].filter((s) => s.value > 0),
       activeProjects, projectsDueSoon,
       indicators: {
@@ -173,6 +182,7 @@ export function useFinanceMetrics({ clients, projects, incomes, expenses, settin
         dueTodayAmount, dueTodayCount: dueToday.length,
         spentPeriod, spentDelta: pct(spentPeriod, spentPrev),
         netPeriod,
+        withdrawalsPeriod,
         margin: receivedPeriod > 0 ? (netPeriod / receivedPeriod) * 100 : null,
         contracted, contractedCount: proj.length,
         pendingCommissions,
