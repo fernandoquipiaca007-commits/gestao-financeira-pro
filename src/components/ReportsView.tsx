@@ -33,6 +33,7 @@ import type { CashReserve } from '../types';
 import { buildFinancialReport } from '../lib/reports/financialReportData';
 import { downloadFinancialReport } from '../lib/reports/excelReport';
 import { toast } from '../lib/feedback';
+import { DateRangePicker, rangeLabel, rangePresets, type DateRange } from './reports/DateRangePicker';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface ReportsViewProps {
@@ -85,8 +86,10 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   const currentYear = new Date().getFullYear();
 
   // Filters State
-  const [selectedYear, setSelectedYear] = useState<string>(String(currentYear));
-  const [selectedMonth, setSelectedMonth] = useState<string>('ALL');
+  // Período do relatório: de um dia a outro (atalhos e calendário). Por defeito, este ano.
+  const [range, setRange] = useState<DateRange>(() => rangePresets().find((p) => p.id === 'year')!.range);
+  const inPeriod = (d?: string) => !!d && (!range.from || d.slice(0, 10) >= range.from) && (!range.to || d.slice(0, 10) <= range.to);
+  const hasPeriod = Boolean(range.from || range.to);
   const [selectedClient, setSelectedClient] = useState<string>('ALL');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
 
@@ -113,14 +116,10 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       if (selectedCategory !== 'ALL' && p.category !== selectedCategory) return false;
 
       const targetDate = p.startDate || p.dueDate;
-      if (targetDate) {
-        const [y, m] = targetDate.split('-');
-        if (selectedYear !== 'ALL' && y !== selectedYear) return false;
-        if (selectedMonth !== 'ALL' && m !== selectedMonth) return false;
-      }
+      if (targetDate && hasPeriod && !inPeriod(targetDate)) return false;
       return true;
     });
-  }, [projects, currencyFilter, selectedClient, selectedCategory, selectedYear, selectedMonth]);
+  }, [projects, currencyFilter, selectedClient, selectedCategory, range]);
 
   // Filter Incomes (fully responsive to all filters)
   const filteredIncomes = useMemo(() => {
@@ -137,13 +136,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       const targetDate = inc.receivedDate || inc.dueDate;
       if (!targetDate) return false;
 
-      const [y, m] = targetDate.split('-');
-      if (selectedYear !== 'ALL' && y !== selectedYear) return false;
-      if (selectedMonth !== 'ALL' && m !== selectedMonth) return false;
+      if (!inPeriod(targetDate)) return false;
 
       return true;
     });
-  }, [incomes, currencyFilter, selectedClient, selectedCategory, selectedYear, selectedMonth, projects]);
+  }, [incomes, currencyFilter, selectedClient, selectedCategory, range, projects]);
 
   // Filter Expenses (fully responsive to all filters). Only money that actually left counts.
   const paidExpensesInPeriod = useMemo(() => {
@@ -155,13 +152,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       // When a specific client is selected, general operating expenses are excluded from client view
       if (selectedClient !== 'ALL') return false;
 
-      const [y, m] = exp.date.split('-');
-      if (selectedYear !== 'ALL' && y !== selectedYear) return false;
-      if (selectedMonth !== 'ALL' && m !== selectedMonth) return false;
+      if (!inPeriod(exp.date)) return false;
 
       return true;
     });
-  }, [expenses, currencyFilter, selectedCategory, selectedClient, selectedYear, selectedMonth]);
+  }, [expenses, currencyFilter, selectedCategory, selectedClient, range]);
 
   // Retiradas do sócio saem do caixa mas não são custo do negócio.
   const isWithdrawal = (e: Expense) => isProfitDistribution(e);
@@ -190,10 +185,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
     if (currencyFilter !== 'ALL' && p.currency !== currencyFilter) return false;
     if (selectedClient !== 'ALL' && p.clientId !== selectedClient && !p.clientIds?.includes(selectedClient)) return false;
     if (selectedCategory !== 'ALL' && p.category !== selectedCategory) return false;
-    const [y, m] = date.split('-');
-    if (selectedYear !== 'ALL' && y !== selectedYear) return false;
-    if (selectedMonth !== 'ALL' && m !== selectedMonth) return false;
-    return true;
+    return inPeriod(date);
   });
   const totalCommissions = sumAmount(periodCommissions.map((c) => ({ amount: c.amount, currency: c.project.currency })));
 
@@ -211,7 +203,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       if (currencyFilter !== 'ALL' && c.currency !== currencyFilter) return 0;
       return 1;
     }
-    if (selectedCategory !== 'ALL' || selectedMonth !== 'ALL' || selectedYear !== 'ALL') {
+    if (selectedCategory !== 'ALL' || hasPeriod) {
       const clientIdsWithData = new Set<string>();
       filteredIncomes.forEach(i => { if (i.clientId) clientIdsWithData.add(i.clientId); });
       filteredProjects.forEach(p => {
@@ -221,7 +213,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       return clientIdsWithData.size;
     }
     return clients.filter((c) => currencyFilter === 'ALL' ? true : c.currency === currencyFilter).length;
-  }, [clients, selectedClient, selectedCategory, selectedMonth, selectedYear, currencyFilter, filteredIncomes, filteredProjects]);
+  }, [clients, selectedClient, selectedCategory, hasPeriod, currencyFilter, filteredIncomes, filteredProjects]);
 
   // 5. Ticket Médio
   const ticketMedio = receivedIncomes.length > 0 ? totalRevenue / receivedIncomes.length : 0;
@@ -286,91 +278,46 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   // Chart 3: Monthly & Weekly Evolution (Receitas vs Despesas vs Lucro)
   // Reage diretamente aos filtros de Cliente, Categoria, Ano e Mês
   // -------------------------------------------------------------
+  // Evolução no período escolhido: por semana se o intervalo tiver até ~2 meses, senão por mês.
+  const evolutionByWeek = useMemo(() => {
+    if (!range.from || !range.to) return false;
+    const days = (new Date(range.to).getTime() - new Date(range.from).getTime()) / 86400000;
+    return days <= 62;
+  }, [range]);
+
   const monthlyEvolution = useMemo(() => {
-    const targetYear = selectedYear === 'ALL' ? String(currentYear) : selectedYear;
-
-    if (selectedMonth === 'ALL') {
-      // Visão Anual (12 Meses)
-      const months = isEn
-        ? ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-        : ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-
-      return months.map((monthName, idx) => {
-        const monthNum = String(idx + 1).padStart(2, '0');
-
-        const monthIncomes = incomes.filter((i) => {
-          if (currencyFilter !== 'ALL' && i.currency !== currencyFilter) return false;
-          if (selectedClient !== 'ALL' && i.clientId !== selectedClient) return false;
-          if (selectedCategory !== 'ALL' && i.projectId) {
-            const proj = projects.find((p) => p.id === i.projectId);
-            if (proj && proj.category !== selectedCategory) return false;
-          }
-          if (i.status !== 'Recebido') return false;
-          const targetDate = i.receivedDate || i.dueDate;
-          if (!targetDate) return false;
-          const [y, m] = targetDate.split('-');
-          return (selectedYear === 'ALL' || y === targetYear) && m === monthNum;
-        });
-
-        const monthExpenses = expenses.filter((e) => {
-          if (!e.paid || isWithdrawal(e)) return false;
-          if (currencyFilter !== 'ALL' && e.currency !== currencyFilter) return false;
-          if (selectedCategory !== 'ALL' && e.category !== selectedCategory) return false;
-          if (selectedClient !== 'ALL') return false;
-          const [y, m] = e.date.split('-');
-          return (selectedYear === 'ALL' || y === targetYear) && m === monthNum;
-        });
-
-        const rev = sumAmount(monthIncomes);
-        const exp = sumAmount(monthExpenses);
-        const profit = rev - exp;
-
-        return {
-          name: monthName,
-          Receita: Math.round(rev),
-          Despesa: Math.round(exp),
-          Lucro: Math.round(profit),
-        };
-      });
+    const received = filteredIncomes.filter((i) => i.status === 'Recebido');
+    const dateOf = (i: Income) => (i.receivedDate || i.dueDate || '').slice(0, 10);
+    const allDates = [...received.map(dateOf), ...filteredExpenses.map((x) => x.date.slice(0, 10))].filter(Boolean).sort();
+    const today = new Date().toISOString().slice(0, 10);
+    const from = range.from || allDates[0] || today;
+    const to = range.to || today;
+    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    const buckets: { name: string; from: string; to: string }[] = [];
+    const monthsPt = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const monthsEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    if (evolutionByWeek) {
+      for (let d = new Date(from + 'T00:00:00Z'); iso(d) <= to; d = new Date(d.getTime() + 7 * 86400000)) {
+        const end = new Date(Math.min(d.getTime() + 6 * 86400000, new Date(to + 'T00:00:00Z').getTime()));
+        buckets.push({ name: `${iso(d).slice(8, 10)}/${iso(d).slice(5, 7)}–${iso(end).slice(8, 10)}/${iso(end).slice(5, 7)}`, from: iso(d), to: iso(end) });
+      }
     } else {
-      // Visão Semanal Detalhada do Mês Selecionado
-      const weeks = [
-        { name: isEn ? 'Wk 1 (1-7)' : 'Sem 1 (1-7)', startDay: 1, endDay: 7 },
-        { name: isEn ? 'Wk 2 (8-14)' : 'Sem 2 (8-14)', startDay: 8, endDay: 14 },
-        { name: isEn ? 'Wk 3 (15-21)' : 'Sem 3 (15-21)', startDay: 15, endDay: 21 },
-        { name: isEn ? 'Wk 4 (22-28)' : 'Sem 4 (22-28)', startDay: 22, endDay: 28 },
-        { name: isEn ? 'Wk 5 (29-31)' : 'Sem 5 (29-31)', startDay: 29, endDay: 31 },
-      ];
-
-      return weeks.map((week) => {
-        const weekIncomes = filteredIncomes.filter((i) => {
-          if (i.status !== 'Recebido') return false;
-          const targetDate = i.receivedDate || i.dueDate;
-          if (!targetDate) return false;
-          const parts = targetDate.split('-');
-          const dayNum = parseInt(parts[2] || '1', 10);
-          return dayNum >= week.startDay && dayNum <= week.endDay;
-        });
-
-        const weekExpenses = filteredExpenses.filter((e) => {
-          const parts = e.date.split('-');
-          const dayNum = parseInt(parts[2] || '1', 10);
-          return dayNum >= week.startDay && dayNum <= week.endDay;
-        });
-
-        const rev = sumAmount(weekIncomes);
-        const exp = sumAmount(weekExpenses);
-        const profit = rev - exp;
-
-        return {
-          name: week.name,
-          Receita: Math.round(rev),
-          Despesa: Math.round(exp),
-          Lucro: Math.round(profit),
-        };
-      });
+      const start = new Date(Number(from.slice(0, 4)), Number(from.slice(5, 7)) - 1, 1);
+      const stop = new Date(Number(to.slice(0, 4)), Number(to.slice(5, 7)) - 1, 1);
+      for (let d = new Date(start); d <= stop; d = new Date(d.getFullYear(), d.getMonth() + 1, 1)) {
+        const last = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+        const key = (x: Date) => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+        buckets.push({ name: `${(isEn ? monthsEn : monthsPt)[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`, from: key(d), to: key(last) });
+      }
     }
-  }, [incomes, expenses, filteredIncomes, filteredExpenses, selectedYear, selectedMonth, selectedClient, selectedCategory, currencyFilter, settings, currentYear, projects, isEn]);
+    return buckets.map((bk) => {
+      const inB = (d: string) => d >= bk.from && d <= bk.to;
+      const rev = sumAmount(received.filter((i) => inB(dateOf(i))));
+      const exp = sumAmount(filteredExpenses.filter((x) => inB(x.date.slice(0, 10))));
+      const com = sumAmount(periodCommissions.filter((c) => inB(c.date)).map((c) => ({ amount: c.amount, currency: c.project.currency })));
+      return { name: bk.name, Receita: Math.round(rev), Despesa: Math.round(exp + com), Lucro: Math.round(rev - exp - com) };
+    });
+  }, [filteredIncomes, filteredExpenses, periodCommissions, range, evolutionByWeek, currencyFilter, settings, isEn]);
 
   // -------------------------------------------------------------
   // Chart 4: Projects Status Distribution (Reativo a filtros)
@@ -400,8 +347,8 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   const handleExportExcel = async () => {
     setExportingExcel(true);
     try {
-      const report = buildFinancialReport({ incomes, expenses, projects, clients, reserves, settings, currency: mainCurrency, period: { year: selectedYear, month: selectedMonth } });
-      const suffix = selectedYear === 'ALL' ? 'completo' : selectedMonth === 'ALL' ? selectedYear : `${selectedYear}-${selectedMonth}`;
+      const report = buildFinancialReport({ incomes, expenses, projects, clients, reserves, settings, currency: mainCurrency, period: { year: 'ALL', month: 'ALL' }, range: { ...range, label: rangeLabel(range) } });
+      const suffix = hasPeriod ? `${range.from || 'inicio'}_a_${range.to || 'hoje'}` : 'completo';
       const company = (settings.businessName || 'CodeEngine').replace(/\s+/g, '-');
       await downloadFinancialReport(report, `Relatorio-financeiro-${company}-${suffix}.xlsx`);
     } catch (err) {
@@ -450,7 +397,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', isEn ? `financial_report_${selectedYear}_${selectedMonth}.csv` : `relatorio_financeiro_${selectedYear}_${selectedMonth}.csv`);
+    link.setAttribute('download', isEn ? `financial_report_${range.from || 'start'}_${range.to || 'today'}.csv` : `relatorio_financeiro_${range.from || 'inicio'}_${range.to || 'hoje'}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -500,36 +447,10 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       {/* Filter Bar */}
       <div className="bg-glass border border-line-subtle p-4 rounded-xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 shadow-glass">
         
-        {/* Year Filter */}
-        <div>
-          <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">{isEn ? 'Year' : 'Ano'}</label>
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(e.target.value)}
-            className="w-full px-4 py-2 bg-surface-2 border border-line-subtle rounded-md text-fg text-xs font-medium focus:outline-none focus:border-accent cursor-pointer"
-          >
-            <option value="ALL">{isEn ? 'All Years' : 'Todos os Anos'}</option>
-            <option value="2026">2026</option>
-            <option value="2025">2025</option>
-            <option value="2024">2024</option>
-          </select>
-        </div>
-
-        {/* Month Filter */}
-        <div>
-          <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">{isEn ? 'Month' : 'Mês'}</label>
-          <select
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            className="w-full px-4 py-2 bg-surface-2 border border-line-subtle rounded-md text-fg text-xs font-medium focus:outline-none focus:border-accent cursor-pointer"
-          >
-            <option value="ALL">{isEn ? 'All Months' : 'Todos os Meses'}</option>
-            {Object.keys(MONTH_NAMES_PT).map((mKey) => (
-              <option key={mKey} value={mKey}>
-                {(isEn ? MONTH_NAMES_EN : MONTH_NAMES_PT)[mKey]}
-              </option>
-            ))}
-          </select>
+        {/* Período: de um dia a outro */}
+        <div className="sm:col-span-2">
+          <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">{isEn ? 'Period' : 'Período'}</label>
+          <DateRangePicker value={range} onChange={setRange} lang={isEn ? 'en' : 'pt'} />
         </div>
 
         {/* Client Filter */}
@@ -703,13 +624,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             <div>
               <h3 className="text-base font-bold text-fg tracking-tight flex items-center gap-2 flex-wrap">
                 <span>
-                  {selectedMonth === 'ALL'
-                    ? (isEn
-                        ? `Monthly Financial Evolution — ${selectedYear === 'ALL' ? 'All Years' : selectedYear}`
-                        : `Evolução Financeira Mensal — ${selectedYear === 'ALL' ? 'Todos os Anos' : selectedYear}`)
-                    : (isEn
-                        ? `Weekly Evolution — ${(isEn ? MONTH_NAMES_EN : MONTH_NAMES_PT)[selectedMonth] || selectedMonth} ${selectedYear === 'ALL' ? currentYear : selectedYear}`
-                        : `Evolução Semanal — ${MONTH_NAMES_PT[selectedMonth] || selectedMonth} de ${selectedYear === 'ALL' ? currentYear : selectedYear}`)}
+                  {`${evolutionByWeek ? (isEn ? 'Weekly evolution' : 'Evolução semanal') : (isEn ? 'Monthly evolution' : 'Evolução mensal')} — ${rangeLabel(range, isEn)}`}
                 </span>
                 {selectedClient !== 'ALL' && (
                   <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-blue-100 text-accent-soft-fg ">
@@ -723,13 +638,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 )}
               </h3>
               <p className="text-xs text-fg-muted ">
-                {selectedMonth === 'ALL'
-                  ? (isEn
-                      ? 'Comparison of Revenue, Expenses, and Net Profit month by month'
-                      : 'Comparativo de Receitas, Despesas e Lucro Líquido mês a mês')
-                  : (isEn
-                      ? `Cash flow breakdown by weeks of ${(isEn ? MONTH_NAMES_EN : MONTH_NAMES_PT)[selectedMonth] || selectedMonth} based on applied filters`
-                      : `Detalhamento de fluxo por semanas de ${MONTH_NAMES_PT[selectedMonth] || selectedMonth} com base nos filtros aplicados`)}
+                {isEn ? 'Revenue, costs (incl. partner commissions) and profit in the selected period' : 'Receitas, custos (incluindo comissões de parceiros) e lucro no período escolhido'}
               </p>
             </div>
           </div>

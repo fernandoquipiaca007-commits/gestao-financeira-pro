@@ -55,7 +55,7 @@ interface FinancialViewProps {
   reserves?: CashReserve[];
   canEditCash?: boolean;
   onSaveReserve?: (reserve: Omit<CashReserve, 'id' | 'createdAt'> & { id?: string }) => Promise<boolean>;
-  onDistribute?: (params: { amount: number; date: string; reference: string; sent: Record<string, boolean> }) => Promise<boolean>;
+  onDistribute?: (params: { amount: number; date: string; reference: string; sent: Record<string, boolean>; offset: Record<string, boolean> }) => Promise<boolean>;
   onOpenNewIncomeModal: () => void;
   onOpenNewExpenseModal: () => void;
   onEditIncome: (income: Income) => void;

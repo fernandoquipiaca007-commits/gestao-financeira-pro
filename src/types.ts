@@ -217,7 +217,7 @@ export interface Income {
   stripeStatus?: 'none' | 'draft' | 'open' | 'paid' | 'void' | 'uncollectible';
 }
 
-export type ExpenseCategory = 'Internet' | 'Hospedagem' | 'Domínio' | 'Publicidade' | 'Ferramentas' | 'Salário' | 'Edição de vídeo' | 'Taxas de pagamento' | 'Retirada Própria' | 'Distribuição a sócios' | 'Comissão Parceiro' | 'Outros' | (string & {});
+export type ExpenseCategory = 'Internet' | 'Hospedagem' | 'Domínio' | 'Publicidade' | 'Ferramentas' | 'Salário' | 'Edição de vídeo' | 'Taxas de pagamento' | 'Retirada Própria' | 'Distribuição a sócios' | 'Adiantamento a sócio' | 'Comissão Parceiro' | 'Outros' | (string & {});
 
 export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, { pt: string; en: string }> = {
   Internet: { pt: 'Internet', en: 'Internet' },
@@ -230,12 +230,16 @@ export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, { pt: string; en: 
   'Taxas de pagamento': { pt: 'Taxas de pagamento (Stripe/PayPal)', en: 'Payment fees (Stripe/PayPal)' },
   'Retirada Própria': { pt: 'Retirada Própria / Pró-labore', en: 'Owner Withdrawal' },
   'Distribuição a sócios': { pt: 'Distribuição a sócios', en: 'Partner distribution' },
+  'Adiantamento a sócio': { pt: 'Adiantamento a sócio (deve à empresa)', en: 'Partner advance (owed to the company)' },
   'Comissão Parceiro': { pt: 'Comissão de Parceiro', en: 'Partner Commission' },
   Outros: { pt: 'Outros Custos', en: 'Other Costs' },
 };
 
-/** Saídas que repartem o resultado pelos donos: saem do caixa, mas não são custo do negócio. */
-export const PROFIT_DISTRIBUTION_CATEGORIES: ExpenseCategory[] = ['Retirada Própria', 'Distribuição a sócios'];
+/**
+ * Saídas que vão para os donos: saem do caixa, mas não são custo do negócio. O adiantamento
+ * é dinheiro entregue a mais a um sócio, que ele deve à empresa e se desconta na próxima distribuição.
+ */
+export const PROFIT_DISTRIBUTION_CATEGORIES: ExpenseCategory[] = ['Retirada Própria', 'Distribuição a sócios', 'Adiantamento a sócio'];
 export const isProfitDistribution = (e: { category: ExpenseCategory }) => PROFIT_DISTRIBUTION_CATEGORIES.includes(e.category);
 
 export function getExpenseCategoryLabel(category: ExpenseCategory, lang: 'pt' | 'en' = 'pt'): string {
