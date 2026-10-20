@@ -24,6 +24,8 @@ import {
   Hand,
   Loader2,
   CreditCard,
+  Archive,
+  ArchiveRestore,
 } from 'lucide-react';
 import { Project, Client, ProjectStatus, CurrencyCode, getProjectStatusLabel } from '../types';
 import { formatCurrency, formatDate, getDaysDiff } from '../lib/formatters';
@@ -43,6 +45,7 @@ interface ProjectsViewProps {
   onDuplicateProject?: (project: Project) => void;
   onRateProject?: (project: Project, rating: number) => void;
   onDeleteProject: (projectId: string) => void;
+  onToggleArchiveProject?: (project: Project) => void;
   onMarkProjectAsPaid?: (project: Project) => void;
   onAssumeProject?: (projectId: string) => Promise<{ success: boolean; error?: string }>;
   onOpenWhatsAppCharge: (phone: string, text: string) => void;
@@ -61,6 +64,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   onDuplicateProject,
   onRateProject,
   onDeleteProject,
+  onToggleArchiveProject,
   onMarkProjectAsPaid,
   onAssumeProject,
   onOpenWhatsAppCharge,
@@ -100,6 +104,10 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
     // Currency filter
     if (currencyFilter !== 'ALL' && p.currency !== currencyFilter) return false;
+
+    // Arquivados só aparecem no filtro "Arquivados"
+    if (statusFilter === 'arquivados') return Boolean(p.archived);
+    if (p.archived) return false;
 
     // Assignment & Status filter
     if (statusFilter === 'MINE') {
@@ -317,8 +325,19 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
  : 'text-fg-secondary hover:bg-sunken '
  }`}
           >
-            {isEn ? 'Receivable' : 'A receber'} ({projects.filter((p) => p.totalAmount - p.paidAmount > 0).length})
+            {isEn ? 'Receivable' : 'A receber'} ({projects.filter((p) => !p.archived && p.totalAmount - p.paidAmount > 0).length})
           </button>
+
+          {projects.some((p) => p.archived) && (
+          <button
+            onClick={() => pickStatus('arquivados')}
+            className={`px-4 py-1.5 rounded-full font-semibold transition-all cursor-pointer shrink-0 ${
+              statusFilter === 'arquivados' ? 'bg-primary shadow-primary-3d text-primary-fg shadow-xs' : 'text-fg-secondary hover:bg-sunken '
+            }`}
+          >
+            {isEn ? 'Archived' : 'Arquivados'} ({projects.filter((p) => p.archived).length})
+          </button>
+          )}
 
           <button
             onClick={() => pickStatus('atencao')}
@@ -663,6 +682,16 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                         title={isEn ? 'Duplicate Recurring Project (New Month)' : 'Replicar Projeto Recorrente (Novo Mês)'}
                       >
                         <Copy className="w-4 h-4" />
+                      </button>
+                    )}
+
+                    {canCreate && onToggleArchiveProject && (
+                      <button
+                        onClick={() => onToggleArchiveProject(p)}
+                        className="p-1.5 text-fg-muted hover:text-accent-soft-fg hover:bg-sunken rounded-full transition-colors cursor-pointer"
+                        title={p.archived ? (isEn ? 'Unarchive project' : 'Desarquivar projeto') : (isEn ? 'Archive project (leaves receivables and alerts)' : 'Arquivar projeto (sai do valor a receber e dos alertas)')}
+                      >
+                        {p.archived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
                       </button>
                     )}
 

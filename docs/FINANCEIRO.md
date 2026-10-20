@@ -32,6 +32,7 @@ O saldo divide-se em três partes (Financeiro → Caixa e sócios):
 - Um projeto, cliente ou parceiro com histórico financeiro **não pode ser apagado**: encerra-se como "Concluído" ou "Cancelado".
 
 - **Entrega sem data:** no projeto, marcar "Data indefinida" quando ainda não se sabe quando termina (ex.: funis). Estes projetos não geram alertas de prazo.
+- **Arquivar projeto:** botão de caixa no cartão do projeto. Um projeto arquivado continua guardado (com receitas e histórico), mas sai do valor a receber, dos projetos ativos, da receita contratada, dos alertas e dos relatórios de projetos. O caixa não muda. Fica no filtro "Arquivados" e pode ser desarquivado.
 - **Próximo pagamento:** só aparece enquanto falta receber; num projeto pago a 100% o campo desaparece.
 
 ## Relatório Excel

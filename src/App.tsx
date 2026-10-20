@@ -980,6 +980,20 @@ export default function App() {
     setIsProjectModalOpen(true);
   };
 
+  // Arquivar: o projeto fica guardado mas sai do valor a receber, dos ativos e dos alertas.
+  const handleToggleArchiveProject = async (project: Project) => {
+    const archived = !project.archived;
+    const updated: Project = { ...project, archived, archivedAt: archived ? new Date().toISOString() : undefined };
+    if (await persistProjectChange(updated)) {
+      toast({
+        tone: 'success',
+        title: archived ? `"${project.name}" arquivado` : `"${project.name}" voltou aos projetos`,
+        description: archived ? 'Já não conta no valor a receber. Está no filtro "Arquivados".' : undefined,
+        action: { label: 'Anular', onClick: () => { void persistProjectChange(project); } },
+      });
+    }
+  };
+
   const handleRateProject = async (project: Project, rating: number) => {
     await persistProjectChange({ ...project, rating });
   };
@@ -2075,6 +2089,7 @@ export default function App() {
               onDuplicateProject={handleDuplicateProject}
               onRateProject={handleRateProject}
               onDeleteProject={handleDeleteProject}
+              onToggleArchiveProject={handleToggleArchiveProject}
               onMarkProjectAsPaid={handleMarkProjectAsPaid}
               onOpenStripeInvoiceModal={handleOpenStripeInvoiceModal}
               onAssumeProject={handleAssumeProject}

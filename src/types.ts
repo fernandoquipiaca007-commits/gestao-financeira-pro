@@ -147,6 +147,9 @@ export interface Project {
   // Invoice / Stripe
   invoiceFooter?: string; // Rodapé personalizado da fatura (NIF, dados bancários, etc.)
   invoiceNotes?: string;  // Descrição do serviço para fatura
+  /** Arquivado: continua guardado, mas sai do valor a receber, dos ativos e dos alertas. */
+  archived?: boolean;
+  archivedAt?: string;
 }
 
 export type IncomeStatus = 'Pendente' | 'Recebido' | 'Atrasado';

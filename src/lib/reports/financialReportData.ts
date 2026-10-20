@@ -106,7 +106,9 @@ export function buildFinancialReport(input: {
   const owed = owedToPartners(expenses, conv);
   const reserved = round2(reserveList.reduce((s, r) => s + r.remaining, 0));
 
+  // Arquivados ficam fora da folha de projetos (não contam no que falta receber).
   const projectRows = projects
+    .filter((p) => !p.archived)
     .filter((p) => period.year === 'ALL' || inRange((p.startDate || p.createdAt || '').slice(0, 10)) || p.status === 'Em andamento' || p.status === 'Aguardando cliente')
     .map((p) => ({
       name: p.name,
