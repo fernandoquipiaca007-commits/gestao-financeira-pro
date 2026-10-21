@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { AppSettings, CashReserve, Expense, Income, PartnerShare } from '../../types';
+import { isCashOut } from '../../types';
 import { buildPartnerDistribution, cashBreakdown, offsetAdvance, owedToPartners, partnerAdvances, reserveStatuses, splitTotal } from './cashPosition';
 
 vi.mock('react', async (importOriginal) => ({ ...(await importOriginal<typeof import('react')>()), useMemo: (fn: () => unknown) => fn() }));
@@ -109,5 +110,20 @@ describe('partner advances (Jorge received R$ 2.325 directly from a client)', ()
 
   it('a share larger than the debt deducts only what he owes', () => {
     expect(offsetAdvance([advance], 2000)).toMatchObject({ remainder: 675 });
+  });
+});
+
+describe('one transaction of R$ 2.325 to Jorge (R$ 1.000 his share + R$ 1.325 advance)', () => {
+  const sent = expense({ id: 'jorge', category: 'Distribuição a sócios', amount: 2325, advanceAmount: 1325, partnerName: 'Jorge', date: '2026-10-19' });
+
+  it('shows as one R$ 2.325 cash outflow and Jorge owes R$ 1.325', () => {
+    expect([sent].filter(isCashOut).reduce((s, e) => s + e.amount, 0)).toBe(2325);
+    expect(partnerAdvances([sent], conv)).toEqual({ Jorge: 1325 });
+  });
+
+  it('a later R$ 1.000 share compensated in the advance leaves the cash untouched and the debt at R$ 325', () => {
+    const comp = expense({ id: 'comp', category: 'Distribuição a sócios', amount: 1000, partnerName: 'Jorge', settledByAdvance: true, date: '2026-11-09' });
+    expect([sent, comp].filter(isCashOut).reduce((s, e) => s + e.amount, 0)).toBe(2325);
+    expect(partnerAdvances([sent, comp], conv)).toEqual({ Jorge: 325 });
   });
 });

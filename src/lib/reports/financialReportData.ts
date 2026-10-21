@@ -1,5 +1,5 @@
 import type { AppSettings, CashReserve, Client, CurrencyCode, Expense, Income, Project } from '../../types';
-import { getExpenseCategoryLabel, isProfitDistribution } from '../../types';
+import { getExpenseCategoryLabel, isProfitDistribution, isCashOut } from '../../types';
 import { convertCurrency } from '../formatters';
 import { paidCommissions } from '../finance/projectPayments';
 import { owedToPartners, reserveStatuses } from '../finance/cashPosition';
@@ -66,7 +66,7 @@ export function buildFinancialReport(input: {
     const p = projectOf(i.projectId);
     raw.push({ date: (i.receivedDate || i.dueDate || '').slice(0, 10), kind: 'Entrada', category: p?.category || 'Receita', description: i.description, client: clientName(i.clientId || p?.clientId), project: p?.name || '', reserve: '', inflow: conv(i.amount, i.currency), outflow: 0 });
   }
-  for (const e of expenses.filter((x) => x.paid)) {
+  for (const e of expenses.filter(isCashOut)) {
     raw.push({ date: (e.date || '').slice(0, 10), kind: 'Saída', category: getExpenseCategoryLabel(e.category, 'pt'), description: e.description, client: '', project: '', reserve: reserveName(e.reserveId), inflow: 0, outflow: conv(e.amount, e.currency) });
   }
   for (const c of paidCommissions(projects, incomes)) {
@@ -83,7 +83,7 @@ export function buildFinancialReport(input: {
   const closing = running;
 
   // Resultado: distribuições a sócios e retiradas não são custo.
-  const periodExpenses = expenses.filter((e) => e.paid && inRange((e.date || '').slice(0, 10)));
+  const periodExpenses = expenses.filter((e) => isCashOut(e) && inRange((e.date || '').slice(0, 10)));
   const received = round2(movements.filter((m) => m.kind === 'Entrada').reduce((s, m) => s + m.inflow, 0));
   const costs = round2(periodExpenses.filter((e) => !isProfitDistribution(e)).reduce((s, e) => s + conv(e.amount, e.currency), 0));
   const commissions = round2(movements.filter((m) => m.category === 'Comissão de parceiro').reduce((s, m) => s + m.outflow, 0));

@@ -542,6 +542,8 @@ export async function fetchExpensesFromDb(companyId?: string): Promise<Expense[]
       partnerName: item.partner_name || undefined,
       receiptUrl: item.receipt_url || undefined,
       reserveId: item.reserve_id || undefined,
+      advanceAmount: Number(item.advance_amount) || 0,
+      settledByAdvance: Boolean(item.settled_by_advance),
       createdAt: item.created_at ? item.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
     }));
     saveExpenses(formatted);
@@ -568,6 +570,8 @@ export async function upsertExpenseToDb(expense: Expense, companyId: string): Pr
       partner_name: expense.partnerName || null,
       receipt_url: expense.receiptUrl || null,
       reserve_id: expense.reserveId || null,
+      advance_amount: Number(expense.advanceAmount) || 0,
+      settled_by_advance: Boolean(expense.settledByAdvance),
     });
     if (error) {
       console.error('[DB] upsertExpenseToDb:', error.message);

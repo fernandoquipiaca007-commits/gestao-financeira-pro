@@ -1,4 +1,5 @@
 import type { CurrencyCode, Expense, Income, Project } from '../../types';
+import { isCashOut } from '../../types';
 import { paidCommissions } from './projectPayments';
 
 // Caixa antes e depois de cada movimento real (receita recebida, despesa paga, comissão paga),
@@ -14,7 +15,7 @@ export function cashTimeline(incomes: Income[], expenses: Expense[], projects: P
   incomes.filter((i) => i.status === 'Recebido').forEach((i) => {
     moves.push({ key: `inc:${i.id}`, date: (i.receivedDate || i.dueDate || '').slice(0, 10), delta: conv(i.amount, i.currency), order: 0 });
   });
-  expenses.filter((e) => e.paid).forEach((e) => {
+  expenses.filter(isCashOut).forEach((e) => {
     moves.push({ key: `exp:${e.id}`, date: (e.date || '').slice(0, 10), delta: -conv(e.amount, e.currency), order: 1 });
   });
   paidCommissions(projects, incomes).forEach((c) => {

@@ -133,7 +133,7 @@ import { logAction } from './lib/audit';
 import { checkFinancialIntegrity } from './lib/integrity';
 import { formatCurrency } from './lib/formatters';
 import { reconcileProjectWithIncomes, buildSettlementIncomes, paymentDeltaIncome, missingRecurringCharges, recurringTotal } from './lib/finance/projectPayments';
-import { buildPartnerDistribution, offsetAdvance } from './lib/finance/cashPosition';
+import { buildPartnerDistribution, partnerAdvances } from './lib/finance/cashPosition';
 import { useAuth } from './contexts/AuthContext';
 import { useTheme } from './contexts/ThemeContext';
 import { EmailAttachment } from './types/email';
@@ -1768,24 +1768,23 @@ export default function App() {
     });
 
     const records: Expense[] = [];
-    const advanceUpdates: Expense[] = [];
+    const owedBy = partnerAdvances(expenses, (n) => n);
     for (const share of base) {
       const name = share.partnerName || '';
-      const advances = expenses.filter((e) => e.paid && e.category === 'Adiantamento a sócio' && e.partnerName === name && e.amount > 0);
-      const owed = advances.reduce((s, e) => s + e.amount, 0);
+      const owed = owedBy[name] || 0;
       if (!params.offset[name] || owed <= 0) {
         records.push(share);
         continue;
       }
+      // Compensação: a parte (ou parte dela) paga-se com a dívida do sócio — não sai dinheiro do caixa.
       const covered = Math.min(owed, share.amount);
-      advanceUpdates.push(...offsetAdvance(advances, covered).updated);
-      records.push({ ...share, id: `${share.id}-desc`, amount: covered, paid: true, description: `${share.description} (descontado no adiantamento)` });
+      records.push({ ...share, id: `${share.id}-comp`, amount: covered, paid: true, settledByAdvance: true, description: `${share.description} (compensado no adiantamento)` });
       const rest = Math.round((share.amount - covered) * 100) / 100;
       if (rest > 0) records.push({ ...share, amount: rest, paid: Boolean(params.sent[name]) });
     }
 
     const saved: Expense[] = [];
-    for (const rec of [...records, ...advanceUpdates]) {
+    for (const rec of records) {
       const result = await upsertExpenseToDb(rec, companyId);
       if (!result.success) {
         toast({ tone: 'danger', title: `Não foi possível registar "${rec.description}"`, description: `${result.error || ''} Verifique em Despesas.`.trim() });

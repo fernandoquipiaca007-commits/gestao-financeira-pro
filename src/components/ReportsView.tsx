@@ -28,7 +28,7 @@ import {
 import { Client, Project, Income, Expense, CurrencyCode, AppSettings, getProjectStatusLabel } from '../types';
 import { formatCurrency, convertCurrency } from '../lib/formatters';
 import { paidCommissions } from '../lib/finance/projectPayments';
-import { isProfitDistribution } from '../types';
+import { isProfitDistribution, isCashOut } from '../types';
 import type { CashReserve } from '../types';
 import { buildFinancialReport } from '../lib/reports/financialReportData';
 import { downloadFinancialReport } from '../lib/reports/excelReport';
@@ -145,7 +145,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   // Filter Expenses (fully responsive to all filters). Only money that actually left counts.
   const paidExpensesInPeriod = useMemo(() => {
     return expenses.filter((exp) => {
-      if (!exp.paid) return false;
+      if (!isCashOut(exp)) return false;
       if (currencyFilter !== 'ALL' && exp.currency !== currencyFilter) return false;
       if (selectedCategory !== 'ALL' && exp.category !== selectedCategory) return false;
 

@@ -4,6 +4,19 @@ Registo das movimentações e do raciocínio por trás de cada fecho. As entrada
 
 ---
 
+## 2026-10-21 (noite) — Jorge numa só transação
+
+Pedido do Fernando: o envio ao Jorge deve aparecer como **uma única transação de R$ 2.325** (ver supabase/data/2026-10-21-jorge-uma-transacao.sql). Antes estava em duas linhas (R$ 1.000 + R$ 1.325).
+
+| Data | Movimento | Valor | Caixa |
+|---|---|---|---|
+| 03/10/2026 | Entrada — Nayara (o dinheiro foi diretamente para o Jorge) | + R$ 2.325,00 | R$ 2.600 → R$ 4.925 |
+| 19/10/2026 | **Enviado ao Jorge Reis**: R$ 1.000 = parte dele do lote de setembro + **R$ 1.325 a mais, que deve à empresa** | − R$ 2.325,00 | R$ 4.925 → R$ 2.600 |
+| 20/10/2026 | Entrada — Karen | + R$ 1.500,00 | R$ 2.600 → R$ 4.100 |
+
+**Caixa: R$ 4.100** = R$ 2.000 (Meta dos 30 mil) + R$ 600 (ferramentas futuras) + R$ 1.500 livres. **O Jorge deve à empresa R$ 1.325**, a compensar no próximo pagamento: na próxima distribuição, a opção "Descontar no adiantamento" regista a parte dele como *compensada* (não sai dinheiro do caixa e a dívida diminui).
+
+---
 ## 2026-10-21 (tarde) — Caixa acertado em R$ 4.100
 
 Explicação do Fernando (ver supabase/data/2026-10-21-acerto-caixa-4100.sql). Substitui os valores de caixa da entrada "Acerto do Jorge e do PayPal" abaixo.
