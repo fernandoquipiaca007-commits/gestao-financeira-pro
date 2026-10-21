@@ -230,7 +230,7 @@ export interface Income {
   stripeStatus?: 'none' | 'draft' | 'open' | 'paid' | 'void' | 'uncollectible';
 }
 
-export type ExpenseCategory = 'Internet' | 'Hospedagem' | 'Domínio' | 'Publicidade' | 'Ferramentas' | 'Salário' | 'Edição de vídeo' | 'Taxas de pagamento' | 'Retirada Própria' | 'Distribuição a sócios' | 'Adiantamento a sócio' | 'Comissão Parceiro' | 'Outros' | (string & {});
+export type ExpenseCategory = 'Internet' | 'Hospedagem' | 'Domínio' | 'Publicidade' | 'Ferramentas' | 'Salário' | 'Edição de vídeo' | 'Taxas de pagamento' | 'Retirada Própria' | 'Distribuição a sócios' | 'Adiantamento a sócio' | 'Valor retido' | 'Comissão Parceiro' | 'Outros' | (string & {});
 
 export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, { pt: string; en: string }> = {
   Internet: { pt: 'Internet', en: 'Internet' },
@@ -244,6 +244,7 @@ export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, { pt: string; en: 
   'Retirada Própria': { pt: 'Retirada Própria / Pró-labore', en: 'Owner Withdrawal' },
   'Distribuição a sócios': { pt: 'Distribuição a sócios', en: 'Partner distribution' },
   'Adiantamento a sócio': { pt: 'Adiantamento a sócio (deve à empresa)', en: 'Partner advance (owed to the company)' },
+  'Valor retido': { pt: 'Valor retido (ex.: PayPal congelado)', en: 'Held funds (e.g. frozen PayPal)' },
   'Comissão Parceiro': { pt: 'Comissão de Parceiro', en: 'Partner Commission' },
   Outros: { pt: 'Outros Custos', en: 'Other Costs' },
 };
@@ -251,8 +252,9 @@ export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, { pt: string; en: 
 /**
  * Saídas que vão para os donos: saem do caixa, mas não são custo do negócio. O adiantamento
  * é dinheiro entregue a mais a um sócio, que ele deve à empresa e se desconta na próxima distribuição.
+ * O valor retido é dinheiro da empresa bloqueado fora do caixa (ex.: PayPal congelado): não é custo.
  */
-export const PROFIT_DISTRIBUTION_CATEGORIES: ExpenseCategory[] = ['Retirada Própria', 'Distribuição a sócios', 'Adiantamento a sócio'];
+export const PROFIT_DISTRIBUTION_CATEGORIES: ExpenseCategory[] = ['Retirada Própria', 'Distribuição a sócios', 'Adiantamento a sócio', 'Valor retido'];
 export const isProfitDistribution = (e: { category: ExpenseCategory }) => PROFIT_DISTRIBUTION_CATEGORIES.includes(e.category);
 
 export function getExpenseCategoryLabel(category: ExpenseCategory, lang: 'pt' | 'en' = 'pt'): string {

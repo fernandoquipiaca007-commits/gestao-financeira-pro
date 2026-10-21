@@ -4,6 +4,30 @@ Registo das movimentações e do raciocínio por trás de cada fecho. As entrada
 
 ---
 
+## 2026-10-21 (tarde) — Caixa acertado em R$ 4.100
+
+Explicação do Fernando (ver supabase/data/2026-10-21-acerto-caixa-4100.sql). Substitui os valores de caixa da entrada "Acerto do Jorge e do PayPal" abaixo.
+
+Antes da Nayara o caixa tinha **R$ 2.600**: R$ 1.000 da Meta dos 30 mil, R$ 1.000 para enviar ao Jorge e R$ 600 para ferramentas. A Nayara pagou **R$ 2.325 diretamente ao Jorge**: R$ 1.000 eram a parte dele de setembro e **R$ 1.325 ficaram a mais** (adiantamento, a compensar nos próximos pagamentos). Os R$ 1.000 que eram para o Jorge ficaram no caixa e foram para a reserva.
+
+Correções feitas:
+
+- O adiantamento do Jorge tinha sido alterado para R$ 2.325, o que contava os R$ 1.000 duas vezes — voltou a **R$ 1.325**.
+- PayPal: os R$ 600 congelados **não contam no caixa** — passaram a saída "Valor retido" (não é custo, não baixa o lucro). Quando forem libertados, regista-se a entrada.
+- Meta dos 30 mil: R$ 1.000 → **R$ 2.000**.
+
+| | Valor |
+|---|---|
+| **Saldo em caixa** | **R$ 4.100,00** |
+| Reserva: Meta dos 30 mil | R$ 2.000,00 |
+| Reserva: Ferramentas futuras | R$ 600,00 |
+| Livre (Karen, 20/10) | R$ 1.500,00 |
+| O Jorge deve à empresa | R$ 1.325,00 |
+| Retido na PayPal (fora do caixa) | R$ 600,00 |
+
+Verificado na base de dados: recebido R$ 13.325 − pago R$ 8.700 − comissões R$ 525 = R$ 4.100.
+
+---
 ## 2026-10-21 — Acerto do Jorge e do PayPal
 
 Respostas do Fernando à análise de consistência (`supabase/data/2026-10-21-acerto-jorge-paypal.sql`).
