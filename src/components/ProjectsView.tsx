@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { confirmAction, toast } from '../lib/feedback';
 import {
   FolderKanban,
@@ -32,6 +32,9 @@ import { formatCurrency, formatDate, getDaysDiff } from '../lib/formatters';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { markdownToPlain } from './editor/MarkdownView';
+import { ProjectDetailView } from './projects/ProjectDetailView';
+import type { Income, AgendaEvent } from '../types';
+import type { Task } from '../types/rbac';
 
 interface ProjectsViewProps {
   projects: Project[];
@@ -50,6 +53,10 @@ interface ProjectsViewProps {
   onAssumeProject?: (projectId: string) => Promise<{ success: boolean; error?: string }>;
   onOpenWhatsAppCharge: (phone: string, text: string) => void;
   onOpenStripeInvoiceModal?: (project: Project) => void;
+  /** Para a página completa do projeto */
+  incomes?: Income[];
+  tasks?: Task[];
+  agendaEvents?: AgendaEvent[];
 }
 
 export const ProjectsView: React.FC<ProjectsViewProps> = ({
@@ -69,7 +76,13 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   onAssumeProject,
   onOpenWhatsAppCharge,
   onOpenStripeInvoiceModal,
+  incomes = [],
+  tasks = [],
+  agendaEvents = [],
 }) => {
+  // Projeto aberto na página completa (null = lista)
+  const [openProjectId, setOpenProjectId] = useState<string | null>(null);
+  useEffect(() => { window.scrollTo({ top: 0 }); }, [openProjectId]);
   const { isOwner, hasPermission, userProfile } = useAuth();
   const { lang, isEn, t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState('');
@@ -210,6 +223,25 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       ...projects.map(p => p.category).filter(Boolean),
     ])
   );
+
+  const openProject = openProjectId ? projects.find((p) => p.id === openProjectId) : undefined;
+  if (openProject) {
+    return (
+      <ProjectDetailView
+        project={openProject}
+        clients={clients}
+        incomes={incomes}
+        tasks={tasks}
+        agendaEvents={agendaEvents}
+        isEn={isEn}
+        canEdit={canEdit}
+        canViewFinancials={isOwner || hasPermission('financial.view')}
+        onBack={() => setOpenProjectId(null)}
+        onEdit={onEditProject}
+        onOpenWhatsApp={onOpenWhatsAppCharge}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -514,8 +546,10 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                     )}
                   </div>
 
-                  <h3 className="text-base font-semibold text-fg tracking-tight leading-snug group-hover:text-fg transition-colors">
-                    {p.name}
+                  <h3 className="text-base font-semibold text-fg tracking-tight leading-snug m-0">
+                    <button type="button" onClick={() => setOpenProjectId(p.id)} className="text-left hover:underline underline-offset-2 cursor-pointer" title={isEn ? 'Open project' : 'Abrir projeto'}>
+                      {p.name}
+                    </button>
                   </h3>
 
                   <div className="flex items-center justify-between mt-1.5 mb-3">
@@ -661,10 +695,13 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                   )}
 
                   {p.notes && (
-                    <div className="p-3 bg-surface-2 rounded-md border border-line-subtle text-[12.5px] leading-relaxed text-fg-secondary mb-4 line-clamp-3 whitespace-pre-line">
-                      {markdownToPlain(p.notes)}
-                    </div>
+                    <button type="button" onClick={() => setOpenProjectId(p.id)} className="w-full text-left p-3 bg-surface-2 rounded-md border border-line-subtle text-[12.5px] leading-relaxed text-fg-secondary mb-1 whitespace-pre-line cursor-pointer hover:border-line-strong transition-colors">
+                      <span className="line-clamp-3">{markdownToPlain(p.notes)}</span>
+                    </button>
                   )}
+                  <button type="button" onClick={() => setOpenProjectId(p.id)} className="mb-4 text-[12px] font-semibold text-accent-soft-fg hover:underline cursor-pointer">
+                    {isEn ? 'View full project →' : 'Ver projeto completo →'}
+                  </button>
                 </div>
 
                 {/* Actions Footer */}
