@@ -92,8 +92,8 @@
   --border-color: rgba(196, 199, 199, 0.4);
   /* Textos Boro UI */
   --text-main: #1c1b1b;
-  --text-muted: #444747;
-  --text-label: #747878;
+  --text-muted: #2b2925;
+  --text-label: #3d3a35;
   /* Marca & Ações */
   --primary-black: #000000;
   --accent-blue: #0050d7;
@@ -115,9 +115,10 @@
   --surface-hover: #e5e2e1;
   --border: rgba(196, 199, 199, 0.4);
   --border-subtle: rgba(196, 199, 199, 0.2);
+  /* Mais contraste: secundário e apagado perdiam-se sobre o fundo de vidro */
   --text-primary: #1c1b1b;
-  --text-secondary: #444747;
-  --text-muted: #747878;
+  --text-secondary: #2b2925;
+  --text-muted: #3d3a35;
   --input-background: #f1edec;
   --input-border: rgba(196, 199, 199, 0.4);
   --card-background: #ffffff;
@@ -143,9 +144,10 @@ html.dark {
   --surface-hover: #232838;
   --border: #2e3346;
   --border-subtle: #232838;
+  /* Tema escuro: secundário e apagado mais claros para se lerem bem */
   --text-primary: #ffffff;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  --text-secondary: #e2e8f0;
+  --text-muted: #cbd5e1;
   --input-background: #1c202d;
   --input-border: #2e3346;
   --card-background: #141720;

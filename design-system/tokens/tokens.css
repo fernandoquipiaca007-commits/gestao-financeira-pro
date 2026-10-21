@@ -237,9 +237,10 @@
 
   /* Texto */
   --text-primary: var(--aura-ink-900);
-  --text-secondary: var(--aura-ink-600);
-  --text-muted: var(--aura-ink-500);
-  --text-disabled: var(--aura-ink-400);
+  /* Mais contraste: o texto secundário e o apagado perdiam-se sobre o fundo de vidro. */
+  --text-secondary: var(--aura-ink-800);
+  --text-muted: var(--aura-ink-700);
+  --text-disabled: var(--aura-ink-500);
   --text-inverse: #f7f5f1;
   --text-inverse-muted: rgba(247, 245, 241, 0.62);
   --text-on-accent: #ffffff;
@@ -363,9 +364,10 @@ html.dark,
   --surface-sunken: rgba(0, 0, 0, 0.25);
 
   --text-primary: #f5f3ee;
-  --text-secondary: #bcb6aa;
-  --text-muted: #8a847a;
-  --text-disabled: #5e5a53;
+  /* Tema escuro: texto secundário e apagado mais claros para se lerem bem. */
+  --text-secondary: #e4dfd5;
+  --text-muted: #c9c3b7;
+  --text-disabled: #8f897f;
   --text-inverse: var(--aura-ink-900);
   --text-inverse-muted: rgba(29, 27, 23, 0.6);
   --text-on-accent: #ffffff;
