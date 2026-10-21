@@ -82,7 +82,8 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 }) => {
   // Projeto aberto na página completa (null = lista)
   const [openProjectId, setOpenProjectId] = useState<string | null>(null);
-  useEffect(() => { window.scrollTo({ top: 0 }); }, [openProjectId]);
+  // A área que faz scroll é o <main> da app, não a janela.
+  useEffect(() => { (document.querySelector('main.aura-scroll') || document.scrollingElement)?.scrollTo({ top: 0 }); }, [openProjectId]);
   const { isOwner, hasPermission, userProfile } = useAuth();
   const { lang, isEn, t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState('');
