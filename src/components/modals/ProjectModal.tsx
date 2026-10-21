@@ -3,7 +3,7 @@ import { confirmAction, toast } from '../../lib/feedback';
 import { EditorPage } from '../shell/EditorPage';
 import { RichTextField } from '../editor/RichTextField';
 import { X, FolderKanban, Save, UserCheck, Paperclip, Upload, FileText, Download, Trash2, User, Users, Globe, Building2 } from 'lucide-react';
-import { Project, Client, ProjectCategory, ProjectStatus, CurrencyCode, CURRENCIES, Partner, ProjectAttachment, getProjectStatusLabel } from '../../types';
+import { Project, Client, ProjectCategory, ProjectStatus, CurrencyCode, CURRENCIES, Partner, ProjectAttachment, getProjectStatusLabel, BillingType, BILLING_TYPE_LABELS } from '../../types';
 import { UserProfile, ProjectAssignmentType } from '../../types/rbac';
 import { getTodayIso, addDaysIso } from '../../lib/storage';
 import { formatCurrency } from '../../lib/formatters';
@@ -39,6 +39,11 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   const [category, setCategory] = useState<ProjectCategory>('Website');
   const [totalAmount, setTotalAmount] = useState<number>(0);
   const [paidAmount, setPaidAmount] = useState<number>(0);
+  // Único (feito de uma vez) ou recorrente: cada período gera uma cobrança automática.
+  const [billingType, setBillingType] = useState<BillingType>('unico');
+  const [recurringAmount, setRecurringAmount] = useState<number>(0);
+  const [recurringEnd, setRecurringEnd] = useState('');
+  const isRecurring = billingType !== 'unico';
   const [currency, setCurrency] = useState<CurrencyCode>(defaultCurrency);
   const [startDate, setStartDate] = useState(getTodayIso());
   const [dueDate, setDueDate] = useState(addDaysIso(30));
@@ -76,6 +81,9 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       setCategory(projectToEdit.category);
       setTotalAmount(projectToEdit.totalAmount);
       setPaidAmount(projectToEdit.paidAmount);
+      setBillingType(projectToEdit.billingType || 'unico');
+      setRecurringAmount(projectToEdit.recurringAmount || 0);
+      setRecurringEnd(projectToEdit.recurringEnd || '');
       setCurrency(projectToEdit.currency);
       setStartDate(projectToEdit.startDate);
       setDueDate(projectToEdit.dueDate || addDaysIso(30));
@@ -108,6 +116,9 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       setCategory(categories.length > 0 ? categories[0].name : 'Website');
       setTotalAmount(0);
       setPaidAmount(0);
+      setBillingType('unico');
+      setRecurringAmount(0);
+      setRecurringEnd('');
       setStartDate(getTodayIso());
       setDueDate(addDaysIso(30));
       setNoDueDate(false);
@@ -229,11 +240,15 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       category,
       totalAmount: numTotal,
       paidAmount: numPaid,
+      billingType,
+      recurringAmount: isRecurring ? Number(recurringAmount) || 0 : undefined,
+      recurringEnd: isRecurring ? recurringEnd || undefined : undefined,
       currency,
       startDate,
       dueDate: noDueDate ? '' : dueDate,
       // pago na totalidade: não há próximo pagamento
-      nextPaymentDate: !isFullyPaid && nextPaymentDate ? nextPaymentDate : undefined,
+      // recorrente: as datas de cobrança são automáticas; pago na totalidade: não há próximo pagamento
+      nextPaymentDate: !isRecurring && !isFullyPaid && nextPaymentDate ? nextPaymentDate : undefined,
       status,
       notes: notes.trim(),
       attachments,
@@ -506,6 +521,60 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
             </div>
           </div>
 
+          <div>
+            <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">{isEn ? 'Billing type' : 'Tipo de cobrança'}</label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {(Object.keys(BILLING_TYPE_LABELS) as BillingType[]).map((bt) => (
+                <button
+                  key={bt}
+                  type="button"
+                  onClick={() => setBillingType(bt)}
+                  className={`px-3 py-2 rounded-md border text-sm font-medium transition-all cursor-pointer ${billingType === bt ? 'border-fg bg-surface-2 text-fg shadow-xs' : 'border-line-subtle text-fg-secondary hover:border-line-strong bg-glass-strong'}`}
+                >
+                  {isEn ? BILLING_TYPE_LABELS[bt].en : BILLING_TYPE_LABELS[bt].pt}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1.5 mb-0 text-[12px] text-fg-muted">
+              {isRecurring
+                ? (isEn ? 'A pending charge is created automatically for each period, 30 days before it is due.' : 'É criada automaticamente uma cobrança pendente em cada período, 30 dias antes do vencimento, a partir da data de início.')
+                : (isEn ? 'Done once: total amount and what has been paid.' : 'Feito de uma só vez: valor total e o que já foi pago.')}
+            </p>
+          </div>
+
+          {isRecurring && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-surface-2 border border-line-subtle rounded-lg">
+              <div>
+                <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
+                  {isEn ? 'Amount per period' : `Valor por ${BILLING_TYPE_LABELS[billingType].period}`} ({CURRENCIES[currency]?.symbol})
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  required
+                  value={recurringAmount}
+                  onChange={(e) => setRecurringAmount(parseFloat(e.target.value) || 0)}
+                  className="w-full bg-glass-strong border border-line-subtle rounded-md px-3.5 py-2.5 text-sm font-medium text-fg focus:outline-none focus:border-accent "
+                />
+              </div>
+              <div>
+                <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">{isEn ? 'Contract end (optional)' : 'Fim do contrato (opcional)'}</label>
+                <input
+                  type="date"
+                  value={recurringEnd}
+                  min={startDate || undefined}
+                  onChange={(e) => setRecurringEnd(e.target.value)}
+                  className="w-full bg-glass-strong border border-line-subtle rounded-md px-3.5 py-2.5 text-sm font-medium text-fg focus:outline-none focus:border-accent "
+                />
+              </div>
+              <p className="sm:col-span-2 m-0 text-[12px] text-fg-muted border-t border-line-subtle pt-3">
+                {isEn ? 'Paid so far:' : 'Pago até agora:'} <strong className="text-fg font-medium">{formatCurrency(numPaid, currency)}</strong> · {isEn ? 'mark each charge as received in Finance.' : 'marque cada cobrança como recebida no Financeiro.'}
+              </p>
+            </div>
+          )}
+
+          {!isRecurring && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-surface-2 border border-line-subtle rounded-lg">
             <div>
               <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
@@ -543,6 +612,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               </span>
             </div>
           </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
@@ -579,7 +649,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               </label>
             </div>
 
-            {!isFullyPaid && (
+            {!isFullyPaid && !isRecurring && (
             <div>
               <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
                 {isEn ? 'Next Payment' : 'Próx. Pagamento'}

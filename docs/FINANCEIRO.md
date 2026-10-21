@@ -35,6 +35,21 @@ O saldo divide-se em três partes (Financeiro → Caixa e sócios):
 - **Arquivar projeto:** botão de caixa no cartão do projeto. Um projeto arquivado continua guardado (com receitas e histórico), mas sai do valor a receber, dos projetos ativos, da receita contratada, dos alertas e dos relatórios de projetos. O caixa não muda. Fica no filtro "Arquivados" e pode ser desarquivado.
 - **Próximo pagamento:** só aparece enquanto falta receber; num projeto pago a 100% o campo desaparece.
 
+## Projetos recorrentes
+
+No projeto, escolher o **tipo de cobrança**:
+
+| Tipo | Como funciona |
+|---|---|
+| **Único** | Feito de uma vez: valor total e o que já foi pago. |
+| **Mensal / Trimestral / Anual** | Indica-se o valor por período e, se houver, o fim do contrato. O sistema cria sozinho uma cobrança pendente em cada período (a partir da data de início, 30 dias antes de cada vencimento) e nunca duplica nem altera uma cobrança já paga. O valor total do projeto acompanha os períodos já gerados. |
+
+Cada cobrança marca-se como recebida no Financeiro, como qualquer receita. Projetos recorrentes arquivados, concluídos ou cancelados deixam de gerar cobranças.
+
+## Caixa antes → depois
+
+No Financeiro, cada receita recebida e cada despesa paga mostra por baixo do valor o caixa **antes** e **depois** desse movimento (por ordem de data; no mesmo dia, entradas antes de saídas). Os movimentos pendentes não mexem no caixa e não mostram saldo.
+
 ## Relatório Excel
 
 Em Relatórios, escolher o **período** (atalhos como "Mês passado", "Últimos 30 dias", "Este ano", ou as datas "de … até …" no calendário) e carregar em **Exportar Excel**. O ficheiro tem quatro folhas, todas prontas a imprimir (A4, ajustadas à largura, cabeçalho repetido, páginas numeradas):

@@ -328,6 +328,9 @@ export async function fetchProjectsFromDb(companyId?: string): Promise<Project[]
         invoiceFooter: item.invoice_footer || undefined,
         invoiceNotes: item.invoice_notes || undefined,
         archived: Boolean(item.archived),
+        billingType: item.billing_type || 'unico',
+        recurringAmount: item.recurring_amount != null ? Number(item.recurring_amount) : undefined,
+        recurringEnd: item.recurring_end || undefined,
         archivedAt: item.archived_at || undefined,
         createdAt: item.created_at ? item.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
       };
@@ -370,6 +373,9 @@ export async function upsertProjectToDb(project: Project, companyId: string): Pr
       invoice_footer: project.invoiceFooter || null,
       invoice_notes: project.invoiceNotes || null,
       archived: Boolean(project.archived),
+      billing_type: project.billingType || 'unico',
+      recurring_amount: project.billingType && project.billingType !== 'unico' ? Number(project.recurringAmount) || 0 : null,
+      recurring_end: project.billingType && project.billingType !== 'unico' ? project.recurringEnd || null : null,
       archived_at: project.archived ? project.archivedAt || new Date().toISOString() : null,
     };
 
@@ -481,6 +487,26 @@ export async function upsertIncomeToDb(income: Income, companyId: string): Promi
     console.error('[DB] upsertIncomeToDb exception:', msg);
     return { success: false, error: msg };
   }
+}
+
+/** Cria a receita só se ainda não existir (nunca sobrescreve uma cobrança já paga). */
+export async function insertIncomeIfMissing(income: Income, companyId: string): Promise<{ success: boolean; error?: string }> {
+  const { error } = await supabase.from('incomes').upsert({
+    id: income.id,
+    company_id: companyId,
+    client_id: income.clientId || null,
+    project_id: income.projectId || null,
+    description: income.description,
+    amount: Number(income.amount) || 0,
+    currency: income.currency,
+    due_date: income.dueDate,
+    received_date: null,
+    payment_method: income.paymentMethod || 'Transferência',
+    status: income.status,
+    notes: income.notes || null,
+  }, { onConflict: 'id', ignoreDuplicates: true });
+  if (error) return { success: false, error: describeDbError(error) };
+  return { success: true };
 }
 
 export async function deleteIncomeFromDb(incomeId: string): Promise<{ success: boolean; error?: string }> {

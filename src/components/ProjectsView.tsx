@@ -27,7 +27,7 @@ import {
   Archive,
   ArchiveRestore,
 } from 'lucide-react';
-import { Project, Client, ProjectStatus, CurrencyCode, getProjectStatusLabel } from '../types';
+import { Project, Client, ProjectStatus, CurrencyCode, getProjectStatusLabel, BILLING_TYPE_LABELS } from '../types';
 import { formatCurrency, formatDate, getDaysDiff } from '../lib/formatters';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -468,6 +468,11 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                     >
                       {p.category}
                     </span>
+                    {p.billingType && p.billingType !== 'unico' && (
+                      <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-accent-soft text-accent-soft-fg" title={isEn ? 'Recurring project: a charge is created each period' : 'Projeto recorrente: é criada uma cobrança em cada período'}>
+                        {isEn ? BILLING_TYPE_LABELS[p.billingType].en : BILLING_TYPE_LABELS[p.billingType].pt} · {formatCurrency(p.recurringAmount || 0, p.currency)}/{BILLING_TYPE_LABELS[p.billingType].period}
+                      </span>
+                    )}
                     {getStatusBadge(p.status)}
                   </div>
 

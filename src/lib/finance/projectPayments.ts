@@ -93,3 +93,62 @@ export function paidCommissions(projects: Project[], allIncomes: Income[]): { pr
     .filter((p) => p.commissionPaid && (p.commissionAmount || 0) > 0)
     .map((p) => ({ project: p, amount: p.commissionAmount || 0, date: commissionDate(p, allIncomes) }));
 }
+
+const RECURRING_MONTHS: Record<string, number> = { mensal: 1, trimestral: 3, anual: 12 };
+const CYCLE_NAME: Record<string, string> = { mensal: 'Mensalidade', trimestral: 'Trimestre', anual: 'Anuidade' };
+/** Quantos dias antes do vencimento a cobrança de um período aparece. */
+export const RECURRING_LEAD_DAYS = 30;
+
+function addMonthsIso(iso: string, months: number): string {
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number);
+  const target = new Date(Date.UTC(y, m - 1 + months, 1));
+  const last = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
+  target.setUTCDate(Math.min(d, last)); // ex.: dia 31 → último dia dos meses mais curtos
+  return target.toISOString().slice(0, 10);
+}
+
+/**
+ * Datas de cobrança de um projeto recorrente, desde o início até `today` + antecedência
+ * (e nunca depois do fim do contrato). Projetos únicos, arquivados, cancelados ou concluídos não geram.
+ */
+export function recurringDueDates(project: Project, today: string): string[] {
+  const months = RECURRING_MONTHS[project.billingType || 'unico'];
+  if (!months || !project.startDate || project.archived || project.status === 'Cancelado' || project.status === 'Concluído') return [];
+  const horizon = new Date(`${today}T00:00:00Z`);
+  horizon.setUTCDate(horizon.getUTCDate() + RECURRING_LEAD_DAYS);
+  const limit = horizon.toISOString().slice(0, 10);
+  const end = project.recurringEnd || '9999-12-31';
+  const dates: string[] = [];
+  for (let k = 0; k < 600; k++) {
+    const due = addMonthsIso(project.startDate, k * months);
+    if (due > limit || due > end) break;
+    dates.push(due);
+  }
+  return dates;
+}
+
+/** Cobranças em falta de um projeto recorrente (as que ainda não existem como receita). */
+export function missingRecurringCharges(project: Project, incomes: Income[], today: string): Income[] {
+  const amount = Number(project.recurringAmount) || 0;
+  if (amount <= 0) return [];
+  const existing = incomes.filter((i) => i.projectId === project.id);
+  return recurringDueDates(project, today)
+    .filter((due) => !existing.some((i) => i.id === `rec-${project.id}-${due}` || i.dueDate === due))
+    .map((due) => ({
+      id: `rec-${project.id}-${due}`,
+      clientId: project.clientId,
+      projectId: project.id,
+      description: `${CYCLE_NAME[project.billingType || 'mensal']} ${due.slice(5, 7)}/${due.slice(0, 4)} - ${project.name}`,
+      amount,
+      currency: project.currency,
+      dueDate: due,
+      status: 'Pendente' as const,
+      paymentMethod: 'Transferência' as const,
+      createdAt: today,
+    }));
+}
+
+/** Valor total de um recorrente até hoje: um período por cada data de cobrança já gerada. */
+export function recurringTotal(project: Project, today: string): number {
+  return round2((Number(project.recurringAmount) || 0) * recurringDueDates(project, today).length);
+}

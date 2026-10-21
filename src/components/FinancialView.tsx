@@ -39,9 +39,11 @@ import {
   formatCurrency,
   formatDate,
   getDaysDiff,
+  convertCurrency,
 } from '../lib/formatters';
 import { useLanguage } from '../contexts/LanguageContext';
 import { CashPanel } from './finance/CashPanel';
+import { cashTimeline } from '../lib/finance/cashTimeline';
 
 interface FinancialViewProps {
   incomes: Income[];
@@ -99,6 +101,18 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
   onDistribute,
 }) => {
   const { t, lang } = useLanguage();
+  // Caixa antes → depois de cada movimento real, na moeda padrão da empresa.
+  const cashCurrency: CurrencyCode = settings?.defaultCurrency || 'BRL';
+  const timeline = React.useMemo(
+    () => cashTimeline(incomes, expenses, projects, (amount, from) => (settings ? convertCurrency(amount, from, cashCurrency, settings.exchangeRates) : amount)),
+    [incomes, expenses, projects, settings, cashCurrency],
+  );
+  const renderCashStep = (step?: { before: number; after: number }) =>
+    step ? (
+      <span className="block mt-0.5 text-[11px] font-normal text-fg-muted whitespace-nowrap" title={lang === 'en' ? 'Cash before → after this movement' : 'Caixa antes → depois deste movimento'}>
+        {lang === 'en' ? 'Cash' : 'Caixa'}: {formatCurrency(step.before, cashCurrency)} → <strong className="font-medium text-fg-secondary">{formatCurrency(step.after, cashCurrency)}</strong>
+      </span>
+    ) : null;
   // "despesas"/"despesas-mes" abrem o separador Despesas; os restantes filtros aplicam-se às receitas
   const wantsExpenses = initialFilter === 'despesas' || initialFilter === 'despesas-mes';
   const [subTab, setSubTab] = useState<'receitas' | 'despesas' | 'agenda' | 'caixa'>(initialFilter === 'reservas' ? 'caixa' : wantsExpenses ? 'despesas' : initialTab);
@@ -507,6 +521,7 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
 
                           <td className="px-5 py-4 font-semibold text-success-fg text-sm">
                             {formatCurrency(inc.amount, inc.currency)}
+                            {renderCashStep(timeline.get('inc:' + inc.id))}
                           </td>
 
                           <td className="px-5 py-4">
@@ -750,6 +765,7 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
 
                           <td className="px-5 py-4 font-semibold text-danger-fg text-sm">
                             {formatCurrency(exp.amount, exp.currency)}
+                            {renderCashStep(timeline.get('exp:' + exp.id))}
                           </td>
 
                           <td className="px-5 py-4">
