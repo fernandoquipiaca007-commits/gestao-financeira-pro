@@ -199,6 +199,7 @@ export async function fetchClientsFromDb(companyId?: string): Promise<Client[]> 
     if (error) throw error;
     // As colunas da ficha completa existem? (select * devolve a chave mesmo com valor nulo)
     if (data && data.length > 0) clientProfileSupported = 'tax_id' in data[0];
+    if (data && data.length > 0) clientPipelineSupported = 'pipeline_stage' in data[0];
     const formatted: Client[] = (data || []).map((item) => ({
       id: item.id,
       name: item.name,
@@ -222,6 +223,14 @@ export async function fetchClientsFromDb(companyId?: string): Promise<Client[]> 
       paymentTermsDays: item.payment_terms_days ?? undefined,
       tags: Array.isArray(item.tags) ? item.tags : undefined,
       source: item.source || undefined,
+      pipelineStage: item.pipeline_stage || undefined,
+      isFavorite: Boolean(item.is_favorite),
+      rating: item.rating ?? undefined,
+      contractType: item.contract_type || undefined,
+      nextContactDate: item.next_contact_date || undefined,
+      nextAction: item.next_action || undefined,
+      lastContactAt: item.last_contact_at || undefined,
+      summary: item.summary || undefined,
     }));
     saveClients(formatted);
     return formatted;
@@ -235,6 +244,7 @@ export async function fetchClientsFromDb(companyId?: string): Promise<Client[]> 
 
 /** Colunas da ficha completa (migração 014). Antes da migração não envia nada destas colunas;
     depois, envia todas (vazio → NULL, para permitir limpar um campo). */
+let clientPipelineSupported = true; // acompanhamento comercial (migração 20261022120000)
 let clientProfileSupported = true; // migração 014 aplicada em produção; a leitura desliga isto se as colunas faltarem
 function clientProfileColumns(c: Client): Record<string, unknown> {
   if (!clientProfileSupported) return {};
@@ -244,6 +254,12 @@ function clientProfileColumns(c: Client): Record<string, unknown> {
     contact_name: v(c.contactName), contact_role: v(c.contactRole), preferred_channel: c.preferredChannel || null,
     payment_terms_days: typeof c.paymentTermsDays === 'number' && !isNaN(c.paymentTermsDays) ? c.paymentTermsDays : null,
     tags: c.tags && c.tags.length ? c.tags : null, source: v(c.source),
+    ...(clientPipelineSupported ? {
+      pipeline_stage: c.pipelineStage || null, is_favorite: Boolean(c.isFavorite),
+      rating: typeof c.rating === 'number' && c.rating >= 1 && c.rating <= 5 ? Math.round(c.rating) : null,
+      contract_type: v(c.contractType), next_contact_date: c.nextContactDate || null, next_action: v(c.nextAction),
+      last_contact_at: c.lastContactAt || null, summary: v(c.summary),
+    } : {}),
   };
 }
 

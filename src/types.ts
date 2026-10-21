@@ -86,7 +86,31 @@ export interface Client {
   paymentTermsDays?: number;
   tags?: string[];
   source?: string;
+  // Acompanhamento comercial (migração 20261022120000 — todos opcionais)
+  pipelineStage?: PipelineStage;
+  isFavorite?: boolean;
+  rating?: number; // 1–5
+  contractType?: string;
+  nextContactDate?: string; // AAAA-MM-DD
+  nextAction?: string;
+  lastContactAt?: string; // AAAA-MM-DD
+  summary?: string;
 }
+
+/** Fase de cada cliente no funil comercial. */
+export type PipelineStage = 'lead' | 'negociacao' | 'quase_fechar' | 'contrato_fechado' | 'em_execucao' | 'recorrente' | 'pausado' | 'inativo' | 'perdido';
+
+export const PIPELINE_STAGES: { key: PipelineStage; pt: string; en: string; tone: 'accent' | 'success' | 'warning' | 'danger' | 'neutral' }[] = [
+  { key: 'lead', pt: 'Lead novo', en: 'New lead', tone: 'accent' },
+  { key: 'negociacao', pt: 'Em negociação', en: 'Negotiating', tone: 'accent' },
+  { key: 'quase_fechar', pt: 'Quase a fechar', en: 'About to close', tone: 'warning' },
+  { key: 'contrato_fechado', pt: 'Contrato fechado', en: 'Contract signed', tone: 'success' },
+  { key: 'em_execucao', pt: 'Em execução', en: 'In progress', tone: 'success' },
+  { key: 'recorrente', pt: 'Cliente recorrente', en: 'Recurring client', tone: 'success' },
+  { key: 'pausado', pt: 'Pausado / sem resposta', en: 'Paused / no reply', tone: 'neutral' },
+  { key: 'inativo', pt: 'Inativo', en: 'Inactive', tone: 'neutral' },
+  { key: 'perdido', pt: 'Perdido', en: 'Lost', tone: 'danger' },
+];
 
 // ----------------------------------------------------
 // PARTNER / PARCERIAS & COMISSÕES

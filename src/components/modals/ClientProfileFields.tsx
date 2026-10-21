@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { X } from 'lucide-react';
-import type { Client } from '../../types';
+import { X, Star } from 'lucide-react';
+import { PIPELINE_STAGES, type Client, type PipelineStage } from '../../types';
 
-export type ClientProfile = Pick<Client, 'taxId' | 'website' | 'address' | 'city' | 'postalCode' | 'contactName' | 'contactRole' | 'preferredChannel' | 'paymentTermsDays' | 'tags' | 'source'>;
+export type ClientProfile = Pick<Client, 'taxId' | 'website' | 'address' | 'city' | 'postalCode' | 'contactName' | 'contactRole' | 'preferredChannel' | 'paymentTermsDays' | 'tags' | 'source'
+  | 'pipelineStage' | 'isFavorite' | 'rating' | 'contractType' | 'nextContactDate' | 'nextAction' | 'lastContactAt' | 'summary'>;
 
 const input = 'w-full bg-surface-2 border border-line-subtle rounded-md px-4 py-3 text-sm text-fg placeholder:text-fg-muted focus:outline-none focus:border-accent focus:bg-surface-1 focus:shadow-[0_0_0_4px_var(--accent-ring)] transition-all';
 const label = 'text-[13px] font-medium text-fg-secondary block mb-1.5';
@@ -31,6 +32,50 @@ export function ClientProfileFields({ value, onChange, lang }: { value: ClientPr
 
   return (
     <div className="grid gap-8">
+      <section className="grid gap-4">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="aura-h4 m-0">{en ? 'Sales follow-up' : 'Acompanhamento comercial'}</h3>
+          <button
+            type="button"
+            onClick={() => set('isFavorite', !value.isFavorite)}
+            aria-pressed={Boolean(value.isFavorite)}
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold cursor-pointer transition-colors ${value.isFavorite ? 'bg-warning-soft text-warning-fg' : 'bg-surface-2 text-fg-secondary hover:bg-sunken'}`}
+          >
+            <Star size={14} fill={value.isFavorite ? 'currentColor' : 'none'} />
+            {en ? 'Favourite' : 'Preferida'}
+          </button>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field id="cp-stage" text={en ? 'Stage' : 'Fase'}>
+            <select id="cp-stage" className={`${input} cursor-pointer`} value={value.pipelineStage || ''} onChange={(e) => set('pipelineStage', (e.target.value || undefined) as PipelineStage | undefined)}>
+              <option value="">{en ? 'Not defined' : 'Não definida'}</option>
+              {PIPELINE_STAGES.map((st) => <option key={st.key} value={st.key}>{en ? st.en : st.pt}</option>)}
+            </select>
+          </Field>
+          <Field id="cp-rating" text={en ? 'Rating (1–5)' : 'Classificação (1–5)'}>
+            <select id="cp-rating" className={`${input} cursor-pointer`} value={value.rating ?? ''} onChange={(e) => set('rating', e.target.value === '' ? undefined : Number(e.target.value))}>
+              <option value="">—</option>
+              {[5, 4, 3, 2, 1].map((n) => <option key={n} value={n}>{'★'.repeat(n)}</option>)}
+            </select>
+          </Field>
+          <Field id="cp-contract" text={en ? 'Contract type' : 'Tipo de contrato'}>
+            <input id="cp-contract" className={input} value={value.contractType || ''} onChange={(e) => set('contractType', e.target.value)} placeholder={en ? 'e.g. Talk funnel, monthly traffic' : 'ex.: Funil de palestra, tráfego mensal'} />
+          </Field>
+          <Field id="cp-last" text={en ? 'Last contact' : 'Último contacto'}>
+            <input id="cp-last" type="date" className={input} value={value.lastContactAt || ''} onChange={(e) => set('lastContactAt', e.target.value || undefined)} />
+          </Field>
+          <Field id="cp-next" text={en ? 'Next contact' : 'Próximo contacto'}>
+            <input id="cp-next" type="date" className={input} value={value.nextContactDate || ''} onChange={(e) => set('nextContactDate', e.target.value || undefined)} />
+          </Field>
+          <Field id="cp-action" text={en ? 'Next step' : 'Próximo passo'}>
+            <input id="cp-action" className={input} value={value.nextAction || ''} onChange={(e) => set('nextAction', e.target.value)} placeholder={en ? 'e.g. Send proposal' : 'ex.: Enviar proposta'} />
+          </Field>
+        </div>
+        <Field id="cp-summary" text={en ? 'Conversation summary' : 'Resumo das conversas'}>
+          <textarea id="cp-summary" rows={5} className={`${input} resize-y`} value={value.summary || ''} onChange={(e) => set('summary', e.target.value)} placeholder={en ? 'What was agreed, values, objections, history…' : 'O que foi combinado, valores, objeções, histórico…'} />
+        </Field>
+      </section>
+
       <section className="grid gap-4">
         <h3 className="aura-h4 m-0">{en ? 'Contact & billing' : 'Contacto e faturação'}</h3>
         <div className="grid gap-4 sm:grid-cols-2">
