@@ -14,8 +14,11 @@ import {
   ExternalLink,
   Filter,
   Globe,
+  Star,
+  BellRing,
 } from 'lucide-react';
-import { Client, Project, Income, CurrencyCode, CountryCode, COUNTRIES, CURRENCIES, DEFAULT_CLIENT_NICHES } from '../types';
+import { ClientFollowUpPanel, stageInfo, todayISO } from './clients/ClientFollowUpPanel';
+import { PipelineStage, Client, Project, Income, CurrencyCode, CountryCode, COUNTRIES, CURRENCIES, DEFAULT_CLIENT_NICHES } from '../types';
 import { formatCurrency, formatDate, generateWhatsAppLink } from '../lib/formatters';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -46,6 +49,9 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   const { isOwner, hasPermission, userProfile } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
+  // Fase do funil: 'ALL', uma fase, 'FAV' (preferidas) ou 'DUE' (contactar hoje / em atraso)
+  const [stageFilter, setStageFilter] = useState<PipelineStage | 'ALL' | 'FAV' | 'DUE'>('ALL');
+  const today = todayISO();
 
   const canCreate = isOwner || hasPermission('clients.create');
   const canEdit = isOwner || hasPermission('clients.edit');
@@ -70,6 +76,11 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
 
     // Type filter
     if (typeFilter !== 'ALL' && c.type !== typeFilter) return false;
+
+    // Funil comercial
+    if (stageFilter === 'FAV' && !c.isFavorite) return false;
+    if (stageFilter === 'DUE' && !(c.nextContactDate && c.nextContactDate <= today)) return false;
+    if (stageFilter !== 'ALL' && stageFilter !== 'FAV' && stageFilter !== 'DUE' && c.pipelineStage !== stageFilter) return false;
 
     // Scope check: if user is employee with ASSIGNED scope, check if they have a project for this client
     if (!isOwner && !hasPermission('clients.view', 'ALL')) {
@@ -97,6 +108,12 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
     }
 
     return true;
+  }).sort((a, b) => {
+    // Primeiro quem tem contacto marcado (mais cedo primeiro), depois as preferidas, depois o nome.
+    const da = a.nextContactDate || '9999', dbb = b.nextContactDate || '9999';
+    if (da !== dbb) return da.localeCompare(dbb);
+    if (Boolean(a.isFavorite) !== Boolean(b.isFavorite)) return a.isFavorite ? -1 : 1;
+    return (a.name || '').localeCompare(b.name || '');
   });
 
   const popularPills = [
@@ -130,6 +147,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
           </button>
         )}
       </div>
+
+      <ClientFollowUpPanel clients={clients} isEn={isEn} active={stageFilter} onSelect={setStageFilter} onOpenClient={canEdit ? onEditClient : undefined} />
 
       {/* Filter and Search Bar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-glass border border-line-subtle p-4 rounded-xl shadow-glass">
@@ -267,9 +286,27 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                   </div>
 
                   {/* Client Name & Company */}
-                  <h3 className="text-base font-semibold text-fg tracking-tight leading-snug group-hover:text-accent-soft-fg transition-colors">
-                    {c.name || (isEn ? 'Unnamed Client' : 'Cliente')}
+                  <h3 className="text-base font-semibold text-fg tracking-tight leading-snug group-hover:text-accent-soft-fg transition-colors flex items-center gap-1.5">
+                    {c.isFavorite && <Star className="w-4 h-4 text-warning-fg shrink-0" fill="currentColor" aria-label={isEn ? 'Favourite' : 'Preferida'} />}
+                    <span>{c.name || (isEn ? 'Unnamed Client' : 'Cliente')}</span>
                   </h3>
+                  {(c.pipelineStage || c.rating || c.contractType) && (
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
+                      {c.pipelineStage && <span className={stageInfo(c.pipelineStage).cls}>{isEn ? stageInfo(c.pipelineStage).en : stageInfo(c.pipelineStage).pt}</span>}
+                      {c.rating ? <span className="text-warning-fg tracking-tight" title={`${c.rating}/5`}>{'★'.repeat(c.rating)}</span> : null}
+                      {c.contractType && <span className="text-fg-secondary">{c.contractType}</span>}
+                    </div>
+                  )}
+                  {(c.nextContactDate || c.nextAction) && (
+                    <div className={`mt-2 flex items-start gap-1.5 rounded-md px-2.5 py-1.5 text-[12px] ${c.nextContactDate && c.nextContactDate <= today ? 'bg-warning-soft text-warning-fg' : 'bg-surface-2 text-fg-secondary'}`}>
+                      <BellRing className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                      <span>
+                        {c.nextContactDate && <strong className="font-semibold">{c.nextContactDate < today ? (isEn ? 'Overdue · ' : 'Em atraso · ') : c.nextContactDate === today ? (isEn ? 'Today · ' : 'Hoje · ') : `${formatDate(c.nextContactDate)} · `}</strong>}
+                        {c.nextAction || (isEn ? 'Get in touch' : 'Entrar em contacto')}
+                      </span>
+                    </div>
+                  )}
+                  {c.summary && <p className="mt-2 mb-0 text-[12px] leading-relaxed text-fg-secondary line-clamp-3" title={c.summary}>{c.summary}</p>}
                   {c.company && (
                     <p className="text-xs text-fg-muted flex items-center gap-1 mt-0.5 font-medium">
                       <Building2 className="w-3.5 h-3.5 text-fg-muted " />

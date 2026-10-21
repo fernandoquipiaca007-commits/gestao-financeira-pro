@@ -54,6 +54,8 @@ export const ClientModal: React.FC<ClientModalProps> = ({
         taxId: clientToEdit.taxId, website: clientToEdit.website, address: clientToEdit.address, city: clientToEdit.city,
         postalCode: clientToEdit.postalCode, contactName: clientToEdit.contactName, contactRole: clientToEdit.contactRole,
         preferredChannel: clientToEdit.preferredChannel, paymentTermsDays: clientToEdit.paymentTermsDays, tags: clientToEdit.tags, source: clientToEdit.source,
+        pipelineStage: clientToEdit.pipelineStage, isFavorite: clientToEdit.isFavorite, rating: clientToEdit.rating, contractType: clientToEdit.contractType,
+        nextContactDate: clientToEdit.nextContactDate, nextAction: clientToEdit.nextAction, lastContactAt: clientToEdit.lastContactAt, summary: clientToEdit.summary,
       });
     } else {
       setName('');
