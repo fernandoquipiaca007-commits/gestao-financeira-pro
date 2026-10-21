@@ -80,7 +80,7 @@ Procedimento de cada lote:
 3. Criar as reservas à mão, se houver (o valor depende de cada lote).
 4. Em Financeiro → Caixa e sócios → **Registar distribuição**: escrever o valor a dividir e marcar quem já recebeu. Cada sócio fica como despesa "Distribuição a sócios"; os que ainda não receberam ficam "por enviar".
 5. Quando um sócio receber, marcar a despesa dele como paga.
-6. **Adiantamento a sócio:** se um sócio receber mais do que lhe cabe (ex.: um cliente paga diretamente ao sócio), regista-se a parte dele como paga e o resto como "Adiantamento a sócio" — ele deve esse valor à empresa. Na distribuição seguinte, "Descontar no adiantamento" abate a parte dele nessa dívida sem sair dinheiro do caixa.
+6. **Adiantamento a sócio:** se um sócio receber mais do que lhe cabe (ex.: um cliente paga diretamente ao sócio), regista-se **um só envio** com o valor total e, no campo "parte adiantada", quanto é a mais — essa parte é dívida dele à empresa (não é custo). Na distribuição seguinte, "Descontar no adiantamento" regista a parte dele como *compensada*: não sai dinheiro do caixa e a dívida diminui.
 
 ## Segurança dos dados
 

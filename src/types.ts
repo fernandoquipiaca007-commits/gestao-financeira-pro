@@ -257,6 +257,9 @@ export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, { pt: string; en: 
 export const PROFIT_DISTRIBUTION_CATEGORIES: ExpenseCategory[] = ['Retirada Própria', 'Distribuição a sócios', 'Adiantamento a sócio', 'Valor retido'];
 export const isProfitDistribution = (e: { category: ExpenseCategory }) => PROFIT_DISTRIBUTION_CATEGORIES.includes(e.category);
 
+/** A despesa tirou dinheiro do caixa? (paga e não compensada num adiantamento) */
+export const isCashOut = (e: { paid: boolean; settledByAdvance?: boolean }) => e.paid && !e.settledByAdvance;
+
 export function getExpenseCategoryLabel(category: ExpenseCategory, lang: 'pt' | 'en' = 'pt'): string {
   return EXPENSE_CATEGORY_LABELS[category]?.[lang] || category;
 }
@@ -274,6 +277,10 @@ export interface Expense {
   receiptUrl?: string;
   /** Reserva de caixa de onde saiu o dinheiro (ex.: "Ferramentas"). */
   reserveId?: string;
+  /** Parte deste envio a um sócio que é dívida dele à empresa (ex.: 1.325 de 2.325). */
+  advanceAmount?: number;
+  /** Distribuição compensada no adiantamento do sócio: não sai dinheiro do caixa. */
+  settledByAdvance?: boolean;
   createdAt: string;
 }
 

@@ -3,7 +3,7 @@ import type { AppSettings, Client, CurrencyCode, Expense, Income, Project } from
 import { convertCurrency, formatCurrency, getDaysDiff } from '../formatters';
 import { paidCommissions } from './projectPayments';
 import { cashBreakdown, owedToPartners, reserveStatuses } from './cashPosition';
-import { isProfitDistribution } from '../../types';
+import { isProfitDistribution, isCashOut } from '../../types';
 import type { CashReserve } from '../../types';
 
 /**
@@ -62,7 +62,7 @@ export function useFinanceMetrics({ clients, projects, incomes, expenses, settin
     // --- Caixa real (tudo o que entrou − tudo o que saiu − comissões pagas)
     const received = inc.filter((i) => i.status === 'Recebido');
     const totalReceived = received.reduce((s, i) => s + conv(i.amount, i.currency), 0);
-    const totalPaidExpenses = exp.filter((e) => e.paid).reduce((s, e) => s + conv(e.amount, e.currency), 0);
+    const totalPaidExpenses = exp.filter(isCashOut).reduce((s, e) => s + conv(e.amount, e.currency), 0);
     const totalPaidCommissions = allProj.filter((p) => p.commissionPaid && (p.commissionAmount || 0) > 0).reduce((s, p) => s + conv(p.commissionAmount || 0, p.currency), 0);
     const cashBalance = totalReceived - totalPaidExpenses - totalPaidCommissions;
     // Onde está o caixa: reservado (com destino), por enviar aos sócios, ou livre.
@@ -76,7 +76,7 @@ export function useFinanceMetrics({ clients, projects, incomes, expenses, settin
     // Retiradas e distribuições a sócios saem do caixa, mas não são custo do negócio: ficam fora do resultado.
     const isWithdrawal = (e: Expense) => isProfitDistribution(e);
     const paidIn = (from: string, to: string, pick: (e: Expense) => boolean) =>
-      exp.filter((e) => e.paid && pick(e) && between((e.date || '').slice(0, 10), from, to)).reduce((s, e) => s + conv(e.amount, e.currency), 0);
+      exp.filter((e) => isCashOut(e) && pick(e) && between((e.date || '').slice(0, 10), from, to)).reduce((s, e) => s + conv(e.amount, e.currency), 0);
     const spentIn = (from: string, to: string) => paidIn(from, to, (e) => !isWithdrawal(e));
     const withdrawnIn = (from: string, to: string) => paidIn(from, to, isWithdrawal);
     // Comissões pagas contam no mês em que o cliente pagou o projeto.
@@ -90,7 +90,7 @@ export function useFinanceMetrics({ clients, projects, incomes, expenses, settin
     const spentPrev = spentIn(prevFrom, prevTo);
     const withdrawalsPeriod = withdrawnIn(winFrom, winTo);
     const commissionsPeriod = commissionsIn(winFrom, winTo);
-    const withdrawalsTotal = exp.filter((e) => e.paid && isWithdrawal(e)).reduce((s, e) => s + conv(e.amount, e.currency), 0);
+    const withdrawalsTotal = exp.filter((e) => isCashOut(e) && isWithdrawal(e)).reduce((s, e) => s + conv(e.amount, e.currency), 0);
     const pct = (a: number, b: number) => (b > 0 ? ((a - b) / b) * 100 : null);
 
     // --- A receber (receitas por receber + saldo de projetos sem fatura) e antiguidade
