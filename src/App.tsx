@@ -81,6 +81,7 @@ import {
   deleteProjectFromDb,
   fetchIncomesFromDb,
   upsertIncomeToDb,
+  insertIncomeIfMissing,
   deleteIncomeFromDb,
   fetchExpensesFromDb,
   upsertExpenseToDb,
@@ -131,7 +132,7 @@ import { computeNotifications } from './lib/notifications';
 import { logAction } from './lib/audit';
 import { checkFinancialIntegrity } from './lib/integrity';
 import { formatCurrency } from './lib/formatters';
-import { reconcileProjectWithIncomes, buildSettlementIncomes, paymentDeltaIncome } from './lib/finance/projectPayments';
+import { reconcileProjectWithIncomes, buildSettlementIncomes, paymentDeltaIncome, missingRecurringCharges, recurringTotal } from './lib/finance/projectPayments';
 import { buildPartnerDistribution, offsetAdvance } from './lib/finance/cashPosition';
 import { useAuth } from './contexts/AuthContext';
 import { useTheme } from './contexts/ThemeContext';
@@ -386,6 +387,7 @@ export default function App() {
     setIsStripeInvoiceModalOpen(true);
   };
 
+  const syncRecurringRef = useRef<(p: Project[], i: Income[]) => Promise<void>>(async () => {});
   const loadDbData = useCallback(async () => {
     setIsDataSyncing(true);
     try {
@@ -492,6 +494,8 @@ export default function App() {
       if (!integrityResult.isValid) {
         console.warn('[Integrity] Avisos de integridade financeira:', integrityResult.warnings);
       }
+
+      if (dbProjects && dbIncomes) void syncRecurringRef.current(dbProjects, dbIncomes);
     } catch (err) {
       console.warn('Failed to sync data with Supabase on load:', err);
     } finally {
@@ -824,6 +828,50 @@ export default function App() {
     }
   };
 
+  // Projetos recorrentes: cria as cobranças de cada período que ainda não existem (nunca
+  // sobrescreve uma já paga) e acerta o valor total ao número de períodos.
+  const recurringSyncRef = useRef(false);
+  const syncRecurringCharges = useCallback(async (projectList: Project[], incomeList: Income[]) => {
+    const companyId = userProfile?.companyId;
+    if (!companyId || recurringSyncRef.current || !(isOwner || hasPermission('financial.edit'))) return;
+    recurringSyncRef.current = true;
+    try {
+      const today = getTodayIso();
+      const created: Income[] = [];
+      const totals: Project[] = [];
+      for (const p of projectList.filter((x) => x.billingType && x.billingType !== 'unico')) {
+        for (const charge of missingRecurringCharges(p, [...incomeList, ...created], today)) {
+          const result = await insertIncomeIfMissing(charge, companyId);
+          if (result.success) created.push(charge);
+          else console.warn('[Recorrente] cobrança não criada:', charge.id, result.error);
+        }
+        const total = recurringTotal(p, today);
+        if (total !== p.totalAmount) {
+          const updated = { ...p, totalAmount: total };
+          if ((await upsertProjectToDb(updated, companyId)).success) totals.push(updated);
+        }
+      }
+      if (created.length > 0) {
+        setIncomes((prev) => {
+          const next = [...created.filter((c) => !prev.some((i) => i.id === c.id)), ...prev];
+          saveIncomes(next);
+          return next;
+        });
+      }
+      if (totals.length > 0) {
+        setProjects((prev) => {
+          const next = prev.map((p) => totals.find((t) => t.id === p.id) || p);
+          saveProjects(next);
+          return next;
+        });
+      }
+    } finally {
+      recurringSyncRef.current = false;
+    }
+  }, [userProfile?.companyId, isOwner, hasPermission]);
+
+  syncRecurringRef.current = syncRecurringCharges;
+
   const handleSaveProject = async (
     projectData: Omit<Project, 'id' | 'createdAt'> & { id?: string }
   ) => {
@@ -852,7 +900,10 @@ export default function App() {
     setProjects(updatedProjects);
     saveProjects(updatedProjects);
 
-    if (isNew) {
+    const isRecurringProject = !!newProject.billingType && newProject.billingType !== 'unico';
+    if (isRecurringProject) {
+      await syncRecurringCharges(updatedProjects, incomes);
+    } else if (isNew) {
       const initialIncomes: Income[] = [];
 
       if (newProject.paidAmount > 0) {

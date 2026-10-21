@@ -150,7 +150,20 @@ export interface Project {
   /** Arquivado: continua guardado, mas sai do valor a receber, dos ativos e dos alertas. */
   archived?: boolean;
   archivedAt?: string;
+  /** Único (feito de uma vez) ou recorrente: cada período gera uma cobrança de recurringAmount. */
+  billingType?: BillingType;
+  recurringAmount?: number;
+  /** Fim do contrato recorrente (vazio = sem fim definido). */
+  recurringEnd?: string;
 }
+
+export type BillingType = 'unico' | 'mensal' | 'trimestral' | 'anual';
+export const BILLING_TYPE_LABELS: Record<BillingType, { pt: string; en: string; period: string; months: number }> = {
+  unico: { pt: 'Único', en: 'One-off', period: '', months: 0 },
+  mensal: { pt: 'Mensal', en: 'Monthly', period: 'mês', months: 1 },
+  trimestral: { pt: 'Trimestral', en: 'Quarterly', period: 'trimestre', months: 3 },
+  anual: { pt: 'Anual', en: 'Yearly', period: 'ano', months: 12 },
+};
 
 export type IncomeStatus = 'Pendente' | 'Recebido' | 'Atrasado';
 
