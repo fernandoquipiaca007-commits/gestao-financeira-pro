@@ -40,6 +40,9 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
   const [partnerName, setPartnerName] = useState('');
   const [receiptUrl, setReceiptUrl] = useState<string>('');
   const [reserveId, setReserveId] = useState('');
+  // Envio a sócio: parte que é dívida dele à empresa; e se a linha é uma compensação (sem dinheiro).
+  const [advanceAmount, setAdvanceAmount] = useState<number>(0);
+  const [settledByAdvance, setSettledByAdvance] = useState(false);
   const [receiptPreview, setReceiptPreview] = useState<string>('');
   const [receiptFileName, setReceiptFileName] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -56,6 +59,8 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
       setPartnerName(expenseToEdit.partnerName || '');
       setReceiptUrl(expenseToEdit.receiptUrl || '');
       setReserveId(expenseToEdit.reserveId || '');
+      setAdvanceAmount(expenseToEdit.advanceAmount || 0);
+      setSettledByAdvance(Boolean(expenseToEdit.settledByAdvance));
       setReceiptPreview(expenseToEdit.receiptUrl || '');
       setReceiptFileName('');
     } else {
@@ -69,6 +74,8 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
       setPartnerName('');
       setReceiptUrl('');
       setReserveId('');
+      setAdvanceAmount(0);
+      setSettledByAdvance(false);
       setReceiptPreview('');
       setReceiptFileName('');
     }
@@ -160,6 +167,9 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
       partnerName: isCommission || category === 'Distribuição a sócios' ? partnerName || undefined : undefined,
       receiptUrl: receiptUrl || undefined,
       reserveId: reserveId || undefined,
+      // só faz sentido em envios a sócios; nas outras despesas fica a zero
+      advanceAmount: category === 'Distribuição a sócios' ? Math.min(Math.max(0, Number(advanceAmount) || 0), Number(amount) || 0) : 0,
+      settledByAdvance: category === 'Distribuição a sócios' ? settledByAdvance : false,
     });
 
     onClose();
@@ -212,6 +222,22 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
               ))}
             </select>
           </div>
+
+          {category === 'Distribuição a sócios' && (
+            <div className="grid gap-1.5">
+              <label className="block text-xs font-medium text-fg-secondary">{isEn ? 'Partner name' : 'Sócio'}</label>
+              <input value={partnerName} onChange={(e) => setPartnerName(e.target.value)} className="aura-input w-full" placeholder={isEn ? 'e.g. Jorge Reis' : 'Ex.: Jorge Reis'} />
+              <label className="block text-xs font-medium text-fg-secondary mt-1">{isEn ? 'Advance part (owed to the company)' : 'Parte adiantada (deve à empresa)'}</label>
+              <input type="number" min="0" step="any" value={advanceAmount} disabled={settledByAdvance} onChange={(e) => setAdvanceAmount(parseFloat(e.target.value) || 0)} className="aura-input w-full" />
+              <p className="m-0 text-[11px] text-fg-muted">
+                {isEn ? 'If the partner received more than their share, write how much is extra: it becomes a debt to the company, compensated in the next distribution.' : 'Se o sócio recebeu mais do que lhe cabe, escreva quanto é a mais: fica como dívida dele à empresa, compensada na próxima distribuição.'}
+              </p>
+              <label className="flex items-center gap-2 text-xs text-fg-secondary cursor-pointer mt-1">
+                <input type="checkbox" checked={settledByAdvance} onChange={(e) => setSettledByAdvance(e.target.checked)} />
+                {isEn ? 'Compensated in the advance (no money leaves the cash)' : 'Compensado no adiantamento (não sai dinheiro do caixa)'}
+              </label>
+            </div>
+          )}
 
           {reserves.some((r) => !r.closed) && (
             <div>
