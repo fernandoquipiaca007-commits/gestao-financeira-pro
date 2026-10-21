@@ -2163,6 +2163,9 @@ export default function App() {
               onMarkProjectAsPaid={handleMarkProjectAsPaid}
               onOpenStripeInvoiceModal={handleOpenStripeInvoiceModal}
               onAssumeProject={handleAssumeProject}
+              incomes={incomes}
+              tasks={tasks}
+              agendaEvents={agendaEvents}
               onOpenWhatsAppCharge={handleOpenWhatsAppCharge}
             />
           )}
