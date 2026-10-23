@@ -28,7 +28,7 @@ import {
   Moon,
   RefreshCw,
 } from 'lucide-react';
-import {
+import { Product,
   Client,
   Project,
   ProjectStatus,
@@ -93,6 +93,8 @@ import {
   deleteAgendaEventFromDb,
   fetchPartnersFromDb,
   fetchCashReservesFromDb,
+  fetchProductsFromDb,
+  upsertProductToDb,
   upsertCashReserveToDb,
   upsertPartnerToDb,
   deletePartnerFromDb,
@@ -193,6 +195,7 @@ import { ClientModal } from './components/modals/ClientModal';
 import { ProjectModal } from './components/modals/ProjectModal';
 import { TaskModal } from './components/modals/TaskModal';
 import { LinkProjectModal, type LinkProjectData } from './components/modals/LinkProjectModal';
+import { ProductsView } from './components/products/ProductsView';
 import { BillingRequestModal } from './components/modals/BillingRequestModal';
 import { IncomeModal } from './components/modals/IncomeModal';
 import { ExpenseModal } from './components/modals/ExpenseModal';
@@ -272,6 +275,7 @@ export default function App() {
   const [agendaEvents, setAgendaEvents] = useState<AgendaEvent[]>([]);
   const [partners, setPartners] = useState<Partner[]>([]);
   const [cashReserves, setCashReserves] = useState<CashReserve[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [settings, setSettings] = useState<AppSettings>(() => getStoredSettings());
 
   // Moeda de visualização (BRL por defeito). Só muda o que se vê: os registos ficam na moeda original.
@@ -451,6 +455,8 @@ export default function App() {
       if (cid) {
         const dbReserves = await fetchCashReservesFromDb(cid);
         if (dbReserves) setCashReserves(dbReserves);
+        const dbProducts = await fetchProductsFromDb(cid);
+        if (dbProducts) setProducts(dbProducts);
       }
 
       // Sync categories from Supabase if available, otherwise keep localStorage
@@ -838,6 +844,20 @@ export default function App() {
     if (updatedProject !== project) {
       await persistProjectChange(updatedProject);
     }
+  };
+
+  // Produtos e preços (tabela de preços)
+  const handleSaveProduct = async (p: Product): Promise<boolean> => {
+    if (userProfile?.companyId) {
+      const result = await upsertProductToDb(p, userProfile.companyId);
+      if (!result.success) {
+        toast({ tone: 'danger', title: 'Não foi possível guardar o plano', description: result.error });
+        return false;
+      }
+    }
+    setProducts((prev) => (prev.some((x) => x.id === p.id) ? prev.map((x) => (x.id === p.id ? p : x)) : [...prev, p]).sort((a, b) => a.sortOrder - b.sortOrder));
+    toast({ tone: 'success', title: 'Plano guardado' });
+    return true;
   };
 
   // Vincular: cria um projeto novo a partir de um existente (ex.: a palestra deste mês).
@@ -2114,6 +2134,7 @@ export default function App() {
     { id: 'dashboard',  label: t('nav.dashboard', 'Painel'),       icon: LayoutDashboard },
     { id: 'calendar',   label: t('nav.calendar', 'Agenda'),     icon: CalendarIcon, badge: eventsTodayCount || undefined },
     { id: 'projects',   label: t('nav.projects', 'Projetos'), icon: FolderKanban, },
+    { id: 'products',   label: lang === 'en' ? 'Products & prices' : 'Produtos e preços', icon: Tag },
     { id: 'tasks',      label: t('nav.tasks', 'Tarefas'),  icon: CheckSquare,  badge: tasksNeedingAction || undefined },
     { id: 'billing',    label: t('nav.billing', 'Faturação'), icon: FileText,   badge: pendingBillingCount > 0 ? pendingBillingCount : undefined },
     { id: 'clients',    label: t('nav.clients', 'Clientes'),   icon: Users },
@@ -2380,6 +2401,16 @@ export default function App() {
             />
           )}
 
+          {activeTab === 'products' && (
+            <ProductsView
+              products={products}
+              projects={projects}
+              isEn={lang === 'en'}
+              canEdit={isOwner || hasPermission('projects.edit')}
+              onSave={handleSaveProduct}
+            />
+          )}
+
           {activeTab === 'categories' && (
             <CategoriesView
               categories={categories}
@@ -2501,6 +2532,7 @@ export default function App() {
         partners={partners}
         employees={companyUsers}
         categories={categories}
+        products={products}
         defaultCurrency={settings.defaultCurrency}
       />
 
