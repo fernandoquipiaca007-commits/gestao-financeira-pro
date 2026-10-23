@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Users,
   Plus,
@@ -17,6 +17,9 @@ import {
   Star,
   BellRing,
 } from 'lucide-react';
+import { ClientDetailView } from './clients/ClientDetailView';
+import type { AgendaEvent } from '../types';
+import type { Task } from '../types/rbac';
 import { ClientFollowUpPanel, stageInfo, todayISO } from './clients/ClientFollowUpPanel';
 import { PipelineStage, Client, Project, Income, CurrencyCode, CountryCode, COUNTRIES, CURRENCIES, DEFAULT_CLIENT_NICHES } from '../types';
 import { formatCurrency, formatDate, generateWhatsAppLink } from '../lib/formatters';
@@ -32,6 +35,11 @@ interface ClientsViewProps {
   onEditClient: (client: Client) => void;
   onDeleteClient: (clientId: string) => void;
   onOpenWhatsAppCharge: (phone: string, text: string) => void;
+  tasks?: Task[];
+  agendaEvents?: AgendaEvent[];
+  /** "client:<id>" abre logo a página dessa cliente (vem da pesquisa) */
+  initialFilter?: string;
+  onOpenProject?: (projectId: string) => void;
 }
 
 export const ClientsView: React.FC<ClientsViewProps> = ({
@@ -43,11 +51,18 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   onEditClient,
   onDeleteClient,
   onOpenWhatsAppCharge,
+  tasks = [],
+  agendaEvents = [],
+  initialFilter,
+  onOpenProject,
 }) => {
   const { lang } = useLanguage();
   const isEn = lang === 'en';
   const { isOwner, hasPermission, userProfile } = useAuth();
+  const [openClientId, setOpenClientId] = useState<string | null>(initialFilter?.startsWith('client:') ? initialFilter.slice(7) : null);
+  // A área que faz scroll é o <main> da app, não a janela.
   const [searchTerm, setSearchTerm] = useState('');
+  useEffect(() => { (document.querySelector('main.aura-scroll') || document.scrollingElement)?.scrollTo({ top: 0 }); }, [openClientId]);
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
   // Fase do funil: 'ALL', uma fase, 'FAV' (preferidas) ou 'DUE' (contactar hoje / em atraso)
   const [stageFilter, setStageFilter] = useState<PipelineStage | 'ALL' | 'FAV' | 'DUE'>('ALL');
@@ -115,6 +130,26 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
     if (Boolean(a.isFavorite) !== Boolean(b.isFavorite)) return a.isFavorite ? -1 : 1;
     return (a.name || '').localeCompare(b.name || '');
   });
+
+  const openClient = openClientId ? clients.find((x) => x.id === openClientId) : undefined;
+  if (openClient) {
+    return (
+      <ClientDetailView
+        client={openClient}
+        projects={projects}
+        incomes={incomes}
+        tasks={tasks}
+        agendaEvents={agendaEvents}
+        isEn={isEn}
+        canEdit={canEdit}
+        canViewFinancials={canViewFinancials}
+        onBack={() => setOpenClientId(null)}
+        onEdit={onEditClient}
+        onOpenProject={(id) => onOpenProject?.(id)}
+        onOpenWhatsApp={onOpenWhatsAppCharge}
+      />
+    );
+  }
 
   const popularPills = [
     { key: 'ALL', label: isEn ? 'All' : 'Todos' },
@@ -288,7 +323,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                   {/* Client Name & Company */}
                   <h3 className="text-base font-semibold text-fg tracking-tight leading-snug group-hover:text-accent-soft-fg transition-colors flex items-center gap-1.5">
                     {c.isFavorite && <Star className="w-4 h-4 text-warning-fg shrink-0" fill="currentColor" aria-label={isEn ? 'Favourite' : 'Preferida'} />}
-                    <span>{c.name || (isEn ? 'Unnamed Client' : 'Cliente')}</span>
+                    <button type="button" onClick={() => setOpenClientId(c.id)} className="text-left hover:underline underline-offset-2 cursor-pointer" title={isEn ? 'Open profile' : 'Abrir perfil'}>{c.name || (isEn ? 'Unnamed Client' : 'Cliente')}</button>
                   </h3>
                   {(c.pipelineStage || c.rating || c.contractType) && (
                     <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
@@ -394,6 +429,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                   </div>
 
                 </div>
+
+                <button type="button" onClick={() => setOpenClientId(c.id)} className="mb-3 text-left text-[12px] font-semibold text-accent-soft-fg hover:underline cursor-pointer">{isEn ? 'View full profile →' : 'Ver perfil completo →'}</button>
 
                 {/* Footer Controls */}
                 <div className="pt-3 border-t border-line-subtle flex items-center justify-between">

@@ -20,10 +20,11 @@ interface Props {
   /** Todos os projetos, para mostrar a vinculação (origem e projetos vinculados) */
   allProjects?: Project[];
   onOpenProject?: (id: string) => void;
+  onOpenClient?: (id: string) => void;
   onLink?: (p: Project) => void;
 }
 
-function Card({ title, icon, children, className = '' }: { title: string; icon: React.ReactNode; children: React.ReactNode; className?: string }) {
+function Card({ title, icon, children, className = '' }: { title: React.ReactNode; icon: React.ReactNode; children: React.ReactNode; className?: string }) {
   return (
     <section className={`bg-glass border border-line-subtle rounded-xl p-5 shadow-glass ${className}`}>
       <h2 className="aura-h4 m-0 mb-4 flex items-center gap-2">{icon}{title}</h2>
@@ -42,7 +43,7 @@ function Row({ label, value, strong }: { label: string; value: React.ReactNode; 
 }
 
 /** Página completa de um projeto: descrição inteira, cliente, dinheiro, cobranças, tarefas e agenda. */
-export function ProjectDetailView({ project: p, clients, incomes, tasks, agendaEvents, isEn, canEdit, canViewFinancials, onBack, onEdit, onOpenWhatsApp, allProjects = [], onOpenProject, onLink }: Props) {
+export function ProjectDetailView({ project: p, clients, incomes, tasks, agendaEvents, isEn, canEdit, canViewFinancials, onBack, onEdit, onOpenWhatsApp, allProjects = [], onOpenProject, onOpenClient, onLink }: Props) {
   const parent = p.parentProjectId ? allProjects.find((x) => x.id === p.parentProjectId) : undefined;
   const children = allProjects.filter((x) => x.parentProjectId === p.id).sort((a, b) => (a.startDate || '').localeCompare(b.startDate || ''));
   const ids = p.clientIds && p.clientIds.length ? p.clientIds : p.clientId ? [p.clientId] : [];
@@ -199,7 +200,7 @@ export function ProjectDetailView({ project: p, clients, incomes, tasks, agendaE
           )}
 
           {linked.map((c) => (
-            <Card key={c.id} title={c.name} icon={c.isFavorite ? <Star className="w-4 h-4 text-warning-fg" fill="currentColor" /> : <Building2 className="w-4 h-4" />}>
+            <Card key={c.id} title={onOpenClient ? <button type="button" onClick={() => onOpenClient(c.id)} className="text-left hover:underline cursor-pointer" title={isEn ? 'Open profile' : 'Abrir perfil'}>{c.name}</button> : c.name} icon={c.isFavorite ? <Star className="w-4 h-4 text-warning-fg" fill="currentColor" /> : <Building2 className="w-4 h-4" />}>
               {c.company && <p className="m-0 mb-2 text-sm text-fg-secondary">{c.company}</p>}
               {stageLabel(c.pipelineStage) && <Row label={isEn ? 'Stage' : 'Fase'} value={stageLabel(c.pipelineStage)} />}
               {!!c.rating && <Row label={isEn ? 'Rating' : 'Classificação'} value={<span className="text-warning-fg">{'★'.repeat(c.rating)}</span>} />}

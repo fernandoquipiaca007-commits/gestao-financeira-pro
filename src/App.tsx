@@ -2174,7 +2174,7 @@ export default function App() {
           )}
 
           <motion.div
-            key={activeTab}
+            key={`${activeTab}|${tabFilter || ''}`}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.42, ease: [0.16, 1, 0.3, 1] }}
@@ -2213,6 +2213,7 @@ export default function App() {
               onDeleteEvent={handleDeleteAgendaEvent}
               onToggleEventStatus={handleToggleAgendaEventStatus}
               onOpenWhatsAppCharge={handleOpenWhatsAppCharge}
+              initialFilter={tabFilter}
             />
           )}
 
@@ -2227,6 +2228,7 @@ export default function App() {
               onEditProject={(p) => { setProjectToEdit(p); setIsProjectModalOpen(true); }}
               onDuplicateProject={handleDuplicateProject}
               onLinkProject={(p) => setLinkParentProject(p)}
+              onOpenClient={(id) => handleNavigateTab('clients', `client:${id}`)}
               onRateProject={handleRateProject}
               onDeleteProject={handleDeleteProject}
               onToggleArchiveProject={handleToggleArchiveProject}
@@ -2281,6 +2283,10 @@ export default function App() {
               onEditClient={(c) => { setClientToEdit(c); setIsClientModalOpen(true); }}
               onDeleteClient={handleDeleteClient}
               onOpenWhatsAppCharge={handleOpenWhatsAppCharge}
+              tasks={tasks}
+              agendaEvents={agendaEvents}
+              initialFilter={tabFilter}
+              onOpenProject={(id) => handleNavigateTab('projects', `open:${id}`)}
             />
           )}
 
@@ -2398,8 +2404,13 @@ export default function App() {
         clients={clients}
         projects={projects}
         incomes={incomes}
-        onSelectClient={() => handleNavigateTab('clients')}
-        onSelectProject={() => handleNavigateTab('projects')}
+        tasks={tasks}
+        agendaEvents={agendaEvents}
+        onSelectClient={(c) => handleNavigateTab('clients', `client:${c.id}`)}
+        onSelectProject={(p) => handleNavigateTab('projects', `open:${p.id}`)}
+        onSelectTask={(t) => (t.projectId ? handleNavigateTab('projects', `open:${t.projectId}`) : handleNavigateTab('tasks', `task:${t.id}`))}
+        onSelectEvent={(e) => handleNavigateTab('calendar', `date:${e.date}`)}
+        onSelectIncome={(i) => (i.projectId ? handleNavigateTab('projects', `open:${i.projectId}`) : handleNavigateTab('clients', `client:${i.clientId}`))}
       />
 
       <ClientModal

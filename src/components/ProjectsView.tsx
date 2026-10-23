@@ -49,6 +49,8 @@ interface ProjectsViewProps {
   onDuplicateProject?: (project: Project) => void;
   /** Cria um projeto novo vinculado a este (ex.: a palestra do mês) */
   onLinkProject?: (project: Project) => void;
+  /** Abre a página da cliente (na lista de clientes) */
+  onOpenClient?: (clientId: string) => void;
   onRateProject?: (project: Project, rating: number) => void;
   onDeleteProject: (projectId: string) => void;
   onToggleArchiveProject?: (project: Project) => void;
@@ -73,6 +75,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   onEditProject,
   onDuplicateProject,
   onLinkProject,
+  onOpenClient,
   onRateProject,
   onDeleteProject,
   onToggleArchiveProject,
@@ -85,7 +88,8 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   agendaEvents = [],
 }) => {
   // Projeto aberto na página completa (null = lista)
-  const [openProjectId, setOpenProjectId] = useState<string | null>(null);
+  // "open:<id>" (vem da pesquisa ou de outra página) abre logo a página completa desse projeto
+  const [openProjectId, setOpenProjectId] = useState<string | null>(initialStatusFilter?.startsWith('open:') ? initialStatusFilter.slice(5) : null);
   // A área que faz scroll é o <main> da app, não a janela.
   useEffect(() => { (document.querySelector('main.aura-scroll') || document.scrollingElement)?.scrollTo({ top: 0 }); }, [openProjectId]);
   const { isOwner, hasPermission, userProfile } = useAuth();
@@ -94,7 +98,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const [categoryFilter, setCategoryFilter] = useState<string>(initialCategoryFilter || 'ALL');
   // "project:<id>" vem do painel: mostra só esse projeto até o utilizador mudar de filtro ou pedir "Ver todos"
   const focusFrom = (v?: string) => (v && v.startsWith('project:') ? v.slice('project:'.length) : null);
-  const [statusFilter, setStatusFilter] = useState<string>(initialStatusFilter && !focusFrom(initialStatusFilter) ? initialStatusFilter : 'ALL');
+  const [statusFilter, setStatusFilter] = useState<string>(initialStatusFilter && !focusFrom(initialStatusFilter) && !initialStatusFilter.startsWith('open:') ? initialStatusFilter : 'ALL');
   const [focusId, setFocusId] = useState<string | null>(focusFrom(initialStatusFilter));
   const [assumingProjectId, setAssumingProjectId] = useState<string | null>(null);
 
@@ -247,6 +251,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
         allProjects={projects}
         onOpenProject={setOpenProjectId}
         onLink={canCreate ? onLinkProject : undefined}
+        onOpenClient={onOpenClient}
       />
     );
   }
