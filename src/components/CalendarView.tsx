@@ -17,6 +17,7 @@ import {
 import { AgendaEvent, AgendaEventType, Client, Project, Income, Expense, getIncomeStatusLabel, getProjectStatusLabel, getAgendaEventTypeLabel } from '../types';
 import { requestNotificationPermission, sendWebPushNotification } from '../lib/webpush';
 import { useLanguage } from '../contexts/LanguageContext';
+import { PendingEventsPanel } from './agenda/PendingEventsPanel';
 
 interface CalendarViewProps {
   agendaEvents: AgendaEvent[];
@@ -286,6 +287,7 @@ export function CalendarView({
 
   return (
     <div className="space-y-6 font-sans pb-12">
+      <PendingEventsPanel events={agendaEvents} clients={clients} isEn={isEn} onToggle={onToggleEventStatus} onEdit={onEditEvent} />
       
       {/* Push Notification Permission Banner */}
       {!isPushBannerDismissed && pushStatus !== 'granted' && (

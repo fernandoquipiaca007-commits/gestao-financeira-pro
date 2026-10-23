@@ -12,6 +12,28 @@ const income = (over: Partial<Income> = {}): Income => ({
   dueDate: '2026-09-14', status: 'Recebido', receivedDate: '2026-09-14', createdAt: '2026-09-14', ...over,
 });
 
+describe('projeto vinculado (parte coberta por pagamento anterior)', () => {
+  it('counts the covered part as paid without any income', () => {
+    const p = reconcileProjectWithIncomes(project({ totalAmount: 600, coveredAmount: 600, paidAmount: 600 }), []);
+    expect(p.paidAmount).toBe(600);
+  });
+
+  it('adds received incomes on top of the covered part', () => {
+    const p = reconcileProjectWithIncomes(project({ totalAmount: 1000, coveredAmount: 600 }), [income({ amount: 400 })]);
+    expect(p.paidAmount).toBe(1000);
+  });
+
+  it('settlement only creates an income for what is not covered', () => {
+    const out = buildSettlementIncomes(project({ totalAmount: 1000, coveredAmount: 600, paidAmount: 600 }), [], '2026-10-23', 'q1');
+    expect(out).toHaveLength(1);
+    expect(out[0].amount).toBe(400);
+  });
+
+  it('a fully covered project needs no settlement income', () => {
+    expect(buildSettlementIncomes(project({ totalAmount: 600, coveredAmount: 600, paidAmount: 600 }), [], '2026-10-23', 'q1')).toHaveLength(0);
+  });
+});
+
 describe('reconcileProjectWithIncomes', () => {
   it('keeps a fully paid project "Em andamento"', () => {
     const p = reconcileProjectWithIncomes(project(), [income({ amount: 1500 })]);

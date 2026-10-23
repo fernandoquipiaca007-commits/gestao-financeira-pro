@@ -9,11 +9,12 @@ import type { Income, Project } from '../../types';
  */
 export function reconcileProjectWithIncomes(project: Project, allIncomes: Income[]): Project {
   const projectIncomes = allIncomes.filter((i) => i.projectId === project.id);
-  if (projectIncomes.length === 0) return project;
+  const covered = Number(project.coveredAmount) || 0; // pago por um pagamento anterior: não é receita
+  if (projectIncomes.length === 0 && covered === 0) return project;
 
   const paidAmount = projectIncomes
     .filter((i) => i.status === 'Recebido')
-    .reduce((acc, i) => acc + i.amount, 0);
+    .reduce((acc, i) => acc + i.amount, 0) + covered;
 
   if (paidAmount === project.paidAmount) return project;
   return { ...project, paidAmount };
@@ -31,7 +32,7 @@ export function buildSettlementIncomes(project: Project, allIncomes: Income[], t
     .filter((i) => i.status !== 'Recebido')
     .map((i) => ({ ...i, status: 'Recebido' as const, receivedDate: i.receivedDate || today }));
 
-  const covered = linked.reduce((acc, i) => acc + i.amount, 0);
+  const covered = linked.reduce((acc, i) => acc + i.amount, 0) + (Number(project.coveredAmount) || 0);
   const remainder = round2(project.totalAmount - covered);
   if (remainder > 0) {
     changed.push({

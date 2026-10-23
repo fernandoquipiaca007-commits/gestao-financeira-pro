@@ -26,6 +26,7 @@ import {
   CreditCard,
   Archive,
   ArchiveRestore,
+  Link2,
 } from 'lucide-react';
 import { Project, Client, ProjectStatus, CurrencyCode, getProjectStatusLabel, BILLING_TYPE_LABELS } from '../types';
 import { formatCurrency, formatDate, getDaysDiff } from '../lib/formatters';
@@ -46,6 +47,8 @@ interface ProjectsViewProps {
   onOpenNewProjectModal: () => void;
   onEditProject: (project: Project) => void;
   onDuplicateProject?: (project: Project) => void;
+  /** Cria um projeto novo vinculado a este (ex.: a palestra do mês) */
+  onLinkProject?: (project: Project) => void;
   onRateProject?: (project: Project, rating: number) => void;
   onDeleteProject: (projectId: string) => void;
   onToggleArchiveProject?: (project: Project) => void;
@@ -69,6 +72,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   onOpenNewProjectModal,
   onEditProject,
   onDuplicateProject,
+  onLinkProject,
   onRateProject,
   onDeleteProject,
   onToggleArchiveProject,
@@ -240,6 +244,9 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
         onBack={() => setOpenProjectId(null)}
         onEdit={onEditProject}
         onOpenWhatsApp={onOpenWhatsAppCharge}
+        allProjects={projects}
+        onOpenProject={setOpenProjectId}
+        onLink={canCreate ? onLinkProject : undefined}
       />
     );
   }
@@ -700,9 +707,19 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                       <span className="line-clamp-3">{markdownToPlain(p.notes)}</span>
                     </button>
                   )}
-                  <button type="button" onClick={() => setOpenProjectId(p.id)} className="mb-4 text-[12px] font-semibold text-accent-soft-fg hover:underline cursor-pointer">
-                    {isEn ? 'View full project →' : 'Ver projeto completo →'}
-                  </button>
+                  <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1">
+                    <button type="button" onClick={() => setOpenProjectId(p.id)} className="text-[12px] font-semibold text-accent-soft-fg hover:underline cursor-pointer">
+                      {isEn ? 'View full project →' : 'Ver projeto completo →'}
+                    </button>
+                    {canCreate && onLinkProject && (
+                      <button type="button" onClick={() => onLinkProject(p)} className="inline-flex items-center gap-1 text-[12px] font-semibold text-accent-soft-fg hover:underline cursor-pointer" title={isEn ? 'Create a new project linked to this one' : 'Criar um projeto novo vinculado a este'}>
+                        <Link2 className="w-3.5 h-3.5" /> {isEn ? 'Link new project' : 'Vincular novo projeto'}
+                      </button>
+                    )}
+                    {p.parentProjectId && (() => { const par = projects.find((x) => x.id === p.parentProjectId); return par ? (
+                      <button type="button" onClick={() => setOpenProjectId(par.id)} className="text-[11px] text-fg-muted hover:underline cursor-pointer truncate max-w-full" title={par.name}>↳ {isEn ? 'from' : 'de'} {par.name}</button>
+                    ) : null; })()}
+                  </div>
                 </div>
 
                 {/* Actions Footer */}

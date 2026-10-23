@@ -179,6 +179,10 @@ export interface Project {
   recurringAmount?: number;
   /** Fim do contrato recorrente (vazio = sem fim definido). */
   recurringEnd?: string;
+  /** Projeto de origem (vinculação): este projeto nasceu dele, ex.: a palestra de um mês. */
+  parentProjectId?: string;
+  /** Parte do valor já paga por um pagamento anterior (do projeto de origem). Conta como paga, mas não é receita nova. */
+  coveredAmount?: number;
 }
 
 export type BillingType = 'unico' | 'mensal' | 'trimestral' | 'anual';
