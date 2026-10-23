@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { convertWith } from '../fxRates';
 import type { AppSettings, Client, CurrencyCode, Expense, Income, Project } from '../../types';
 import { convertCurrency, formatCurrency, getDaysDiff } from '../formatters';
 import { paidCommissions } from './projectPayments';
@@ -34,7 +35,13 @@ interface Input {
 export function useFinanceMetrics({ clients, projects, incomes, expenses, settings, currencyFilter, period, lang, reserves = [] }: Input) {
   return useMemo(() => {
     const currency: CurrencyCode = currencyFilter !== 'ALL' ? currencyFilter : settings.defaultCurrency;
+    // Stocks (saldo, a receber, reservas) usam o câmbio de hoje; fluxos de um período (recebido,
+    // custos, retiradas, comissões, clientes) usam o câmbio do dia de cada transação.
     const conv = (amount: number, from: CurrencyCode) => convertCurrency(amount || 0, from, currency, settings.exchangeRates);
+    const convAt = (amount: number, from: CurrencyCode, date: string) => {
+      const r = from === currency ? undefined : settings.rateAt?.(date);
+      return r ? convertWith(amount || 0, from, currency, r) : conv(amount, from);
+    };
     const fmt = (v: number) => formatCurrency(v, currency);
     const inScope = <T extends { currency: CurrencyCode }>(list: T[]) => (currencyFilter === 'ALL' ? list : list.filter((x) => x.currency === currencyFilter));
 
@@ -72,17 +79,17 @@ export function useFinanceMetrics({ clients, projects, incomes, expenses, settin
 
     // --- Período vs período anterior (recebido = data de recebimento; despesa = data da despesa paga)
     const recDate = (i: Income) => (i.receivedDate || i.dueDate || '').slice(0, 10);
-    const receivedIn = (from: string, to: string) => received.filter((i) => between(recDate(i), from, to)).reduce((s, i) => s + conv(i.amount, i.currency), 0);
+    const receivedIn = (from: string, to: string) => received.filter((i) => between(recDate(i), from, to)).reduce((s, i) => s + convAt(i.amount, i.currency, recDate(i)), 0);
     // Retiradas e distribuições a sócios saem do caixa, mas não são custo do negócio: ficam fora do resultado.
     const isWithdrawal = (e: Expense) => isProfitDistribution(e);
     const paidIn = (from: string, to: string, pick: (e: Expense) => boolean) =>
-      exp.filter((e) => isCashOut(e) && pick(e) && between((e.date || '').slice(0, 10), from, to)).reduce((s, e) => s + conv(e.amount, e.currency), 0);
+      exp.filter((e) => isCashOut(e) && pick(e) && between((e.date || '').slice(0, 10), from, to)).reduce((s, e) => s + convAt(e.amount, e.currency, e.date), 0);
     const spentIn = (from: string, to: string) => paidIn(from, to, (e) => !isWithdrawal(e));
     const withdrawnIn = (from: string, to: string) => paidIn(from, to, isWithdrawal);
     // Comissões pagas contam no mês em que o cliente pagou o projeto.
     const commissions = paidCommissions(allProj, inc);
     const commissionsIn = (from: string, to: string) =>
-      commissions.filter((c) => between(c.date, from, to)).reduce((s, c) => s + conv(c.amount, c.project.currency), 0);
+      commissions.filter((c) => between(c.date, from, to)).reduce((s, c) => s + convAt(c.amount, c.project.currency, c.date), 0);
     const cashOutIn = (from: string, to: string) => paidIn(from, to, () => true) + commissionsIn(from, to);
     const receivedPeriod = receivedIn(winFrom, winTo);
     const receivedPrev = receivedIn(prevFrom, prevTo);
@@ -156,7 +163,7 @@ export function useFinanceMetrics({ clients, projects, incomes, expenses, settin
     const byClient = new Map<string, number>();
     received
       .filter((i) => between(recDate(i), winFrom, winTo))
-      .forEach((i) => byClient.set(i.clientId, (byClient.get(i.clientId) || 0) + conv(i.amount, i.currency)));
+      .forEach((i) => byClient.set(i.clientId, (byClient.get(i.clientId) || 0) + convAt(i.amount, i.currency, recDate(i))));
     // Nome curto e legível: o nome do cliente, sem descrições entre parênteses.
     const shortName = (s: string) => s.replace(/\s*\(.*\)\s*$/, '').replace(/\s+/g, ' ').trim();
     const clientName = new Map(clients.map((c) => [c.id, shortName(c.name || c.company || '')]));

@@ -102,3 +102,17 @@ Há duas formas de pagar o projeto novo, e podem combinar-se:
 
 Exemplo: a Dra Mirtes pagou antes duas palestras. Na palestra do mês: valor 600, coberto 600, nova cobrança 0. Fica paga no projeto, sem receita duplicada.
 O "valor pago" do projeto passa a ser: receitas recebidas + parte coberta.
+
+## Ver em outra moeda (Real, Kwanza, Dólar, Euro)
+
+No painel, o botão da moeda no cartão **Saldo em caixa** (ex.: "BRL ▾") muda a visualização do painel, do Financeiro e dos Relatórios (incluindo o Excel). Os registos **não mudam**: continuam na moeda original. Por defeito é Real.
+
+- Ao escolher uma moeda, o sistema vai buscar o câmbio **desse momento** (o mais recente publicado).
+- **Saldo, a receber, reservas e valores pendentes**: ao câmbio de hoje (quanto valem agora).
+- **Cada transação e os totais de um período** (recebido, custos, retiradas, comissões, gráficos mês a mês): ao câmbio **do dia em que aconteceram**. No Financeiro, cada linha mostra "≈ valor (câmbio de DD/MM)".
+
+Fonte: [fawazahmed0/exchange-api](https://github.com/fawazahmed0/exchange-api) — gratuita, sem chave, tem o Kwanza e o histórico diário (desde 02/03/2024). Usa dois servidores (Cloudflare e jsDelivr); se falharem, o câmbio de hoje vem do open.er-api. O câmbio de cada dia fica guardado no navegador.
+
+Notas:
+- O câmbio é diário (não minuto a minuto): não existe fonte gratuita fiável em tempo real com Kwanza.
+- É o câmbio oficial/de mercado internacional. O câmbio de rua em Angola pode ser bem diferente.

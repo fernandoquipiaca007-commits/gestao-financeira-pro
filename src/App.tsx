@@ -122,6 +122,8 @@ import {
   DEFAULT_CATEGORIES,
 } from './lib/db';
 import { fetchLiveExchangeRates } from './lib/exchange';
+import { fetchLatestFx, loadFxDays, fxAt } from './lib/fxRates';
+import { DisplayCurrencyContext, type DisplayCurrencyValue } from './contexts/DisplayCurrencyContext';
 import {
   registerServiceWorker,
   startBackgroundNotificationCheck,
@@ -271,6 +273,35 @@ export default function App() {
   const [partners, setPartners] = useState<Partner[]>([]);
   const [cashReserves, setCashReserves] = useState<CashReserve[]>([]);
   const [settings, setSettings] = useState<AppSettings>(() => getStoredSettings());
+
+  // Moeda de visualização (BRL por defeito). Só muda o que se vê: os registos ficam na moeda original.
+  const [displayCurrency, setDisplayCurrency] = useState<CurrencyCode>(() => {
+    try { const v = localStorage.getItem('gfo_display_currency'); return v === 'AOA' || v === 'USD' || v === 'EUR' ? v : 'BRL'; } catch { return 'BRL'; }
+  });
+  const [fxInfo, setFxInfo] = useState<{ date: string; source: string } | null>(null);
+  const [fxLoading, setFxLoading] = useState(false);
+  const [fxVersion, setFxVersion] = useState(0);
+  const applyFxRates = (r: { AOA: number; USD: number; EUR: number }) =>
+    setSettings((prev) => {
+      const updated = { ...prev, exchangeRates: { ...prev.exchangeRates, BRL: 1, AOA: r.AOA, USD: r.USD, EUR: r.EUR } };
+      saveSettings(updated);
+      return updated;
+    });
+  // Ao escolher uma moeda vai buscar o câmbio desse momento.
+  const chooseDisplayCurrency = async (c: CurrencyCode) => {
+    setDisplayCurrency(c);
+    setCurrencyFilter('ALL');
+    try { localStorage.setItem('gfo_display_currency', c); } catch { /* ignorar */ }
+    setFxLoading(true);
+    const q = await fetchLatestFx(true);
+    if (q) { applyFxRates(q.rates); setFxInfo({ date: q.date, source: q.source }); }
+    else toast({ tone: 'danger', title: 'Não foi possível atualizar o câmbio', description: 'A usar o último câmbio guardado.' });
+    setFxLoading(false);
+  };
+  useEffect(() => {
+    fetchLatestFx().then((q) => { if (q) { applyFxRates(q.rates); setFxInfo({ date: q.date, source: q.source }); } });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // RBAC Data State
   const [companyUsers, setCompanyUsers] = useState<UserProfile[]>([]);
@@ -2069,8 +2100,40 @@ export default function App() {
     return visibleTabs.includes(item.id);
   });
 
+  // Câmbio do dia de cada transação (só os dias de registos noutra moeda; fica em cache).
+  useEffect(() => {
+    const other = (c: CurrencyCode) => c !== displayCurrency;
+    const dates = [
+      ...incomes.filter((i) => i.status === 'Recebido' && other(i.currency)).map((i) => i.receivedDate || i.dueDate),
+      ...expenses.filter((e) => e.paid && other(e.currency)).map((e) => e.date),
+    ].filter(Boolean) as string[];
+    if (dates.length === 0) return;
+    let alive = true;
+    loadFxDays(dates).then((changed) => { if (alive && changed) setFxVersion((v) => v + 1); });
+    return () => { alive = false; };
+  }, [displayCurrency, incomes, expenses]);
+
+  // Configurações vistas pelo painel, financeiro e relatórios: moeda escolhida + câmbio por data.
+  const viewSettings = useMemo<AppSettings>(() => ({
+    ...settings,
+    defaultCurrency: displayCurrency,
+    rateAt: (d: string) => fxAt(d),
+    exchangeRatesDate: fxInfo?.date,
+    exchangeRatesSource: fxInfo?.source,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [settings, displayCurrency, fxInfo, fxVersion]);
+
+  const displayCurrencyValue: DisplayCurrencyValue = {
+    currency: displayCurrency,
+    choose: chooseDisplayCurrency,
+    loading: fxLoading,
+    rates: settings.exchangeRates,
+    date: fxInfo?.date,
+    source: fxInfo?.source,
+  };
+
   return (
-    <>
+    <DisplayCurrencyContext.Provider value={displayCurrencyValue}>
       <div className="aura-root aura-canvas aura-app h-screen overflow-hidden flex flex-col">
         <div className="aura-canvas__aurora" aria-hidden="true"><span /><span /><span /><span /></div>
         <div className="aura-canvas__grid" aria-hidden="true" />
@@ -2189,7 +2252,7 @@ export default function App() {
               expenses={expenses}
               tasks={tasks}
               billingRequests={billingRequests}
-              settings={settings}
+              settings={viewSettings}
               currencyFilter={currencyFilter}
               onNavigateTab={handleNavigateTab}
               onOpenWhatsAppCharge={handleOpenWhatsAppCharge}
@@ -2296,7 +2359,7 @@ export default function App() {
               expenses={expenses}
               clients={clients}
               projects={projects}
-              settings={settings}
+              settings={viewSettings}
               reserves={cashReserves}
               canEditCash={isOwner || hasPermission('financial.edit')}
               onSaveReserve={handleSaveReserve}
@@ -2351,7 +2414,7 @@ export default function App() {
               projects={projects}
               incomes={incomes}
               expenses={expenses}
-              settings={settings}
+              settings={viewSettings}
               currencyFilter={currencyFilter}
               reserves={cashReserves}
             />
@@ -2550,6 +2613,6 @@ export default function App() {
       )}
 
       </div>
-  </>
+  </DisplayCurrencyContext.Provider>
   );
 }

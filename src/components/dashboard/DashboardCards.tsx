@@ -3,6 +3,7 @@ import { motion, type Variants } from 'motion/react';
 import NumberFlow from '@number-flow/react';
 import { ArrowDownRight, ArrowUpRight, Minus, Plus, Wallet } from 'lucide-react';
 import { AgingBar, Sparkline } from '../charts/BreakdownCharts';
+import { CurrencySwitcher } from './CurrencySwitcher';
 
 export const fadeUp: Variants = {
   hidden: { opacity: 0, y: 14, filter: 'blur(4px)' },
@@ -63,7 +64,7 @@ export function HeroBalance({ value, currency, locale, lang, net, netLabel, onIn
     <motion.section variants={fadeUp} className="aura-glass aura-float aura-float--slow min-w-0 p-5 sm:p-6 flex flex-col justify-between gap-5">
       <div className="flex items-center justify-between gap-3">
         <span className="inline-flex items-center gap-2 text-[13px] font-medium text-fg-secondary"><span className="aura-stat__icon !w-8 !h-8"><Wallet /></span>{en ? 'Cash balance' : 'Saldo em caixa'}</span>
-        <span className="aura-badge aura-badge--outline">{currency}</span>
+        <CurrencySwitcher fallback={currency} lang={lang} />
       </div>
       <div>
         <div className={`font-display font-light leading-none tracking-[-0.04em] text-[42px] sm:text-[52px] ${value < 0 ? 'text-danger-fg' : 'text-fg'}`}>
