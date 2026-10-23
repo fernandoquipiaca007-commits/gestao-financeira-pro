@@ -130,3 +130,19 @@ export function convertCurrency(
 
   return amount;
 }
+
+/**
+ * Converte ao câmbio do dia da transação quando ele está disponível (settings.rateAt);
+ * senão usa o câmbio atual. Para fluxos: receitas, despesas, comissões.
+ */
+export function convertAtDate(
+  amount: number,
+  from: CurrencyCode,
+  to: CurrencyCode,
+  settings: { exchangeRates: { BRL: number; AOA: number; USD: number; EUR: number }; rateAt?: (date: string) => { BRL: number; AOA: number; USD: number; EUR: number } | undefined },
+  date?: string
+): number {
+  if (from === to) return amount;
+  const r = date ? settings.rateAt?.(date.slice(0, 10)) : undefined;
+  return convertCurrency(amount, from, to, r || settings.exchangeRates);
+}

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { convertWith } from '../lib/fxRates';
 import {
   DollarSign,
   Receipt,
@@ -103,6 +104,18 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
   const { t, lang } = useLanguage();
   // Caixa antes → depois de cada movimento real, na moeda padrão da empresa.
   const cashCurrency: CurrencyCode = settings?.defaultCurrency || 'BRL';
+  // Valor de uma transação na moeda escolhida, ao câmbio do dia em que aconteceu.
+  const renderAtDate = (amount: number, cur: CurrencyCode, date?: string) => {
+    if (!settings || cur === cashCurrency) return null;
+    const day = (date || '').slice(0, 10);
+    const r = day ? settings.rateAt?.(day) : undefined;
+    const v = r ? convertWith(amount, cur, cashCurrency, r) : convertCurrency(amount, cur, cashCurrency, settings.exchangeRates);
+    return (
+      <span className="block text-[11px] font-medium text-fg-muted" title={r ? `1 ${cur} = ${(v / (amount || 1)).toFixed(4)} ${cashCurrency}` : undefined}>
+        ≈ {formatCurrency(v, cashCurrency)} {r ? (lang === 'en' ? `(rate of ${formatDate(day)})` : `(câmbio de ${formatDate(day)})`) : (lang === 'en' ? "(today's rate)" : '(câmbio de hoje)')}
+      </span>
+    );
+  };
   const timeline = React.useMemo(
     () => cashTimeline(incomes, expenses, projects, (amount, from) => (settings ? convertCurrency(amount, from, cashCurrency, settings.exchangeRates) : amount)),
     [incomes, expenses, projects, settings, cashCurrency],
@@ -521,6 +534,7 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
 
                           <td className="px-5 py-4 font-semibold text-success-fg text-sm">
                             {formatCurrency(inc.amount, inc.currency)}
+                            {renderAtDate(inc.amount, inc.currency, inc.status === 'Recebido' ? (inc.receivedDate || inc.dueDate) : inc.dueDate)}
                             {renderCashStep(timeline.get('inc:' + inc.id))}
                           </td>
 
@@ -765,6 +779,7 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
 
                           <td className="px-5 py-4 font-semibold text-danger-fg text-sm">
                             {formatCurrency(exp.amount, exp.currency)}
+                            {renderAtDate(exp.amount, exp.currency, exp.date)}
                             {renderCashStep(timeline.get('exp:' + exp.id))}
                           </td>
 

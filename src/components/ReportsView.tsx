@@ -26,7 +26,7 @@ import {
   Cell,
 } from 'recharts';
 import { Client, Project, Income, Expense, CurrencyCode, AppSettings, getProjectStatusLabel } from '../types';
-import { formatCurrency, convertCurrency } from '../lib/formatters';
+import { formatCurrency, convertCurrency, convertAtDate } from '../lib/formatters';
 import { paidCommissions } from '../lib/finance/projectPayments';
 import { isProfitDistribution, isCashOut } from '../types';
 import type { CashReserve } from '../types';
@@ -164,12 +164,12 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   const periodWithdrawals = paidExpensesInPeriod.filter(isWithdrawal);
 
   // Calculation Helper
-  const sumAmount = (items: { amount: number; currency: CurrencyCode }[]) => {
+  const sumAmount = (items: { amount: number; currency: CurrencyCode; receivedDate?: string; dueDate?: string; date?: string }[]) => {
     if (currencyFilter !== 'ALL') {
       return items.reduce((sum, item) => sum + item.amount, 0);
     }
     return items.reduce((sum, item) => {
-      return sum + convertCurrency(item.amount, item.currency, settings.defaultCurrency, settings.exchangeRates);
+      return sum + convertAtDate(item.amount, item.currency, settings.defaultCurrency, settings, item.receivedDate || item.date || item.dueDate);
     }, 0);
   };
 
@@ -243,7 +243,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       const cat = exp.category || (isEn ? 'Other' : 'Outros');
       const amountInMain = currencyFilter !== 'ALL'
         ? exp.amount
-        : convertCurrency(exp.amount, exp.currency, settings.defaultCurrency, settings.exchangeRates);
+        : convertAtDate(exp.amount, exp.currency, settings.defaultCurrency, settings, exp.date);
       map.set(cat, (map.get(cat) || 0) + amountInMain);
     });
     return Array.from(map.entries())
@@ -265,7 +265,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       }
       const amountInMain = currencyFilter !== 'ALL'
         ? inc.amount
-        : convertCurrency(inc.amount, inc.currency, settings.defaultCurrency, settings.exchangeRates);
+        : convertAtDate(inc.amount, inc.currency, settings.defaultCurrency, settings, inc.receivedDate || inc.dueDate);
       map.set(cat, (map.get(cat) || 0) + amountInMain);
     });
     return Array.from(map.entries())

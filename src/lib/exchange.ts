@@ -1,4 +1,5 @@
 import { CurrencyCode } from '../types';
+import { fetchLatestFx } from './fxRates';
 
 export interface ExchangeRates {
   BRL: number; // rate relative to 1 BRL
@@ -30,6 +31,16 @@ export function getCachedRates(): ExchangeRates {
 }
 
 export async function fetchLiveExchangeRates(): Promise<ExchangeRates> {
+  // Fonte principal: fawazahmed0/exchange-api (tem Kwanza e histórico). O resto fica como reserva.
+  const quote = await fetchLatestFx();
+  if (quote) {
+    const rates: ExchangeRates = { BRL: 1, AOA: quote.rates.AOA, USD: quote.rates.USD, EUR: quote.rates.EUR };
+    try {
+      localStorage.setItem(EXCHANGE_CACHE_KEY, JSON.stringify(rates));
+      localStorage.setItem(EXCHANGE_LAST_FETCH_KEY, new Date().toISOString());
+    } catch { /* ignorar */ }
+    return rates;
+  }
   const apiUrl = import.meta.env.VITE_EXCHANGE_API_URL || ('https://open.er-api.com/' + 'v6/latest/USD');
   try {
     const res = await fetch(apiUrl);

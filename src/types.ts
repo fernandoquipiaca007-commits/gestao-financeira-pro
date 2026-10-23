@@ -383,6 +383,11 @@ export interface AppSettings {
   };
   emailSettings?: ResendEmailSettings;
   language?: 'pt' | 'en';
+  /** Só em memória (nunca se guarda): câmbio de um dia, para converter cada transação pela taxa da sua data. */
+  rateAt?: (date: string) => { BRL: number; AOA: number; USD: number; EUR: number } | undefined;
+  /** Só em memória: data e fonte do câmbio atual. */
+  exchangeRatesDate?: string;
+  exchangeRatesSource?: string;
   /** Divisão do resultado entre sócios (soma 100%). */
   profitSplit?: PartnerShare[];
 }
