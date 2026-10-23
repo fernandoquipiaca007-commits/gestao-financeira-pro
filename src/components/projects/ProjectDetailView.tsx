@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { ArrowLeft, Edit3, Building2, MessageCircle, Mail, Calendar, Wallet, ListChecks, BellRing, Handshake, Star, Paperclip, Download } from 'lucide-react';
+import { ArrowLeft, Link2, Edit3, Building2, MessageCircle, Mail, Calendar, Wallet, ListChecks, BellRing, Handshake, Star, Paperclip, Download } from 'lucide-react';
 import { type Project, type Client, type Income, type AgendaEvent, getProjectStatusLabel, BILLING_TYPE_LABELS, PIPELINE_STAGES } from '../../types';
 import type { Task } from '../../types/rbac';
 import { formatCurrency, formatDate } from '../../lib/formatters';
@@ -17,6 +17,10 @@ interface Props {
   onBack: () => void;
   onEdit: (p: Project) => void;
   onOpenWhatsApp: (phone: string, text: string) => void;
+  /** Todos os projetos, para mostrar a vinculação (origem e projetos vinculados) */
+  allProjects?: Project[];
+  onOpenProject?: (id: string) => void;
+  onLink?: (p: Project) => void;
 }
 
 function Card({ title, icon, children, className = '' }: { title: string; icon: React.ReactNode; children: React.ReactNode; className?: string }) {
@@ -38,7 +42,9 @@ function Row({ label, value, strong }: { label: string; value: React.ReactNode; 
 }
 
 /** Página completa de um projeto: descrição inteira, cliente, dinheiro, cobranças, tarefas e agenda. */
-export function ProjectDetailView({ project: p, clients, incomes, tasks, agendaEvents, isEn, canEdit, canViewFinancials, onBack, onEdit, onOpenWhatsApp }: Props) {
+export function ProjectDetailView({ project: p, clients, incomes, tasks, agendaEvents, isEn, canEdit, canViewFinancials, onBack, onEdit, onOpenWhatsApp, allProjects = [], onOpenProject, onLink }: Props) {
+  const parent = p.parentProjectId ? allProjects.find((x) => x.id === p.parentProjectId) : undefined;
+  const children = allProjects.filter((x) => x.parentProjectId === p.id).sort((a, b) => (a.startDate || '').localeCompare(b.startDate || ''));
   const ids = p.clientIds && p.clientIds.length ? p.clientIds : p.clientId ? [p.clientId] : [];
   const linked = ids.map((id) => clients.find((c) => c.id === id)).filter(Boolean) as Client[];
   const projIncomes = useMemo(() => incomes.filter((i) => i.projectId === p.id).sort((a, b) => (a.receivedDate || a.dueDate || '').localeCompare(b.receivedDate || b.dueDate || '')), [incomes, p.id]);
@@ -56,6 +62,11 @@ export function ProjectDetailView({ project: p, clients, incomes, tasks, agendaE
         <button type="button" onClick={onBack} className="aura-btn aura-btn--secondary aura-btn--sm inline-flex">
           <ArrowLeft className="w-4 h-4" /> {isEn ? 'All projects' : 'Todos os projetos'}
         </button>
+        {onLink && (
+          <button type="button" onClick={() => onLink(p)} className="aura-btn aura-btn--secondary aura-btn--sm inline-flex">
+            <Link2 className="w-4 h-4" /> {isEn ? 'Link new project' : 'Vincular novo projeto'}
+          </button>
+        )}
         {canEdit && (
           <button type="button" onClick={() => onEdit(p)} className="aura-btn aura-btn--primary aura-btn--sm inline-flex">
             <Edit3 className="w-4 h-4" /> {isEn ? 'Edit project' : 'Editar projeto'}
@@ -84,6 +95,31 @@ export function ProjectDetailView({ project: p, clients, incomes, tasks, agendaE
           <Card title={isEn ? 'Description' : 'Descrição'} icon={null}>
             {p.notes ? <MarkdownView source={p.notes} className="text-[15px] leading-relaxed" /> : <p className="text-sm text-fg-muted m-0">{isEn ? 'No description yet.' : 'Ainda sem descrição.'}</p>}
           </Card>
+          {(parent || children.length > 0) && (
+            <Card title={isEn ? 'Linked projects' : 'Projetos vinculados'} icon={<Link2 className="w-4 h-4" />}>
+              {parent && (
+                <p className="m-0 mb-3 text-sm text-fg-secondary">
+                  {isEn ? 'Comes from: ' : 'Vem de: '}
+                  <button type="button" onClick={() => onOpenProject?.(parent.id)} className="font-semibold text-accent-soft-fg hover:underline cursor-pointer">{parent.name}</button>
+                  {!!p.coveredAmount && canViewFinancials && <span className="block text-[12px] text-fg-muted mt-0.5">{isEn ? 'Covered by the earlier payment: ' : 'Coberto pelo pagamento anterior: '}{formatCurrency(p.coveredAmount, p.currency)}</span>}
+                </p>
+              )}
+              {children.length > 0 && (
+                <ul className="m-0 p-0 list-none">
+                  {children.map((c) => (
+                    <li key={c.id} className="flex items-start justify-between gap-3 py-2 border-b border-line-subtle last:border-0 text-sm">
+                      <button type="button" onClick={() => onOpenProject?.(c.id)} className="text-left font-semibold text-fg hover:underline cursor-pointer">{c.name}</button>
+                      <span className="text-[12px] text-fg-muted text-right whitespace-nowrap">
+                        {c.startDate ? formatDate(c.startDate) : ''}
+                        {canViewFinancials && c.coveredAmount ? <span className="block">{isEn ? 'covered ' : 'coberto '}{formatCurrency(c.coveredAmount, c.currency)}</span> : null}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+          )}
+
           {canViewFinancials && (
             <Card title={isEn ? 'Payments' : 'Pagamentos'} icon={<Wallet className="w-4 h-4" />}>
               {projIncomes.length === 0 ? <p className="text-sm text-fg-muted m-0">{isEn ? 'No payments recorded.' : 'Sem pagamentos registados.'}</p> : (

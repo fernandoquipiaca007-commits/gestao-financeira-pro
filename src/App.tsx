@@ -190,6 +190,7 @@ import { StripeInvoiceModal } from './components/modals/StripeInvoiceModal';
 import { ClientModal } from './components/modals/ClientModal';
 import { ProjectModal } from './components/modals/ProjectModal';
 import { TaskModal } from './components/modals/TaskModal';
+import { LinkProjectModal, type LinkProjectData } from './components/modals/LinkProjectModal';
 import { BillingRequestModal } from './components/modals/BillingRequestModal';
 import { IncomeModal } from './components/modals/IncomeModal';
 import { ExpenseModal } from './components/modals/ExpenseModal';
@@ -285,6 +286,7 @@ export default function App() {
 
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
+  const [linkParentProject, setLinkParentProject] = useState<Project | null>(null);
 
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
@@ -807,6 +809,70 @@ export default function App() {
     }
   };
 
+  // Vincular: cria um projeto novo a partir de um existente (ex.: a palestra deste mês).
+  // A parte "coberta" já foi paga por um pagamento anterior: conta como paga mas NÃO cria receita
+  // (o dinheiro já está no caixa). Só o que não está coberto vira uma receita pendente.
+  const handleLinkProject = async (data: LinkProjectData) => {
+    const parent = linkParentProject;
+    if (!parent) return;
+    const covered = Math.min(Math.max(0, data.coveredAmount), data.totalAmount);
+    const today = getTodayIso();
+    const child: Project = {
+      id: `proj-${Date.now()}`,
+      name: data.name,
+      clientId: parent.clientId,
+      clientIds: parent.clientIds,
+      category: parent.category,
+      totalAmount: data.totalAmount,
+      paidAmount: covered,
+      coveredAmount: covered,
+      parentProjectId: parent.id,
+      currency: parent.currency,
+      startDate: data.startDate,
+      dueDate: data.noDueDate ? '' : data.dueDate,
+      status: 'Em andamento',
+      notes: data.notes,
+      billingType: 'unico',
+      invoiceFooter: parent.invoiceFooter,
+      invoiceNotes: parent.invoiceNotes,
+      assignmentType: parent.assignmentType,
+      assignedTo: parent.assignedTo,
+      assignedToName: parent.assignedToName,
+      createdAt: today,
+    };
+    if (userProfile?.companyId) {
+      const result = await upsertProjectToDb(child, userProfile.companyId);
+      if (!result.success) {
+        toast({ tone: 'danger', title: 'Não foi possível criar o projeto vinculado', description: result.error || 'Tente novamente.' });
+        return;
+      }
+    }
+    const next = [child, ...projects];
+    setProjects(next);
+    saveProjects(next);
+
+    const toCharge = Math.round((data.totalAmount - covered) * 100) / 100;
+    if (toCharge > 0) {
+      await recordProjectIncomes([{
+        id: `inc-${Date.now()}-l`,
+        clientId: child.clientId,
+        projectId: child.id,
+        description: `Saldo Restante - ${child.name}`,
+        amount: toCharge,
+        currency: child.currency,
+        dueDate: data.noDueDate ? data.startDate : (data.dueDate || data.startDate),
+        status: 'Pendente',
+        paymentMethod: 'Transferência',
+        createdAt: today,
+      }], 'O projeto foi criado, mas');
+    }
+    if (userProfile) {
+      logAction({ companyId: userProfile.companyId, userId: userProfile.id, userName: userProfile.name, userRole: userProfile.role, action: 'project.create', resourceType: 'project', resourceId: child.id });
+    }
+    toast({ tone: 'success', title: 'Projeto vinculado criado', description: covered > 0 ? `${formatCurrency(covered, child.currency)} contam como já pagos pelo pagamento anterior (sem receita nova).` : 'Foi criada uma cobrança pendente.' });
+    setLinkParentProject(null);
+  };
+
   const recordProjectIncomes = async (newIncomes: Income[], context: string) => {
     const saved: Income[] = [];
     for (const inc of newIncomes) {
@@ -877,12 +943,15 @@ export default function App() {
   ) => {
     const isNew = !projectData.id;
     const projectId = projectData.id || `proj-${Date.now()}`;
+    // Ao editar, mantém os campos que o formulário não mostra (arquivado, vinculação, parte coberta).
+    const existingProject = projects.find((p) => p.id === projectId);
     const newProject: Project = {
+      ...(existingProject || {}),
       ...projectData,
       id: projectId,
       createdAt: isNew
         ? getTodayIso()
-        : (projects.find((p) => p.id === projectId)?.createdAt || getTodayIso()),
+        : (existingProject?.createdAt || getTodayIso()),
     };
 
     if (userProfile?.companyId) {
@@ -2157,6 +2226,7 @@ export default function App() {
               onOpenNewProjectModal={() => { setProjectToEdit(null); setIsProjectModalOpen(true); }}
               onEditProject={(p) => { setProjectToEdit(p); setIsProjectModalOpen(true); }}
               onDuplicateProject={handleDuplicateProject}
+              onLinkProject={(p) => setLinkParentProject(p)}
               onRateProject={handleRateProject}
               onDeleteProject={handleDeleteProject}
               onToggleArchiveProject={handleToggleArchiveProject}
@@ -2337,6 +2407,14 @@ export default function App() {
         onClose={() => setIsClientModalOpen(false)}
         onSave={handleSaveClient}
         clientToEdit={clientToEdit}
+      />
+
+      <LinkProjectModal
+        parent={linkParentProject}
+        isOpen={!!linkParentProject}
+        isEn={lang === 'en'}
+        onClose={() => setLinkParentProject(null)}
+        onConfirm={handleLinkProject}
       />
 
       <ProjectModal

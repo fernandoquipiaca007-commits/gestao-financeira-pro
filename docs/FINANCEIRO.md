@@ -88,3 +88,17 @@ Procedimento de cada lote:
 - Os registos feitos diretamente na base de dados ficam em `supabase/data/` (ficheiros SQL datados), para se saber de onde veio cada valor.
 
 Ver o histórico de lançamentos em [LIVRO_DE_CAIXA.md](LIVRO_DE_CAIXA.md).
+
+## Projetos vinculados (ex.: a palestra de cada mês)
+
+Em vez de duplicar um projeto, usa-se **Vincular novo projeto** (no cartão do projeto ou na página dele). O projeto novo fica ligado ao de origem (aparece em "Projetos vinculados") e copia cliente, categoria e moeda. A comissão do parceiro não é copiada.
+
+Há duas formas de pagar o projeto novo, e podem combinar-se:
+
+| Campo | O que faz |
+|---|---|
+| **Coberto pelo pagamento anterior** | Conta como já pago, **sem criar receita** e sem mexer no caixa (o dinheiro já entrou antes). |
+| **Nova cobrança** (o resto do valor) | Cria uma receita **Pendente** com o que falta. Registe-a como Recebida quando o dinheiro chegar. |
+
+Exemplo: a Dra Mirtes pagou antes duas palestras. Na palestra do mês: valor 600, coberto 600, nova cobrança 0. Fica paga no projeto, sem receita duplicada.
+O "valor pago" do projeto passa a ser: receitas recebidas + parte coberta.

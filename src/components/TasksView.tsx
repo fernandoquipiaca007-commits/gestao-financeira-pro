@@ -283,14 +283,15 @@ export function TasksView({
                   task.status === 'Concluída' ? 'Em andamento' : 'Concluída'
                 )
               }
-              className={`p-1.5 rounded-full cursor-pointer transition-colors ${
+              className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold cursor-pointer transition-colors ${
  task.status === 'Concluída'
- ? 'text-success-fg bg-success-soft '
- : 'text-fg-muted hover:bg-sunken hover:text-success-fg'
+ ? 'text-fg-secondary bg-surface-2 hover:bg-sunken'
+ : 'text-success-fg bg-success-soft hover:opacity-85'
  }`}
               title={task.status === 'Concluída' ? (isEn ? 'Reopen Task' : 'Reabrir Tarefa') : (isEn ? 'Complete Task' : 'Concluir Tarefa')}
             >
-              <CheckCircle2 className="w-4 h-4" />
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>{task.status === 'Concluída' ? (isEn ? 'Reopen' : 'Reabrir') : (isEn ? 'Done' : 'Feito')}</span>
             </button>
 
             {/* Edit */}
