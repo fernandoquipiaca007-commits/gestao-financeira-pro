@@ -30,6 +30,8 @@ interface CalendarViewProps {
   onDeleteEvent: (eventId: string) => void;
   onToggleEventStatus: (eventId: string) => void;
   onOpenWhatsAppCharge: (phone: string, text: string) => void;
+  /** "date:AAAA-MM-DD" abre o calendário nesse dia (vem da pesquisa) */
+  initialFilter?: string;
 }
 
 export function CalendarView({
@@ -43,12 +45,14 @@ export function CalendarView({
   onDeleteEvent,
   onToggleEventStatus,
   onOpenWhatsAppCharge,
+  initialFilter,
 }: CalendarViewProps) {
+  const startDate = initialFilter?.startsWith('date:') ? initialFilter.slice(5) : '';
   const { lang } = useLanguage();
   const isEn = lang === 'en';
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(startDate ? new Date(`${startDate}T12:00:00`) : new Date());
   const [selectedDate, setSelectedDate] = useState<string>(
-    new Date().toISOString().split('T')[0]
+    startDate || new Date().toISOString().split('T')[0]
   );
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
   const [searchTerm] = useState('');

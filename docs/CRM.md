@@ -24,3 +24,10 @@ Foram registadas 3 clientes novas que não estavam no sistema e criados 17 alarm
 O conteúdo das conversas **não** fica no repositório: está só nas fichas, dentro do sistema.
 
 Migração: `supabase/migrations/20261022120000_client_pipeline.sql`.
+
+## Pesquisa e página da cliente
+
+A pesquisa (barra do topo ou Ctrl+K) mostra tudo o que se liga ao nome: clientes, projetos, tarefas, agenda e pagamentos. Ao escrever o nome de uma doutora aparecem também os projetos, tarefas, eventos e pagamentos dela.
+Cada resultado abre a página certa: cliente → página da cliente, projeto ou tarefa de projeto → página do projeto, evento → Agenda nesse dia, pagamento → projeto (ou cliente).
+
+A **página da cliente** (clicar no nome ou em "Ver perfil completo →") junta o acompanhamento comercial, projetos, pagamentos, tarefas, agenda, perfil e notas.
