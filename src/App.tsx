@@ -2020,6 +2020,38 @@ export default function App() {
   // ------------------------------------------------------------------
   // ROUTE GUARD
   // ------------------------------------------------------------------
+  // Câmbio do dia de cada transação (só os dias de registos noutra moeda; fica em cache).
+  useEffect(() => {
+    const other = (c: CurrencyCode) => c !== displayCurrency;
+    const dates = [
+      ...incomes.filter((i) => i.status === 'Recebido' && other(i.currency)).map((i) => i.receivedDate || i.dueDate),
+      ...expenses.filter((e) => e.paid && other(e.currency)).map((e) => e.date),
+    ].filter(Boolean) as string[];
+    if (dates.length === 0) return;
+    let alive = true;
+    loadFxDays(dates).then((changed) => { if (alive && changed) setFxVersion((v) => v + 1); });
+    return () => { alive = false; };
+  }, [displayCurrency, incomes, expenses]);
+
+  // Configurações vistas pelo painel, financeiro e relatórios: moeda escolhida + câmbio por data.
+  const viewSettings = useMemo<AppSettings>(() => ({
+    ...settings,
+    defaultCurrency: displayCurrency,
+    rateAt: (d: string) => fxAt(d),
+    exchangeRatesDate: fxInfo?.date,
+    exchangeRatesSource: fxInfo?.source,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [settings, displayCurrency, fxInfo, fxVersion]);
+
+  const displayCurrencyValue: DisplayCurrencyValue = {
+    currency: displayCurrency,
+    choose: chooseDisplayCurrency,
+    loading: fxLoading,
+    rates: settings.exchangeRates,
+    date: fxInfo?.date,
+    source: fxInfo?.source,
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-transparent flex items-center justify-center" style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", letterSpacing: '-0.011em' }}>
@@ -2100,37 +2132,6 @@ export default function App() {
     return visibleTabs.includes(item.id);
   });
 
-  // Câmbio do dia de cada transação (só os dias de registos noutra moeda; fica em cache).
-  useEffect(() => {
-    const other = (c: CurrencyCode) => c !== displayCurrency;
-    const dates = [
-      ...incomes.filter((i) => i.status === 'Recebido' && other(i.currency)).map((i) => i.receivedDate || i.dueDate),
-      ...expenses.filter((e) => e.paid && other(e.currency)).map((e) => e.date),
-    ].filter(Boolean) as string[];
-    if (dates.length === 0) return;
-    let alive = true;
-    loadFxDays(dates).then((changed) => { if (alive && changed) setFxVersion((v) => v + 1); });
-    return () => { alive = false; };
-  }, [displayCurrency, incomes, expenses]);
-
-  // Configurações vistas pelo painel, financeiro e relatórios: moeda escolhida + câmbio por data.
-  const viewSettings = useMemo<AppSettings>(() => ({
-    ...settings,
-    defaultCurrency: displayCurrency,
-    rateAt: (d: string) => fxAt(d),
-    exchangeRatesDate: fxInfo?.date,
-    exchangeRatesSource: fxInfo?.source,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [settings, displayCurrency, fxInfo, fxVersion]);
-
-  const displayCurrencyValue: DisplayCurrencyValue = {
-    currency: displayCurrency,
-    choose: chooseDisplayCurrency,
-    loading: fxLoading,
-    rates: settings.exchangeRates,
-    date: fxInfo?.date,
-    source: fxInfo?.source,
-  };
 
   return (
     <DisplayCurrencyContext.Provider value={displayCurrencyValue}>
