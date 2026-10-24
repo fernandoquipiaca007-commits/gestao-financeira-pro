@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { supabase } from './supabase';
-import {
+import { Product,
   Client,
   Project,
   Income,
@@ -329,6 +329,7 @@ export async function fetchProjectsFromDb(companyId?: string): Promise<Project[]
         paidAmount: Number(item.paid_amount) || 0,
         parentProjectId: item.parent_project_id || undefined,
         coveredAmount: Number(item.covered_amount) || 0,
+        productId: item.product_id || undefined,
         currency: item.currency || 'BRL',
         startDate: item.start_date || '',
         dueDate: item.due_date || '',
@@ -376,6 +377,7 @@ export async function upsertProjectToDb(project: Project, companyId: string): Pr
       paid_amount: Number(project.paidAmount) || 0,
       parent_project_id: project.parentProjectId || null,
       covered_amount: Number(project.coveredAmount) || 0,
+      product_id: project.productId || null,
       currency: project.currency,
       start_date: project.startDate || null,
       due_date: project.dueDate || null,
@@ -628,6 +630,53 @@ export async function deleteExpenseFromDb(expenseId: string): Promise<{ success:
 // ----------------------------------------------------
 // RESERVAS DE CAIXA
 // ----------------------------------------------------
+
+export async function fetchProductsFromDb(companyId: string): Promise<Product[] | null> {
+  const { data, error } = await supabase.from('products').select('*').eq('company_id', companyId).order('sort_order', { ascending: true });
+  if (error) {
+    console.warn('[DB] fetchProductsFromDb:', error.message);
+    return null;
+  }
+  return (data || []).map((r) => ({
+    id: r.id,
+    name: r.name,
+    kind: r.kind || 'plano',
+    billing: r.billing || 'unico',
+    priceMin: Number(r.price_min) || 0,
+    priceMax: Number(r.price_max) || 0,
+    currency: r.currency || 'BRL',
+    summary: r.summary || undefined,
+    includes: Array.isArray(r.includes) ? r.includes : [],
+    conditions: r.conditions || undefined,
+    internalNotes: r.internal_notes || undefined,
+    active: r.active !== false,
+    sortOrder: Number(r.sort_order) || 0,
+  }));
+}
+
+export async function upsertProductToDb(p: Product, companyId: string): Promise<{ success: boolean; error?: string }> {
+  const { error } = await supabase.from('products').upsert({
+    id: p.id,
+    company_id: companyId,
+    name: p.name,
+    kind: p.kind,
+    billing: p.billing,
+    price_min: Number(p.priceMin) || 0,
+    price_max: Math.max(Number(p.priceMax) || 0, Number(p.priceMin) || 0),
+    currency: p.currency,
+    summary: p.summary || null,
+    includes: p.includes.filter((x) => x.trim()),
+    conditions: p.conditions || null,
+    internal_notes: p.internalNotes || null,
+    active: p.active,
+    sort_order: p.sortOrder,
+  });
+  if (error) {
+    console.error('[DB] upsertProductToDb:', error.message);
+    return { success: false, error: error.message };
+  }
+  return { success: true };
+}
 
 export async function fetchCashReservesFromDb(companyId: string): Promise<CashReserve[] | null> {
   const { data, error } = await supabase

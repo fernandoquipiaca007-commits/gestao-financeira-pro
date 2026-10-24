@@ -19,6 +19,8 @@ interface ProjectModalProps {
   employees?: UserProfile[];
   categories?: import('../../types').CategoryItem[];
   defaultCurrency: CurrencyCode;
+  /** Planos da tabela de preços, para escolher ao criar o projeto */
+  products?: import('../../types').Product[];
 }
 
 export const ProjectModal: React.FC<ProjectModalProps> = ({
@@ -31,9 +33,11 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   employees = [],
   categories = [],
   defaultCurrency,
+  products = [],
 }) => {
   const { lang, isEn, t } = useLanguage();
   const [name, setName] = useState('');
+  const [productId, setProductId] = useState('');
   const [clientId, setClientId] = useState('');
   const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
   const [category, setCategory] = useState<ProjectCategory>('Website');
@@ -79,6 +83,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         : (projectToEdit.clientId ? [projectToEdit.clientId] : []);
       setSelectedClientIds(initialClientIds);
       setCategory(projectToEdit.category);
+      setProductId(projectToEdit.productId || '');
       setTotalAmount(projectToEdit.totalAmount);
       setPaidAmount(projectToEdit.paidAmount);
       setBillingType(projectToEdit.billingType || 'unico');
@@ -116,6 +121,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       setCategory(categories.length > 0 ? categories[0].name : 'Website');
       setTotalAmount(0);
       setPaidAmount(0);
+      setProductId('');
       setBillingType('unico');
       setRecurringAmount(0);
       setRecurringEnd('');
@@ -240,6 +246,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       category,
       totalAmount: numTotal,
       paidAmount: numPaid,
+      productId: productId || undefined,
       billingType,
       recurringAmount: isRecurring ? Number(recurringAmount) || 0 : undefined,
       recurringEnd: isRecurring ? recurringEnd || undefined : undefined,
@@ -287,6 +294,32 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       <form id="project-form" className="space-y-6 text-fg" onSubmit={handleSubmit}>
           
           <div className="grid gap-5">
+            {products.some((p) => p.active || p.id === productId) && (
+              <div>
+                <label className="text-[13px] font-medium text-fg-secondary block mb-1.5" htmlFor="pm-product">{isEn ? 'Plan (price list)' : 'Plano (tabela de preços)'}</label>
+                <select
+                  id="pm-product"
+                  value={productId}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    setProductId(id);
+                    const prod = products.find((x) => x.id === id);
+                    if (!prod || projectToEdit) return;
+                    // Preenche o que dá para preencher; o valor fechado escreve-se a seguir.
+                    if (!name.trim()) setName(prod.name);
+                    if (prod.billing === 'mensal') { setBillingType('mensal'); setRecurringAmount(prod.priceMin); }
+                    else { setBillingType('unico'); setTotalAmount(prod.priceMin); }
+                    if (categories.some((c) => c.name === 'Tráfego Pago')) setCategory('Tráfego Pago' as ProjectCategory);
+                  }}
+                  className="w-full bg-surface-2 border border-line-subtle rounded-md px-4 py-3 text-sm text-fg cursor-pointer focus:outline-none focus:border-accent"
+                >
+                  <option value="">{isEn ? 'No plan' : 'Sem plano'}</option>
+                  {products.filter((p) => p.active || p.id === productId).map((p) => (
+                    <option key={p.id} value={p.id}>{p.name} — {p.priceMin === p.priceMax ? formatCurrency(p.priceMin, p.currency) : `${formatCurrency(p.priceMin, p.currency)} a ${formatCurrency(p.priceMax, p.currency)}`}{p.billing === 'mensal' ? (isEn ? '/month' : '/mês') : ''}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div>
               <label className="text-[13px] font-medium text-fg-secondary block mb-1.5">
                 {isEn ? 'Project name *' : 'Nome do projeto *'}
@@ -589,6 +622,17 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                 onChange={(e) => setTotalAmount(parseFloat(e.target.value) || 0)}
                 className="w-full bg-glass-strong border border-line-subtle rounded-md px-3.5 py-2.5 text-sm font-medium text-fg focus:outline-none focus:border-accent "
               />
+              {(() => {
+                const prod = products.find((x) => x.id === productId);
+                if (!prod || prod.billing === 'mensal') return null;
+                const out = totalAmount < prod.priceMin || totalAmount > prod.priceMax;
+                return (
+                  <p className={`m-0 mt-1 text-[12px] ${out ? 'text-warning-fg' : 'text-fg-muted'}`}>
+                    {isEn ? 'Plan range: ' : 'Faixa do plano: '}{formatCurrency(prod.priceMin, prod.currency)}{prod.priceMax !== prod.priceMin ? ` – ${formatCurrency(prod.priceMax, prod.currency)}` : ''}
+                    {out ? (isEn ? ' · outside the range' : ' · fora da faixa') : ''}
+                  </p>
+                );
+              })()}
             </div>
 
             <div>

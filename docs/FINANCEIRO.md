@@ -116,3 +116,22 @@ Fonte: [fawazahmed0/exchange-api](https://github.com/fawazahmed0/exchange-api) �
 Notas:
 - O câmbio é diário (não minuto a minuto): não existe fonte gratuita fiável em tempo real com Kwanza.
 - É o câmbio oficial/de mercado internacional. O câmbio de rua em Angola pode ser bem diferente.
+
+## Produtos e preços (tabela de preços)
+
+Menu **Trabalho → Produtos e preços**. Cada plano tem: tipo (plano principal, adicional ou trabalho auxiliar), cobrança (por projeto ou mensal), faixa de preço, descrição, o que inclui, condições e **notas internas** (nunca vão para a cliente). Cada plano mostra quantos projetos saíram dele e o valor médio fechado.
+
+Valores atuais (24/10/2026):
+
+| Plano | Preço |
+|---|---|
+| Funil de Palestra | R$ 1.200 – 1.500 |
+| Funil de Palestra + Edição de vídeos | R$ 1.800 – 2.500 |
+| Gestão mensal de tráfego | R$ 1.500 – 2.000 / mês |
+| Assessoria mensal completa (com edição) | R$ 2.000 – 2.500 / mês |
+| Gestão mensal para quem já tem funil (adicional) | + R$ 1.000 / mês |
+| Trabalho auxiliar (clientes parceiras) | R$ 600 – 1.000 |
+| Captação direta de leads (sem palestra) | R$ 800 – 1.500 |
+
+- **Tabela para enviar:** escolher os planos, o nome da doutora, faixa ou "a partir de", e resultados reais (anónimos). Abre uma página pronta a imprimir/guardar em PDF, ou copia o texto para o WhatsApp.
+- **Novo projeto:** escolher o plano preenche o nome, o tipo de cobrança e o valor inicial; escreve-se o valor fechado e o sistema avisa se ficar fora da faixa.

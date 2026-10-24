@@ -300,14 +300,14 @@ export function buildPermissionMap(
  */
 export function getVisibleTabs(role: UserRole, permMap: PermissionMap): string[] {
   if (role === 'owner') {
-    return ['dashboard', 'calendar', 'projects', 'tasks', 'billing', 'clients', 'financial', 'partners', 'categories', 'reports', 'plans', 'users', 'audit', 'docs', 'settings'];
+    return ['dashboard', 'calendar', 'projects', 'products', 'tasks', 'billing', 'clients', 'financial', 'partners', 'categories', 'reports', 'plans', 'users', 'audit', 'docs', 'settings'];
   }
 
   const tabs: string[] = [];
 
   if (hasPermission(role, permMap, 'dashboard.view')) tabs.push('dashboard');
   if (hasPermission(role, permMap, 'calendar.view'))  tabs.push('calendar');
-  if (hasPermission(role, permMap, 'projects.view'))  tabs.push('projects');
+  if (hasPermission(role, permMap, 'projects.view'))  tabs.push('projects', 'products');
   if (hasPermission(role, permMap, 'tasks.view'))     tabs.push('tasks');
   if (hasPermission(role, permMap, 'billing.view'))   tabs.push('billing');
   if (hasPermission(role, permMap, 'clients.view'))   tabs.push('clients');

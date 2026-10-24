@@ -183,6 +183,8 @@ export interface Project {
   parentProjectId?: string;
   /** Parte do valor já paga por um pagamento anterior (do projeto de origem). Conta como paga, mas não é receita nova. */
   coveredAmount?: number;
+  /** Plano (tabela de preços) de que o projeto saiu. */
+  productId?: string;
 }
 
 export type BillingType = 'unico' | 'mensal' | 'trimestral' | 'anual';
@@ -313,6 +315,25 @@ export interface Expense {
 }
 
 /** Dinheiro que continua em caixa mas já tem destino. O valor é escrito à mão. */
+/** Produto/plano vendido: faixa de preço e o que inclui (tabela de preços). */
+export interface Product {
+  id: string;
+  name: string;
+  /** plano principal, adicional (soma a outro plano) ou trabalho auxiliar */
+  kind: 'plano' | 'adicional' | 'auxiliar';
+  billing: 'unico' | 'mensal';
+  priceMin: number;
+  priceMax: number;
+  currency: CurrencyCode;
+  summary?: string;
+  includes: string[];
+  conditions?: string;
+  /** Só interno (nunca vai para a tabela enviada às clientes). */
+  internalNotes?: string;
+  active: boolean;
+  sortOrder: number;
+}
+
 export interface CashReserve {
   id: string;
   name: string;

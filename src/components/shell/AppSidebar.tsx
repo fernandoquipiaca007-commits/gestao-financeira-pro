@@ -12,7 +12,7 @@ export interface ShellNavItem {
 
 /** Agrupamento fixo dos módulos (Regra 06 — navegação global). "Ajuda" e "Definições" ficam em baixo. */
 export const NAV_GROUPS: { id: string; label: string; en: string; items: string[] }[] = [
-  { id: 'work', label: 'Trabalho', en: 'Work', items: ['dashboard', 'calendar', 'projects', 'tasks'] },
+  { id: 'work', label: 'Trabalho', en: 'Work', items: ['dashboard', 'calendar', 'projects', 'products', 'tasks'] },
   { id: 'money', label: 'Finanças', en: 'Finance', items: ['financial', 'billing', 'clients', 'partners', 'categories', 'reports'] },
   { id: 'account', label: 'Conta', en: 'Account', items: ['plans', 'users', 'audit'] },
 ];
