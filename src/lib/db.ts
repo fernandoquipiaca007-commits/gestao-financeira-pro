@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { supabase } from './supabase';
-import { Product,
+import { CashCheckpoint, Product,
   Client,
   Project,
   Income,
@@ -459,6 +459,17 @@ export async function fetchIncomesFromDb(companyId?: string): Promise<Income[]> 
       stripeInvoicePdf: item.stripe_invoice_pdf || undefined,
       stripeReceiptUrl: item.stripe_receipt_url || undefined,
       stripeStatus: item.stripe_status || undefined,
+      settled: item.settled_amount != null && item.settled_currency
+        ? {
+            currency: item.settled_currency,
+            gross: Number(item.settled_gross) || 0,
+            amount: Number(item.settled_amount) || 0,
+            rate: Number(item.settled_rate) || 0,
+            fees: Array.isArray(item.settled_fees) ? item.settled_fees.map((f: { label: string; amount: number }) => ({ label: f.label, amount: Number(f.amount) || 0 })) : [],
+            date: item.settled_date || item.received_date,
+            ref: item.stripe_ref || undefined,
+          }
+        : undefined,
       createdAt: item.created_at ? item.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
     }));
     saveIncomes(formatted);
@@ -676,6 +687,15 @@ export async function upsertProductToDb(p: Product, companyId: string): Promise<
     return { success: false, error: error.message };
   }
   return { success: true };
+}
+
+export async function fetchCashCheckpointsFromDb(companyId: string): Promise<CashCheckpoint[] | null> {
+  const { data, error } = await supabase.from('cash_checkpoints').select('*').eq('company_id', companyId).order('date', { ascending: true });
+  if (error) {
+    console.warn('[DB] fetchCashCheckpointsFromDb:', error.message);
+    return null;
+  }
+  return (data || []).map((r) => ({ id: r.id, date: r.date, currency: r.currency || 'EUR', amount: Number(r.amount) || 0, notes: r.notes || undefined }));
 }
 
 export async function fetchCashReservesFromDb(companyId: string): Promise<CashReserve[] | null> {

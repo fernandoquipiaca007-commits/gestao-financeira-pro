@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { SettledBreakdown } from '../finance/SettledBreakdown';
 import { ArrowLeft, Link2, Edit3, Building2, MessageCircle, Mail, Calendar, Wallet, ListChecks, BellRing, Handshake, Star, Paperclip, Download } from 'lucide-react';
 import { type Project, type Client, type Income, type AgendaEvent, getProjectStatusLabel, BILLING_TYPE_LABELS, PIPELINE_STAGES } from '../../types';
 import type { Task } from '../../types/rbac';
@@ -196,6 +197,7 @@ export function ProjectDetailView({ project: p, clients, incomes, tasks, agendaE
               {p.partnerName && <Row label={isEn ? 'Commission' : 'Comissão'} value={`${formatCurrency(p.commissionAmount || 0, p.currency)}${p.commissionPaid ? (isEn ? ' · paid' : ' · paga') : ''}`} />}
               <div className="mt-3 h-2 rounded-full bg-surface-2 overflow-hidden"><div className="h-full bg-success-fg" style={{ width: `${pct}%` }} /></div>
               <p className="m-0 mt-1 text-right text-[12px] text-fg-muted">{pct}% {isEn ? 'paid' : 'liquidado'}</p>
+              <SettledBreakdown incomes={projIncomes} isEn={isEn} />
             </Card>
           )}
 

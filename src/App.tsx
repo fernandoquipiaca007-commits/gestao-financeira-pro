@@ -28,7 +28,7 @@ import {
   Moon,
   RefreshCw,
 } from 'lucide-react';
-import { Product,
+import { CashCheckpoint, Product,
   Client,
   Project,
   ProjectStatus,
@@ -93,6 +93,7 @@ import {
   deleteAgendaEventFromDb,
   fetchPartnersFromDb,
   fetchCashReservesFromDb,
+  fetchCashCheckpointsFromDb,
   fetchProductsFromDb,
   upsertProductToDb,
   upsertCashReserveToDb,
@@ -124,8 +125,8 @@ import {
   DEFAULT_CATEGORIES,
 } from './lib/db';
 import { fetchLiveExchangeRates } from './lib/exchange';
-import { fetchLatestFx, loadFxDays, fxAt } from './lib/fxRates';
-import { DisplayCurrencyContext, type DisplayCurrencyValue } from './contexts/DisplayCurrencyContext';
+import { fetchLatestFx, fetchStripeFx, loadFxDays, fxAt } from './lib/fxRates';
+import { DisplayCurrencyContext, CheckpointsContext, type DisplayCurrencyValue } from './contexts/DisplayCurrencyContext';
 import {
   registerServiceWorker,
   startBackgroundNotificationCheck,
@@ -276,11 +277,12 @@ export default function App() {
   const [partners, setPartners] = useState<Partner[]>([]);
   const [cashReserves, setCashReserves] = useState<CashReserve[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [checkpoints, setCheckpoints] = useState<CashCheckpoint[]>([]);
   const [settings, setSettings] = useState<AppSettings>(() => getStoredSettings());
 
-  // Moeda de visualização (BRL por defeito). Só muda o que se vê: os registos ficam na moeda original.
+  // Moeda de visualização: euro por defeito (é a moeda do saldo na Stripe). Só muda o que se vê.
   const [displayCurrency, setDisplayCurrency] = useState<CurrencyCode>(() => {
-    try { const v = localStorage.getItem('gfo_display_currency'); return v === 'AOA' || v === 'USD' || v === 'EUR' ? v : 'BRL'; } catch { return 'BRL'; }
+    try { const v = localStorage.getItem('gfo_display_currency_v2'); return v === 'AOA' || v === 'USD' || v === 'BRL' ? v : 'EUR'; } catch { return 'EUR'; }
   });
   const [fxInfo, setFxInfo] = useState<{ date: string; source: string } | null>(null);
   const [fxLoading, setFxLoading] = useState(false);
@@ -291,21 +293,28 @@ export default function App() {
       saveSettings(updated);
       return updated;
     });
-  // Ao escolher uma moeda vai buscar o câmbio desse momento.
+  // Câmbio de hoje: real e dólar vêm da Stripe; o kwanza (que a Stripe não cota) vem da fonte pública.
+  const loadTodayRates = async (force = false) => {
+    const [q, st] = await Promise.all([fetchLatestFx(force), fetchStripeFx()]);
+    if (!q && !st) return false;
+    let { AOA, USD, EUR } = q ? q.rates : settings.exchangeRates;
+    if (st) { EUR = st.brl; if (st.usd) USD = st.brl / st.usd; }
+    applyFxRates({ AOA, USD, EUR });
+    setFxInfo(st ? { date: st.date, source: 'Stripe' } : { date: q!.date, source: q!.source });
+    return true;
+  };
   const chooseDisplayCurrency = async (c: CurrencyCode) => {
     setDisplayCurrency(c);
     setCurrencyFilter('ALL');
-    try { localStorage.setItem('gfo_display_currency', c); } catch { /* ignorar */ }
+    try { localStorage.setItem('gfo_display_currency_v2', c); } catch { /* ignorar */ }
     setFxLoading(true);
-    const q = await fetchLatestFx(true);
-    if (q) { applyFxRates(q.rates); setFxInfo({ date: q.date, source: q.source }); }
-    else toast({ tone: 'danger', title: 'Não foi possível atualizar o câmbio', description: 'A usar o último câmbio guardado.' });
+    if (!(await loadTodayRates(true))) toast({ tone: 'danger', title: 'Não foi possível atualizar o câmbio', description: 'A usar o último câmbio guardado.' });
     setFxLoading(false);
   };
   useEffect(() => {
-    fetchLatestFx().then((q) => { if (q) { applyFxRates(q.rates); setFxInfo({ date: q.date, source: q.source }); } });
+    loadTodayRates();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [userSession?.id]);
 
   // RBAC Data State
   const [companyUsers, setCompanyUsers] = useState<UserProfile[]>([]);
@@ -457,6 +466,8 @@ export default function App() {
         if (dbReserves) setCashReserves(dbReserves);
         const dbProducts = await fetchProductsFromDb(cid);
         if (dbProducts) setProducts(dbProducts);
+        const dbCheckpoints = await fetchCashCheckpointsFromDb(cid);
+        if (dbCheckpoints) setCheckpoints(dbCheckpoints);
       }
 
       // Sync categories from Supabase if available, otherwise keep localStorage
@@ -2156,6 +2167,7 @@ export default function App() {
 
   return (
     <DisplayCurrencyContext.Provider value={displayCurrencyValue}>
+    <CheckpointsContext.Provider value={checkpoints}>
       <div className="aura-root aura-canvas aura-app h-screen overflow-hidden flex flex-col">
         <div className="aura-canvas__aurora" aria-hidden="true"><span /><span /><span /><span /></div>
         <div className="aura-canvas__grid" aria-hidden="true" />
@@ -2646,6 +2658,7 @@ export default function App() {
       )}
 
       </div>
+    </CheckpointsContext.Provider>
   </DisplayCurrencyContext.Provider>
   );
 }

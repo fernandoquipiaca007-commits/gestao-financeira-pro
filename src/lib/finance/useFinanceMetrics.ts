@@ -1,11 +1,13 @@
-import { useMemo } from 'react';
+import { useContext, useMemo } from 'react';
+import { CheckpointsContext } from '../../contexts/DisplayCurrencyContext';
 import { convertWith } from '../fxRates';
 import type { AppSettings, Client, CurrencyCode, Expense, Income, Project } from '../../types';
 import { convertCurrency, formatCurrency, getDaysDiff } from '../formatters';
 import { paidCommissions } from './projectPayments';
 import { cashBreakdown, owedToPartners, reserveStatuses } from './cashPosition';
 import { isProfitDistribution, isCashOut } from '../../types';
-import type { CashReserve } from '../../types';
+import type { CashReserve, CashCheckpoint } from '../../types';
+import { incomeValue, latestCheckpoint } from './settled';
 
 /**
  * Métricas financeiras do painel num só sítio (antes duplicadas em Quick10SecSummary e DashboardView).
@@ -29,10 +31,13 @@ interface Input {
   period: Period;
   lang: 'pt' | 'en';
   reserves?: CashReserve[];
+  checkpoints?: CashCheckpoint[];
 }
 
 
-export function useFinanceMetrics({ clients, projects, incomes, expenses, settings, currencyFilter, period, lang, reserves = [] }: Input) {
+export function useFinanceMetrics({ clients, projects, incomes, expenses, settings, currencyFilter, period, lang, reserves = [], checkpoints: checkpointsProp }: Input) {
+  const checkpointsCtx = useContext(CheckpointsContext);
+  const checkpoints = checkpointsProp ?? checkpointsCtx;
   return useMemo(() => {
     const currency: CurrencyCode = currencyFilter !== 'ALL' ? currencyFilter : settings.defaultCurrency;
     // Stocks (saldo, a receber, reservas) usam o câmbio de hoje; fluxos de um período (recebido,
@@ -66,20 +71,29 @@ export function useFinanceMetrics({ clients, projects, incomes, expenses, settin
     const prevTo = iso(new Date(now.getFullYear(), now.getMonth() - span + 1, 0));
     const between = (d: string, from: string, to: string) => d >= from && d <= to;
 
-    // --- Caixa real (tudo o que entrou − tudo o que saiu − comissões pagas)
+    // --- Caixa real. Com um fecho confirmado: saldo do fecho + o que entrou e saiu depois dele.
+    //     Sem fecho: tudo o que entrou − tudo o que saiu − comissões pagas.
+    //     Entradas da Stripe contam pelo líquido que ficou (fixo); o caixa usa o câmbio de hoje.
     const received = inc.filter((i) => i.status === 'Recebido');
-    const totalReceived = received.reduce((s, i) => s + conv(i.amount, i.currency), 0);
-    const totalPaidExpenses = exp.filter(isCashOut).reduce((s, e) => s + conv(e.amount, e.currency), 0);
-    const totalPaidCommissions = allProj.filter((p) => p.commissionPaid && (p.commissionAmount || 0) > 0).reduce((s, p) => s + conv(p.commissionAmount || 0, p.currency), 0);
-    const cashBalance = totalReceived - totalPaidExpenses - totalPaidCommissions;
+    const recDate = (i: Income) => (i.receivedDate || i.dueDate || '').slice(0, 10);
+    const stockValue = (i: Income) => incomeValue(i, currency, (a, from) => conv(a, from));
+    const cp = currencyFilter === 'ALL' ? latestCheckpoint(checkpoints) : undefined;
+    const after = (d: string) => !cp || (d || '').slice(0, 10) > cp.date;
+    const totalReceived = received.filter((i) => after(recDate(i))).reduce((s, i) => s + stockValue(i), 0);
+    const totalPaidExpenses = exp.filter((e) => isCashOut(e) && after(e.date)).reduce((s, e) => s + conv(e.amount, e.currency), 0);
+    const paidCommissionList = paidCommissions(allProj, inc);
+    const totalPaidCommissions = cp
+      ? paidCommissionList.filter((c) => after(c.date)).reduce((s, c) => s + conv(c.amount, c.project.currency), 0)
+      : allProj.filter((p) => p.commissionPaid && (p.commissionAmount || 0) > 0).reduce((s, p) => s + conv(p.commissionAmount || 0, p.currency), 0);
+    const cashBalance = (cp ? conv(cp.amount, cp.currency) : 0) + totalReceived - totalPaidExpenses - totalPaidCommissions;
     // Onde está o caixa: reservado (com destino), por enviar aos sócios, ou livre.
     const reserveList = reserveStatuses(currencyFilter === 'ALL' ? reserves : reserves.filter((r) => r.currency === currencyFilter), exp, conv);
     const owed = owedToPartners(exp, conv);
     const breakdown = cashBreakdown(cashBalance, reserveList, owed);
 
     // --- Período vs período anterior (recebido = data de recebimento; despesa = data da despesa paga)
-    const recDate = (i: Income) => (i.receivedDate || i.dueDate || '').slice(0, 10);
-    const receivedIn = (from: string, to: string) => received.filter((i) => between(recDate(i), from, to)).reduce((s, i) => s + convAt(i.amount, i.currency, recDate(i)), 0);
+    const flowValue = (i: Income) => incomeValue(i, currency, convAt);
+    const receivedIn = (from: string, to: string) => received.filter((i) => between(recDate(i), from, to)).reduce((s, i) => s + flowValue(i), 0);
     // Retiradas e distribuições a sócios saem do caixa, mas não são custo do negócio: ficam fora do resultado.
     const isWithdrawal = (e: Expense) => isProfitDistribution(e);
     const paidIn = (from: string, to: string, pick: (e: Expense) => boolean) =>
@@ -87,7 +101,7 @@ export function useFinanceMetrics({ clients, projects, incomes, expenses, settin
     const spentIn = (from: string, to: string) => paidIn(from, to, (e) => !isWithdrawal(e));
     const withdrawnIn = (from: string, to: string) => paidIn(from, to, isWithdrawal);
     // Comissões pagas contam no mês em que o cliente pagou o projeto.
-    const commissions = paidCommissions(allProj, inc);
+    const commissions = paidCommissionList;
     const commissionsIn = (from: string, to: string) =>
       commissions.filter((c) => between(c.date, from, to)).reduce((s, c) => s + convAt(c.amount, c.project.currency, c.date), 0);
     const cashOutIn = (from: string, to: string) => paidIn(from, to, () => true) + commissionsIn(from, to);
@@ -163,7 +177,7 @@ export function useFinanceMetrics({ clients, projects, incomes, expenses, settin
     const byClient = new Map<string, number>();
     received
       .filter((i) => between(recDate(i), winFrom, winTo))
-      .forEach((i) => byClient.set(i.clientId, (byClient.get(i.clientId) || 0) + convAt(i.amount, i.currency, recDate(i))));
+      .forEach((i) => byClient.set(i.clientId, (byClient.get(i.clientId) || 0) + flowValue(i)));
     // Nome curto e legível: o nome do cliente, sem descrições entre parênteses.
     const shortName = (s: string) => s.replace(/\s*\(.*\)\s*$/, '').replace(/\s+/g, ' ').trim();
     const clientName = new Map(clients.map((c) => [c.id, shortName(c.name || c.company || '')]));
@@ -218,5 +232,5 @@ export function useFinanceMetrics({ clients, projects, incomes, expenses, settin
         clientsCount: clientsInScope.length, newClientsPeriod,
       },
     };
-  }, [clients, projects, incomes, expenses, settings, currencyFilter, period, lang, reserves]);
+  }, [clients, projects, incomes, expenses, settings, currencyFilter, period, lang, reserves, checkpoints]);
 }

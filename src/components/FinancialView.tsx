@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { incomeValue, settledFeesTotal } from '../lib/finance/settled';
 import { convertWith } from '../lib/fxRates';
 import {
   DollarSign,
@@ -534,7 +535,15 @@ export const FinancialView: React.FC<FinancialViewProps> = ({
 
                           <td className="px-5 py-4 font-semibold text-success-fg text-sm">
                             {formatCurrency(inc.amount, inc.currency)}
-                            {renderAtDate(inc.amount, inc.currency, inc.status === 'Recebido' ? (inc.receivedDate || inc.dueDate) : inc.dueDate)}
+                            {inc.settled && inc.status === 'Recebido' ? (
+                              <span
+                                className="block text-[11px] font-medium text-fg-muted"
+                                title={[`${lang === 'en' ? 'Gross' : 'Bruto'}: ${formatCurrency(inc.settled.gross, inc.settled.currency)}`, ...inc.settled.fees.map((f) => `− ${f.label}: ${formatCurrency(f.amount, inc.settled!.currency)}`), `${lang === 'en' ? 'Net' : 'Líquido'}: ${formatCurrency(inc.settled.amount, inc.settled.currency)}`, `1 ${inc.currency} = ${inc.settled.rate} ${inc.settled.currency}`].join('\n')}
+                              >
+                                {lang === 'en' ? 'In Stripe' : 'Na Stripe'}: <strong className="text-success-fg">{formatCurrency(inc.settled.amount, inc.settled.currency)}</strong> · {lang === 'en' ? 'fees' : 'taxas'} {formatCurrency(settledFeesTotal(inc), inc.settled.currency)}
+                                {cashCurrency !== inc.settled.currency && <> ≈ {formatCurrency(incomeValue(inc, cashCurrency, (v, from) => (settings ? convertCurrency(v, from, cashCurrency, settings.exchangeRates) : v)), cashCurrency)}</>}
+                              </span>
+                            ) : renderAtDate(inc.amount, inc.currency, inc.status === 'Recebido' ? (inc.receivedDate || inc.dueDate) : inc.dueDate)}
                             {renderCashStep(timeline.get('inc:' + inc.id))}
                           </td>
 

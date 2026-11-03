@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import type { CurrencyCode } from '../types';
+import type { CashCheckpoint, CurrencyCode } from '../types';
 
 /** Moeda em que o painel, o financeiro e os relatórios mostram o dinheiro (só visualização). */
 export interface DisplayCurrencyValue {
@@ -14,3 +14,6 @@ export interface DisplayCurrencyValue {
 
 export const DisplayCurrencyContext = createContext<DisplayCurrencyValue | null>(null);
 export const useDisplayCurrency = () => useContext(DisplayCurrencyContext);
+
+/** Fechos de caixa confirmados (o caixa parte do mais recente). */
+export const CheckpointsContext = createContext<CashCheckpoint[]>([]);

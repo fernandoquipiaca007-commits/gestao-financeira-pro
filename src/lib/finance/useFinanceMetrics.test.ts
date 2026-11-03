@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { AppSettings, Expense, Income, Project } from '../../types';
 
 // The hook only uses useMemo; run it as a plain function.
-vi.mock('react', async (importOriginal) => ({ ...(await importOriginal<typeof import('react')>()), useMemo: (fn: () => unknown) => fn() }));
+vi.mock('react', async (importOriginal) => ({ ...(await importOriginal<typeof import('react')>()), useMemo: (fn: () => unknown) => fn(), useContext: () => [] }));
 const { useFinanceMetrics } = await import('./useFinanceMetrics');
 
 // Same amounts as the company's books on 2026-10-20 (names removed).
