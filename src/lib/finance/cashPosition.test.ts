@@ -3,7 +3,7 @@ import type { AppSettings, CashReserve, Expense, Income, PartnerShare } from '..
 import { isCashOut } from '../../types';
 import { buildPartnerDistribution, cashBreakdown, offsetAdvance, owedToPartners, partnerAdvances, reserveStatuses, splitTotal } from './cashPosition';
 
-vi.mock('react', async (importOriginal) => ({ ...(await importOriginal<typeof import('react')>()), useMemo: (fn: () => unknown) => fn() }));
+vi.mock('react', async (importOriginal) => ({ ...(await importOriginal<typeof import('react')>()), useMemo: (fn: () => unknown) => fn(), useContext: () => [] }));
 const { useFinanceMetrics } = await import('./useFinanceMetrics');
 
 const conv = (n: number) => n;

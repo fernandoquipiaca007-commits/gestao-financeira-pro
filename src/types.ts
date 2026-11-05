@@ -258,6 +258,26 @@ export interface Income {
   stripeInvoicePdf?: string;   // PDF download URL
   stripeReceiptUrl?: string;   // receipt URL after payment
   stripeStatus?: 'none' | 'draft' | 'open' | 'paid' | 'void' | 'uncollectible';
+  /** O que chegou de facto à Stripe (fixo): bruto, câmbio, cada taxa e o líquido, na moeda do saldo. */
+  settled?: {
+    currency: CurrencyCode;
+    gross: number;
+    amount: number;
+    /** 1 unidade da moeda faturada = rate na moeda do saldo */
+    rate: number;
+    fees: { label: string; amount: number }[];
+    date: string;
+    ref?: string;
+  };
+}
+
+/** Saldo de caixa confirmado numa data (fecho). O caixa = este saldo + o que entra e sai depois. */
+export interface CashCheckpoint {
+  id: string;
+  date: string;
+  currency: CurrencyCode;
+  amount: number;
+  notes?: string;
 }
 
 export type ExpenseCategory = 'Internet' | 'Hospedagem' | 'Domínio' | 'Publicidade' | 'Ferramentas' | 'Salário' | 'Edição de vídeo' | 'Taxas de pagamento' | 'Retirada Própria' | 'Distribuição a sócios' | 'Adiantamento a sócio' | 'Valor retido' | 'Comissão Parceiro' | 'Outros' | (string & {});
