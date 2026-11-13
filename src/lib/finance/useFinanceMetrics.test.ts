@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { AppSettings, Expense, Income, Project } from '../../types';
 
 // The hook only uses useMemo; run it as a plain function.
-vi.mock('react', async (importOriginal) => ({ ...(await importOriginal<typeof import('react')>()), useMemo: (fn: () => unknown) => fn() }));
+vi.mock('react', async (importOriginal) => ({ ...(await importOriginal<typeof import('react')>()), useMemo: (fn: () => unknown) => fn(), useContext: () => [] }));
 const { useFinanceMetrics } = await import('./useFinanceMetrics');
 
 // Same amounts as the company's books on 2026-10-20 (names removed).
@@ -92,5 +92,19 @@ describe('archived projects', () => {
 
   it('do not change the cash balance', () => {
     expect(run(true).cashBalance).toBe(run(false).cashBalance);
+  });
+});
+
+describe('cash from the October 2026 close (euros)', () => {
+  const eur = { defaultCurrency: 'EUR', userName: 'x', businessName: 'x', exchangeRates: { BRL: 1, AOA: 165, USD: 0.18, EUR: 0.163 } } as AppSettings;
+  const out = (id: string, amount: number, date: string): Expense => ({ id, category: 'Distribuição a sócios', description: id, amount, currency: 'EUR', date, paid: true, createdAt: date });
+  const run = () => useFinanceMetrics({
+    clients: [], projects: [], incomes, settings: eur, currencyFilter: 'ALL', period: '1m', lang: 'pt',
+    expenses: [...expenses, out('day-of-close', 551.99, '2026-11-02'), out('fernando-2', 133.55, '2026-11-04'), out('claude', 22.31, '2026-11-04')],
+    checkpoints: [{ id: 'cp', date: '2026-11-02', currency: 'EUR', amount: 549.15 }],
+  });
+
+  it('starts from the checkpoint and only counts what moved after it', () => {
+    expect(run().cashBalance).toBeCloseTo(393.29, 2);
   });
 });

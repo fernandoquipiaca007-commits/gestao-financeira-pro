@@ -35,6 +35,7 @@ import { downloadFinancialReport } from '../lib/reports/excelReport';
 import { toast } from '../lib/feedback';
 import { DateRangePicker, rangeLabel, rangePresets, type DateRange } from './reports/DateRangePicker';
 import { useLanguage } from '../contexts/LanguageContext';
+import { MonthCloseReport } from './reports/MonthCloseReport';
 
 interface ReportsViewProps {
   clients: Client[];
@@ -405,6 +406,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
   return (
     <div className="space-y-6 pb-12 animate-in fade-in duration-200">
+      <MonthCloseReport isEn={isEn} />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
         <div>

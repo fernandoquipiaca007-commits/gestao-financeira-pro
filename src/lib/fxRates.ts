@@ -127,3 +127,15 @@ export function convertWith(amount: number, from: CurrencyCode, to: CurrencyCode
   const inBrl = from === 'BRL' ? amount : amount / (rates[from] || 1);
   return to === 'BRL' ? inBrl : inBrl * (rates[to] || 1);
 }
+
+/** Câmbio de hoje da Stripe (onde o dinheiro é processado): 1 BRL e 1 USD em euros. Precisa de sessão. */
+export async function fetchStripeFx(): Promise<{ date: string; brl: number; usd: number | null } | null> {
+  try {
+    const { supabase } = await import('./supabase');
+    const { data, error } = await supabase.functions.invoke('stripe-sync', { body: { mode: 'fx' } });
+    if (error || !data?.brl) return null;
+    return { date: data.date, brl: Number(data.brl), usd: data.usd ? Number(data.usd) : null };
+  } catch {
+    return null;
+  }
+}
